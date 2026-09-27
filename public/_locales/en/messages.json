@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "PicPocket - Image to Prompt & AI Moodboard",
+    "description": "Extension name"
+  },
+  "extDescription": {
+    "message": "Extract AI prompts from any image for Midjourney, Flux & Grok. Save & organize design inspiration in a local sidepanel.",
+    "description": "Extension description"
+  },
+  "actionTitle": {
+    "message": "Open PicPocket Sidepanel",
+    "description": "Sidepanel action button title"
+  }
+}

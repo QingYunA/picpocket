@@ -1,0 +1,54 @@
+{
+  "name": "picpocket",
+  "version": "1.0.0",
+  "scripts": {
+    "postinstall": "wxt prepare && cd vendor/infinite-canvas/web && bun install --frozen-lockfile",
+    "dev": "wxt",
+    "typecheck": "wxt prepare && tsc --noEmit && bun run typecheck:canvas",
+    "typecheck:canvas": "bun run --cwd vendor/infinite-canvas/web typecheck",
+    "build:canvas": "bun run --cwd vendor/infinite-canvas/web build:extension",
+    "build": "wxt prepare && tsc --noEmit && bun run typecheck:canvas && bun run build:canvas && wxt build",
+    "mirror": "bun scripts/mirror-dist.ts",
+    "sync": "bun scripts/sync-and-build.ts --sync-only",
+    "update-ext": "bun scripts/sync-and-build.ts",
+    "zip": "wxt zip",
+    "test": "bun scripts/check-i18n.ts && vitest run --fileParallelism=false && bun run --cwd vendor/infinite-canvas/web test",
+    "i18n:check": "bun scripts/check-i18n.ts",
+    "mcp": "bun packages/mcp-bridge/src/index.ts",
+    "mcp:install": "bun scripts/install-mcp.ts"
+  },
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/bun": "latest",
+    "@types/chrome": "^0.3.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/ws": "^8.18.1",
+    "autoprefixer": "^10.6.1",
+    "fake-indexeddb": "^6.2.5",
+    "postcss": "^8.5.28",
+    "tailwindcss": "^4.3.3",
+    "vitest": "^5.0.1"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@iconify/react": "^6.0.2",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@supabase/supabase-js": "^2.116.0",
+    "@wxt-dev/module-react": "^1.2.2",
+    "clsx": "^2.1.1",
+    "dexie": "^4.4.6",
+    "dexie-react-hooks": "^4.4.0",
+    "lucide-react": "^1.47.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "tailwind-merge": "^3.7.0",
+    "ws": "^8.21.3",
+    "wxt": "^0.21.4",
+    "zod": "^4.6.5"
+  }
+}

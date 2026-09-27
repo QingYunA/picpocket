@@ -1,0 +1,17 @@
+{
+  "name": "@picpocket/mcp-bridge",
+  "version": "1.0.0",
+  "description": "Local MCP Bridge connecting Claude/Cursor/Antigravity to PicPocket Chrome extension",
+  "main": "src/index.ts",
+  "bin": {
+    "picpocket-mcp": "./src/index.ts",
+    "promptsnap-mcp": "./src/index.ts"
+  },
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "ws": "^8.21.3",
+    "zod": "^3.24.2"
+  }
+}

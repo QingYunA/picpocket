@@ -1,0 +1,14 @@
+{
+  "extName": {
+    "message": "PicPocket - 收藏图片，反推提示词，即刻生成图片，让你的生图纵享丝滑",
+    "description": "扩展名称"
+  },
+  "extDescription": {
+    "message": "看到美图，一键收藏！反推画面风格、构图与光影提示词，让你的生图纵享丝滑",
+    "description": "扩展描述"
+  },
+  "actionTitle": {
+    "message": "打开 PicPocket 侧边栏",
+    "description": "打开侧边栏按钮标题"
+  }
+}

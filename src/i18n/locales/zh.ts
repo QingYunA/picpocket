@@ -722,11 +722,11 @@ export const zh = {
       jsonBackupDesc: '高速导出结构化 JSON 文件（含用户配置、分类、提示词预设库与历史索引，不含大图二进制）。',
       exportJsonBtn: '导出 JSON 备份',
       restoreTitle: '从备份文件恢复 (Restore)',
-      restoreDesc: '选择此前导出的 JSON 备份文件，一键安全恢复提示词库、分类目录及偏好设置到本机。',
+      restoreDesc: '选择此前导出的 ZIP 完整包或 JSON 备份，合并恢复图库图片、反推结果、生图记录、提示词库、分类与偏好设置；已存在的内容不会重复导入。',
       selectFileBtn: '选择备份文件导入',
       restoring: '恢复中...',
-      restoreSuccess: '备份恢复成功！数据已更新',
       restoreFailed: '恢复失败，文件格式有误',
+      restoreSummary: '恢复完成：新增 {items} 张图片、{tasks} 条生图记录、{prompts} 条提示词、{folders} 个分类',
       exportSuccess: '备份导出成功！已保存至下载目录',
     },
     prompts: {

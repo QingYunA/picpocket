@@ -1,5 +1,8 @@
 import { db } from '../db';
-import { getUserSettings } from '../utils/storage';
+import { getUserSettings, saveUserSettings } from '../utils/storage';
+import type { InspirationItem, UserSettings } from '../types';
+import type { GenerationBatchTask } from '../types/imageGeneration';
+import { BACKUP_MANIFEST_VERSION, extensionForMime, mergeSettings, mimeFromDataUrl, toPortableSettings } from './backupFormat';
 
 export interface StorageEstimateResult {
   usedBytes: number;
@@ -223,15 +226,68 @@ export function createZipArchive(entries: ZipEntry[]): Blob {
   return new Blob([fullArchive], { type: 'application/zip' });
 }
 
+type BinaryCollector = (name: string, data: Uint8Array) => void;
+
+async function galleryRecords(items: InspirationItem[], add: BinaryCollector) {
+  const records = [];
+  for (const { originalBlob, thumbnailBlob: _thumbnail, ...meta } of items) {
+    if (!originalBlob) {
+      records.push(meta);
+      continue;
+    }
+    const file = `gallery/${meta.id}.${extensionForMime(originalBlob.type)}`;
+    add(file, new Uint8Array(await originalBlob.arrayBuffer()));
+    records.push({ ...meta, file });
+  }
+  return records;
+}
+
+/** 把 DataURL 写成包内文件并返回路径；空图返回 undefined */
+function dataUrlToArchiveFile(dataUrl: string | undefined, basePath: string, add: BinaryCollector): string | undefined {
+  const bytes = dataUrl ? dataUrlToUint8Array(dataUrl) : new Uint8Array(0);
+  if (bytes.length === 0) return undefined;
+  const file = `${basePath}.${extensionForMime(mimeFromDataUrl(dataUrl!))}`;
+  add(file, bytes);
+  return file;
+}
+
+function taskRecords(tasks: GenerationBatchTask[], add: BinaryCollector) {
+  return tasks.map((task) => ({
+    ...task,
+    images: task.images.map((img) => ({
+      ...img,
+      dataUrl: dataUrlToArchiveFile(img.dataUrl, `generated_images/${task.id}_${img.id}`, add) ?? '',
+    })),
+  }));
+}
+
+function assetRecords(assets: { id: string; dataUrl: string; createdAt: number }[], add: BinaryCollector) {
+  return assets.map((asset) => ({
+    id: asset.id,
+    createdAt: asset.createdAt,
+    file: dataUrlToArchiveFile(asset.dataUrl, `reference_assets/${asset.id}`, add),
+  }));
+}
+
+function backupReadme(dateStr: string): string {
+  return (
+    `PicPocket Full Data Backup (${dateStr})\r\n\r\n` +
+    `Restore: Settings > Storage > Restore from Backup, then select this ZIP file.\r\n` +
+    `API keys and membership are not included; configure them again after restoring.\r\n\r\n` +
+    `Contents:\r\n` +
+    `- manifest.json: Settings, gallery metadata, prompt library and task logs\r\n` +
+    `- gallery/: Saved pocket inspiration images\r\n` +
+    `- generated_images/: AI workbench generated images\r\n` +
+    `- reference_assets/: Deduplicated reference assets pool\r\n`
+  );
+}
+
 /**
- * Exports all PicPocket user data into a standardized hierarchical ZIP archive
- * or JSON fallback (ADR-0007).
+ * Builds the full-library ZIP archive (ADR-0007): manifest.json holds every table's
+ * metadata with binaries replaced by in-archive paths, so the archive can be fully restored.
  */
-export async function exportAllDataAsBackup(
-  format: 'zip' | 'json' = 'zip'
-): Promise<{ count: number; filename: string }> {
-  // 1. Collect data from Dexie tables
-  const [items, prompts, folders, promptItems, generationTasks, referenceAssets, promptSources] =
+export async function buildFullBackupArchive(): Promise<{ blob: Blob; count: number; filename: string }> {
+  const [items, prompts, folders, promptItems, generationTasks, referenceAssets, promptSources, settings] =
     await Promise.all([
       db.items.toArray(),
       db.prompts.toArray(),
@@ -240,20 +296,16 @@ export async function exportAllDataAsBackup(
       db.generationTasks.toArray(),
       db.referenceAssets.toArray(),
       db.promptSources.toArray(),
+      getUserSettings(),
     ]);
 
-  const dateStr = new Date().toISOString().slice(0, 10);
-  const totalCount =
-    items.length +
-    generationTasks.length +
-    promptItems.length +
-    referenceAssets.length +
-    promptSources.length;
-
-  const manifestPayload = {
-    version: 1,
+  const binaries: ZipEntry[] = [];
+  const add: BinaryCollector = (name, data) => binaries.push({ name, data });
+  const manifest = {
+    version: BACKUP_MANIFEST_VERSION,
+    appName: 'PicPocket',
     exportedAt: new Date().toISOString(),
-    format,
+    format: 'zip',
     stats: {
       itemsCount: items.length,
       tasksCount: generationTasks.length,
@@ -262,98 +314,40 @@ export async function exportAllDataAsBackup(
       referenceAssetsCount: referenceAssets.length,
       sourcesCount: promptSources.length,
     },
+    settings: toPortableSettings(settings),
     data: {
+      items: await galleryRecords(items, add),
       prompts,
       folders,
       promptItems,
-      generationTasks: generationTasks.map((t) => ({
-        ...t,
-        images: t.images.map((img) => ({
-          ...img,
-          dataUrl: `generated_images/${t.id}_${img.id}.png`,
-        })),
-      })),
+      generationTasks: taskRecords(generationTasks, add),
+      referenceAssets: assetRecords(referenceAssets, add),
       promptSources,
     },
   };
 
-  if (format === 'json') {
-    const jsonStr = JSON.stringify(manifestPayload, null, 2);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const filename = `PromptSnap_Backup_${dateStr}.json`;
-    downloadBlobOrUrl(blob, filename);
-    return { count: totalCount, filename };
-  }
-
-  // 2. Build ZIP entries with folder structure
-  const zipEntries: ZipEntry[] = [];
+  const dateStr = new Date().toISOString().slice(0, 10);
   const encoder = new TextEncoder();
+  const blob = createZipArchive([
+    { name: 'manifest.json', data: encoder.encode(JSON.stringify(manifest, null, 2)) },
+    { name: 'README.txt', data: encoder.encode(backupReadme(dateStr)) },
+    ...binaries,
+  ]);
 
-  // Manifest metadata
-  zipEntries.push({
-    name: 'manifest.json',
-    data: encoder.encode(JSON.stringify(manifestPayload, null, 2)),
-  });
+  return {
+    blob,
+    count: items.length + generationTasks.length + promptItems.length + referenceAssets.length + promptSources.length,
+    filename: `PicPocket_Backup_${dateStr}.zip`,
+  };
+}
 
-  // Readme
-  zipEntries.push({
-    name: 'README.txt',
-    data: encoder.encode(
-      `PicPocket Full Data Backup (${dateStr})\r\n\r\n` +
-      `Contents:\r\n` +
-      `- manifest.json: Full metadata, prompt library and task logs\r\n` +
-      `- gallery/: Saved pocket inspiration images\r\n` +
-      `- generated_images/: AI workbench generated images\r\n` +
-      `- reference_assets/: Deduplicated reference assets pool\r\n`
-    ),
-  });
-
-  // Gallery images
-  for (const item of items) {
-    if (item.originalBlob) {
-      const buffer = await item.originalBlob.arrayBuffer();
-      const ext = item.originalBlob.type.includes('jpeg') ? 'jpg' : 'png';
-      zipEntries.push({
-        name: `gallery/${item.id}.${ext}`,
-        data: new Uint8Array(buffer),
-      });
-    }
-  }
-
-  // Generated images
-  for (const task of generationTasks) {
-    for (const img of task.images) {
-      if (img.dataUrl) {
-        const bytes = dataUrlToUint8Array(img.dataUrl);
-        if (bytes.length > 0) {
-          zipEntries.push({
-            name: `generated_images/${task.id}_${img.id}.png`,
-            data: bytes,
-          });
-        }
-      }
-    }
-  }
-
-  // Reference assets
-  for (const asset of referenceAssets) {
-    if (asset.dataUrl) {
-      const bytes = dataUrlToUint8Array(asset.dataUrl);
-      if (bytes.length > 0) {
-        zipEntries.push({
-          name: `reference_assets/${asset.id}.png`,
-          data: bytes,
-        });
-      }
-    }
-  }
-
-  // 3. Create standard ZIP archive and trigger download
-  const zipBlob = createZipArchive(zipEntries);
-  const filename = `PromptSnap_Backup_${dateStr}.zip`;
-  downloadBlobOrUrl(zipBlob, filename);
-
-  return { count: totalCount, filename };
+/**
+ * Exports all PicPocket user data as a restorable ZIP archive.
+ */
+export async function exportAllDataAsBackup(): Promise<{ count: number; filename: string }> {
+  const { blob, count, filename } = await buildFullBackupArchive();
+  downloadBlobOrUrl(blob, filename);
+  return { count, filename };
 }
 
 /**
@@ -383,7 +377,7 @@ export async function exportMetadataAsJsonBackup(): Promise<{ filename: string }
     version: '1.0.0',
     exportedAt: Date.now(),
     date: new Date().toISOString(),
-    settings,
+    settings: toPortableSettings(settings),
     folders,
     promptItems,
     items,
@@ -423,11 +417,8 @@ export async function restoreFromBackupJson(jsonContent: string): Promise<{
 
   // 1. Restore User Settings
   if (parsed.settings && typeof parsed.settings === 'object') {
-    const current = await getUserSettings();
-    const merged = { ...current, ...parsed.settings };
-    if (typeof chrome !== 'undefined' && chrome.storage?.local) {
-      await chrome.storage.local.set({ promptsnap_settings: merged });
-    }
+    const current = (await getUserSettings()) as unknown as Record<string, unknown>;
+    await saveUserSettings(mergeSettings(current, parsed.settings) as Partial<UserSettings>);
     settingsRestored = true;
   }
 

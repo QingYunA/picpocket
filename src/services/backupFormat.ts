@@ -39,3 +39,53 @@ export function bytesToDataUrl(bytes: Uint8Array, mime: string): string {
   }
   return `data:${mime};base64,${btoa(binary)}`;
 }
+
+/** 备份文件可能被分享或同步到网盘，凭据一律不写入 */
+const SECRET_FIELDS = new Set(['apiKey', 'imageApiKey', 'authToken', 'licenseKey']);
+/** 会员状态以服务端为准，从备份恢复会伪造出过期或不属于本账号的权益 */
+const NON_PORTABLE_SETTINGS = new Set(['proMembership']);
+
+type PlainObject = Record<string, unknown>;
+
+function isPlainObject(value: unknown): value is PlainObject {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function stripSecrets(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stripSecrets);
+  if (!isPlainObject(value)) return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key]) => !SECRET_FIELDS.has(key))
+      .map(([key, v]) => [key, stripSecrets(v)])
+  );
+}
+
+/** 导出用：去掉凭据与不可迁移的会员状态 */
+export function toPortableSettings(settings: object): PlainObject {
+  const portable = Object.fromEntries(Object.entries(settings).filter(([key]) => !NON_PORTABLE_SETTINGS.has(key)));
+  return stripSecrets(portable) as PlainObject;
+}
+
+function mergeById(current: unknown[], incoming: unknown[]): unknown[] {
+  return incoming.map((item) => {
+    const match = isPlainObject(item) ? current.find((c) => isPlainObject(c) && c.id === item.id) : undefined;
+    return match ? mergeSettings(match as PlainObject, item as PlainObject) : item;
+  });
+}
+
+/**
+ * 导入用：用备份覆盖当前设置，但备份里缺失的字段（被剔除的凭据）沿用本机现有值；
+ * 渠道数组按 id 对齐，确保本机已配置的 API Key 不被清空。
+ */
+export function mergeSettings(current: PlainObject, incoming: PlainObject): PlainObject {
+  const merged: PlainObject = { ...current };
+  for (const [key, value] of Object.entries(incoming)) {
+    if (NON_PORTABLE_SETTINGS.has(key)) continue;
+    const existing = current[key];
+    if (isPlainObject(existing) && isPlainObject(value)) merged[key] = mergeSettings(existing, value);
+    else if (Array.isArray(existing) && Array.isArray(value)) merged[key] = mergeById(existing, value);
+    else merged[key] = value;
+  }
+  return merged;
+}

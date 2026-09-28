@@ -150,4 +150,54 @@ describe('restoreFromBackupFile', () => {
     const zip = createZipArchive([{ name: 'README.txt', data: new TextEncoder().encode('hi') }]);
     await expect(restoreFromBackupFile(zip)).rejects.toThrow();
   });
+
+  it('re-importing a legacy v1 ZIP does not duplicate images that were never analyzed', async () => {
+    const manifest = { version: 1, exportedAt: '2026-09-28T03:18:33.647Z', data: { prompts: [], folders: [], promptItems: [], promptSources: [], generationTasks: [] } };
+    const zip = createZipArchive([
+      { name: 'manifest.json', data: new TextEncoder().encode(JSON.stringify(manifest)) },
+      { name: 'gallery/9.png', data: PNG_BYTES },
+    ]);
+    await restoreFromBackupFile(zip);
+    const second = await restoreFromBackupFile(zip);
+    expect(second.itemsRestored).toBe(0);
+    expect(await db.items.count()).toBe(1);
+    expect((await db.items.toArray())[0]).toMatchObject({ status: 'pending', createdAt: Date.parse('2026-09-28T03:18:33.647Z') });
+  });
+
+  it('marks imported in-flight generation tasks as failed', async () => {
+    const manifest = { data: { generationTasks: [{ id: 't', prompt: 'p', aspectRatio: '1:1', model: 'm', status: 'generating', images: [], createdAt: 1 }] } };
+    const zip = createZipArchive([{ name: 'manifest.json', data: new TextEncoder().encode(JSON.stringify(manifest)) }]);
+    await restoreFromBackupFile(zip);
+    expect((await db.generationTasks.get('t'))!.status).toBe('failed');
+  });
+
+  it('rolls back every table when a write fails midway', async () => {
+    const manifest = {
+      data: {
+        items: [{ id: 1, file: 'gallery/1.png', createdAt: 1, tags: [], status: 'analyzed' }],
+        prompts: [{ itemId: 1, model: 'm', subject: [], style: [], lighting: [], composition: [], masterPrompt: 'x', createdAt: 1 }],
+        promptItems: [{ id: 'dup', title: 'a', prompt: 'b' }, { id: 'dup', title: 'a', prompt: 'b' }],
+      },
+    };
+    const zip = createZipArchive([
+      { name: 'manifest.json', data: new TextEncoder().encode(JSON.stringify(manifest)) },
+      { name: 'gallery/1.png', data: PNG_BYTES },
+    ]);
+    await expect(restoreFromBackupFile(zip)).rejects.toThrow();
+    expect(await db.items.count()).toBe(0);
+    expect(await db.prompts.count()).toBe(0);
+  });
+
+  it('reports truncated archives as corrupted instead of crashing', async () => {
+    const zip = createZipArchive([{ name: 'manifest.json', data: new TextEncoder().encode('{}') }]);
+    const bytes = new Uint8Array(await zip.arrayBuffer());
+    const broken = new Uint8Array(bytes);
+    new DataView(broken.buffer).setUint32(broken.length - 6, 999999, true);
+    await expect(restoreFromBackupFile(new Blob([broken]))).rejects.toThrow(/Corrupted/);
+  });
+
+  it('rejects manifests with an unrecognized structure', async () => {
+    const zip = createZipArchive([{ name: 'manifest.json', data: new TextEncoder().encode('{"data":{"folders":"oops"}}') }]);
+    await expect(restoreFromBackupFile(zip)).rejects.toThrow(/manifest/);
+  });
 });

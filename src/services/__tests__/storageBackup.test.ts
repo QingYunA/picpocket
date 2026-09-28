@@ -166,16 +166,12 @@ describe('Storage and Backup Service', () => {
         builtIn: false,
       });
 
-      const resultZip = await exportAllDataAsBackup('zip');
+      const resultZip = await exportAllDataAsBackup();
       expect(resultZip.count).toBeGreaterThanOrEqual(4);
       expect(resultZip.filename).toContain('PicPocket_Backup_');
       expect(resultZip.filename).toContain('.zip');
       expect(downloadedFilename).toBe(resultZip.filename);
       expect(downloadedUrl).toBeTruthy();
-
-      // Test JSON export fallback
-      const resultJson = await exportAllDataAsBackup('json');
-      expect(resultJson.filename).toContain('.json');
 
       // Test standalone lightweight JSON metadata export
       const metaJson = await exportMetadataAsJsonBackup();

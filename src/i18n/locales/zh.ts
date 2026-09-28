@@ -725,7 +725,6 @@ export const zh = {
       restoreDesc: '选择此前导出的 ZIP 完整包或 JSON 备份，合并恢复图库图片、反推结果、生图记录、提示词库、分类与偏好设置；已存在的内容不会重复导入。',
       selectFileBtn: '选择备份文件导入',
       restoring: '恢复中...',
-      restoreSuccess: '备份恢复成功！数据已更新',
       restoreFailed: '恢复失败，文件格式有误',
       restoreSummary: '恢复完成：新增 {items} 张图片、{tasks} 条生图记录、{prompts} 条提示词、{folders} 个分类',
       exportSuccess: '备份导出成功！已保存至下载目录',

@@ -727,7 +727,6 @@ export const en: Translations = {
       restoreDesc: 'Select a previously exported ZIP archive or JSON backup to merge back gallery images, analyses, generation history, prompts, folders, and settings. Existing content is never duplicated.',
       selectFileBtn: 'Select Backup File to Import',
       restoring: 'Restoring...',
-      restoreSuccess: 'Backup restored successfully! Data refreshed.',
       restoreFailed: 'Restore failed: Invalid file format',
       restoreSummary: 'Restore complete: added {items} images, {tasks} generation records, {prompts} prompts, {folders} folders',
       exportSuccess: 'Backup exported successfully! Saved to downloads.',

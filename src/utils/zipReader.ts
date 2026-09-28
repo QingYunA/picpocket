@@ -24,12 +24,22 @@ async function inflateRaw(data: Uint8Array<ArrayBuffer>): Promise<Uint8Array<Arr
  * 返回「路径 → 文件字节」，目录条目会被忽略。
  */
 export async function readZipArchive(buffer: ArrayBuffer): Promise<Map<string, Uint8Array<ArrayBuffer>>> {
+  try {
+    return await readEntries(buffer);
+  } catch (err) {
+    // 截断或损坏的文件会让偏移越界，统一转成可读错误
+    if (err instanceof RangeError) throw new Error('Corrupted ZIP archive');
+    throw err;
+  }
+}
+
+async function readEntries(buffer: ArrayBuffer): Promise<Map<string, Uint8Array<ArrayBuffer>>> {
   const view = new DataView(buffer);
   const bytes = new Uint8Array(buffer);
   const eocd = findEndOfCentralDirectory(view);
   const entryCount = view.getUint16(eocd + 10, true);
   const centralDirOffset = view.getUint32(eocd + 16, true);
-  if (centralDirOffset === 0xffffffff) throw new Error('ZIP64 archives are not supported');
+  if (centralDirOffset === 0xffffffff || entryCount === 0xffff) throw new Error('ZIP64 archives are not supported');
 
   const decoder = new TextDecoder();
   const files = new Map<string, Uint8Array<ArrayBuffer>>();
@@ -52,6 +62,7 @@ export async function readZipArchive(buffer: ArrayBuffer): Promise<Map<string, U
     if (view.getUint32(localOffset, true) !== LOCAL_HEADER_SIGNATURE) throw new Error('Corrupted ZIP local header');
 
     const dataStart = localOffset + 30 + view.getUint16(localOffset + 26, true) + view.getUint16(localOffset + 28, true);
+    if (dataStart + compressedSize > bytes.length) throw new RangeError('Entry exceeds archive');
     const raw = bytes.subarray(dataStart, dataStart + compressedSize);
 
     if (method === METHOD_STORE) files.set(name, raw);

@@ -1,8 +1,15 @@
 import { getSupabaseConfig, supabase } from './supabase';
-import type { HostedRequestType } from './billing';
+import { buildHostedProxyHeaders, licenseUsableFor, type HostedRequestType } from './billing';
+import { getTranslation } from '../i18n';
+import type { Language, UserSettings } from '../types';
 
-/** 托管调用后网关回报的积分余额缓存，供界面即时展示（权威数据以 get-entitlement 为准） */
+/** 托管调用后网关回报了新余额：写入时间戳作为信号，界面据此刷新权益（数值以 get-entitlement 为准） */
 export const CREDIT_BALANCE_KEY = 'picpocket-credit-balance';
+
+/** 托管调用使用的凭据：兑换码优先，其次已登录账号（按积分计费） */
+export type HostedCredential =
+  | { kind: 'license'; licenseKey: string }
+  | { kind: 'account'; accessToken: string };
 
 /**
  * 当前登录用户的 access token；未登录或读取失败返回 null。
@@ -17,15 +24,28 @@ export async function getAccountAccessToken(): Promise<string | null> {
   }
 }
 
-/** 已登录用户调用托管网关的请求头：用户 token 代替兑换码，按账号积分计费 */
-export function accountHostedHeaders(accessToken: string, requestType: HostedRequestType): Record<string, string> {
+/** 没有自备 Key 时调用：可用兑换码 → 已登录账号 → null（需要配置 Key 或登录） */
+export async function resolveHostedCredential(
+  settings: UserSettings,
+  requestType: HostedRequestType
+): Promise<HostedCredential | null> {
+  if (licenseUsableFor(settings, requestType)) {
+    return { kind: 'license', licenseKey: settings.proMembership!.licenseKey! };
+  }
+  const accessToken = await getAccountAccessToken();
+  return accessToken ? { kind: 'account', accessToken } : null;
+}
+
+export function hostedHeaders(credential: HostedCredential, requestType: HostedRequestType): Record<string, string> {
+  if (credential.kind === 'license') return buildHostedProxyHeaders(credential.licenseKey, requestType);
   return {
     apikey: getSupabaseConfig().anonKey,
-    Authorization: `Bearer ${accessToken}`,
+    Authorization: `Bearer ${credential.accessToken}`,
     'X-Request-Type': requestType,
   };
 }
 
+/** 网关回报了新余额时通知界面刷新；缓存失败不影响调用结果 */
 export async function readCreditBalance(headers: Headers): Promise<void> {
   const raw = headers.get('X-Credits-Balance');
   const balance = raw === null ? NaN : Number(raw);
@@ -33,7 +53,7 @@ export async function readCreditBalance(headers: Headers): Promise<void> {
   try {
     await chrome.storage.local.set({ [CREDIT_BALANCE_KEY]: { balance, updatedAt: Date.now() } });
   } catch {
-    // 缓存只用于展示，写入失败不影响调用结果
+    // 仅用于界面刷新信号
   }
 }
 
@@ -46,13 +66,14 @@ function parseErrorBody(body: string): { code?: string; balance?: number; requir
 }
 
 /** 把账号托管调用的业务错误转换为可读提示；其他错误返回 null，由调用方按原逻辑处理 */
-export function hostedCreditError(status: number, body: string): Error | null {
+export function hostedCreditError(status: number, body: string, language: Language = 'zh'): Error | null {
   const parsed = parseErrorBody(body);
+  const t = (key: string, params?: Record<string, string | number>) => String(getTranslation(language, key, params));
   if (status === 402 || parsed.code === 'insufficient_credits') {
-    return new Error(`积分不足：当前余额 ${parsed.balance ?? 0}，本次需要 ${parsed.required ?? '?'}。请在「账号与套餐」中升级套餐或购买积分包`);
+    return new Error(t('billing.hostedErrors.insufficient', { balance: parsed.balance ?? 0, required: parsed.required ?? '?' }));
   }
-  if (status === 429 || parsed.code === 'rate_limited') return new Error('请求太频繁，请稍后再试');
-  if (parsed.code === 'unsupported_model') return new Error('该模型暂不支持使用积分托管，请换一个模型或使用自己的 API Key');
-  if (status === 503) return new Error('托管服务暂不可用，请稍后再试或使用自己的 API Key');
+  if (status === 429 || parsed.code === 'rate_limited') return new Error(t('billing.hostedErrors.rateLimited'));
+  if (parsed.code === 'unsupported_model') return new Error(t('billing.hostedErrors.unsupportedModel'));
+  if (status === 503) return new Error(t('billing.hostedErrors.unavailable'));
   return null;
 }

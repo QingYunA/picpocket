@@ -21,6 +21,10 @@ export const CREDIT_PACKS: Array<{ sku: CreditPackSku; credits: number; usd: num
   { sku: 'credits_1000', credits: 1000, usd: 24.9, validMonths: 12 },
 ];
 
+export function isPackSku(sku: Sku): sku is CreditPackSku {
+  return CREDIT_PACKS.some((pack) => pack.sku === sku);
+}
+
 export function subscriptionSku(plan: PaidPlanId, interval: BillingInterval): Sku {
   return `${plan}_${interval}`;
 }

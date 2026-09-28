@@ -156,33 +156,29 @@ export async function syncRemainingQuota(newQuota: number): Promise<void> {
 }
 
 /**
- * 检查当前设置是否具备视觉反推权限（自备 Key 或有效 Pro 反推托管算力）
+ * 兑换码能否用于这类托管调用：未过期、带有兑换码本身，且对应额度仍有剩余。
+ * 额度用尽时返回 false，已登录用户随即改用账号积分。
  */
+export function licenseUsableFor(settings: UserSettings | null | undefined, requestType: HostedRequestType): boolean {
+  const mem = settings?.proMembership;
+  if (!mem?.isPro || !mem.licenseKey || isProExpired(mem)) return false;
+  const remaining = requestType === 'vision' ? mem.visionQuotaRemaining : mem.imageQuotaRemaining;
+  return remaining === undefined || remaining > 0;
+}
+
+/** 是否具备视觉反推权限：自备 Key、可用兑换码，或已登录账号（积分是否足够由网关判定） */
 export function hasVisionAccess(settings?: UserSettings | null, accountSignedIn = false): boolean {
   if (!settings) return false;
   if (settings.apiKey && settings.apiKey.trim()) return true;
-  // 已登录账号可用积分托管；积分是否足够由网关判定并给出提示
-  if (!isProActive(settings)) return accountSignedIn;
-  const mem = settings.proMembership;
-  if (mem?.visionQuotaRemaining !== undefined) {
-    return mem.visionQuotaRemaining > 0;
-  }
-  return true;
+  return licenseUsableFor(settings, 'vision') || accountSignedIn;
 }
 
-/**
- * 检查当前设置是否具备 AI 生图权限（自备生图/通用 Key 或有效 Pro 生图托管算力）
- */
+/** 是否具备 AI 生图权限：自备生图 / 通用 Key、可用兑换码，或已登录账号 */
 export function hasImageGenAccess(settings?: UserSettings | null, accountSignedIn = false): boolean {
   if (!settings) return false;
   if (settings.imageApiKey && settings.imageApiKey.trim()) return true;
   if (settings.apiKey && settings.apiKey.trim()) return true;
-  if (!isProActive(settings)) return accountSignedIn;
-  const mem = settings.proMembership;
-  if (mem?.imageQuotaRemaining !== undefined) {
-    return mem.imageQuotaRemaining > 0;
-  }
-  return true;
+  return licenseUsableFor(settings, 'image-generation') || accountSignedIn;
 }
 
 /** 激活失败原因，界面通过 getLicenseErrorKey 映射为本地化文案 */

@@ -7,12 +7,17 @@ vi.mock('../supabase', () => ({
 
 import { supabase } from '../supabase';
 import {
-  accountHostedHeaders,
   getAccountAccessToken,
   hostedCreditError,
+  hostedHeaders,
   readCreditBalance,
+  resolveHostedCredential,
   CREDIT_BALANCE_KEY,
 } from '../hostedAccount';
+import type { UserSettings } from '../../types';
+
+const signedIn = () => vi.mocked(supabase.auth.getSession).mockResolvedValue({ data: { session: { access_token: 'jwt-1' } }, error: null } as any);
+const withLicense = (membership: Record<string, unknown>) => ({ proMembership: { isPro: true, ...membership } }) as unknown as UserSettings;
 
 function mockStorage() {
   const store: Record<string, unknown> = {};
@@ -40,11 +45,40 @@ describe('hosted account credentials', () => {
   });
 
   it('sends the user token instead of a redeem code', () => {
-    expect(accountHostedHeaders('jwt-1', 'vision')).toEqual({
+    expect(hostedHeaders({ kind: 'account', accessToken: 'jwt-1' }, 'vision')).toEqual({
       apikey: 'sb_publishable_test',
       Authorization: 'Bearer jwt-1',
       'X-Request-Type': 'vision',
     });
+  });
+});
+
+describe('resolveHostedCredential precedence', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('prefers a usable redeem code and never bills credits for it', async () => {
+    signedIn();
+    const cred = await resolveHostedCredential(withLicense({ licenseKey: 'PP-1', visionQuotaRemaining: 3 }), 'vision');
+    expect(cred).toEqual({ kind: 'license', licenseKey: 'PP-1' });
+    expect(supabase.auth.getSession).not.toHaveBeenCalled();
+  });
+
+  it('falls back to account credits when the redeem code quota for this request type is used up', async () => {
+    signedIn();
+    const settings = withLicense({ licenseKey: 'PP-1', visionQuotaRemaining: 0, imageQuotaRemaining: 5 });
+    expect(await resolveHostedCredential(settings, 'vision')).toEqual({ kind: 'account', accessToken: 'jwt-1' });
+    expect(await resolveHostedCredential(settings, 'image-generation')).toEqual({ kind: 'license', licenseKey: 'PP-1' });
+  });
+
+  it('never sends a request without credentials when the redeem code itself is missing', async () => {
+    vi.mocked(supabase.auth.getSession).mockResolvedValue({ data: { session: null }, error: null } as any);
+    expect(await resolveHostedCredential(withLicense({ visionQuotaRemaining: 3 }), 'vision')).toBeNull();
+  });
+
+  it('ignores expired redeem codes', async () => {
+    signedIn();
+    const cred = await resolveHostedCredential(withLicense({ licenseKey: 'PP-1', expiresAt: Date.now() - 1000 }), 'vision');
+    expect(cred?.kind).toBe('account');
   });
 });
 
@@ -57,7 +91,8 @@ describe('hosted credit responses', () => {
     expect(store[CREDIT_BALANCE_KEY]).toMatchObject({ balance: 42 });
   });
 
-  it('explains insufficient credits and unavailable hosted service', () => {
+  it('explains insufficient credits and unavailable hosted service in the user language', () => {
+    expect(hostedCreditError(402, JSON.stringify({ code: 'insufficient_credits', balance: 3, required: 8 }), 'en')?.message).toMatch(/Not enough credits.*3.*8/);
     expect(hostedCreditError(402, JSON.stringify({ code: 'insufficient_credits', balance: 3, required: 8 }))?.message).toMatch(/积分不足.*3.*8/);
     expect(hostedCreditError(429, JSON.stringify({ code: 'rate_limited' }))?.message).toMatch(/太频繁/);
     expect(hostedCreditError(400, JSON.stringify({ code: 'unsupported_model' }))?.message).toMatch(/模型/);

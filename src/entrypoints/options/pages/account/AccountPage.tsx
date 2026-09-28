@@ -8,6 +8,7 @@ import { useEntitlement } from '@/hooks/useEntitlement';
 import {
   BillingError,
   manageSubscription,
+  isPackSku,
   requestCheckoutUrl,
   type BillingErrorCode,
   type PaymentProvider,
@@ -45,19 +46,20 @@ export const AccountPage: React.FC = () => {
     }
   };
 
-  const openCheckout = (provider: PaymentProvider, sku: Sku) =>
-    runAction(async () => {
+  const openCheckout = (provider: PaymentProvider, sku: Sku) => {
+    if (busy) return; // 防止连击打开多个付款页
+    return runAction(async () => {
       setPendingSku(null);
       const url = await requestCheckoutUrl(provider, sku);
       await chrome.tabs.create({ url });
       setNotice(t('billing.checkoutOpened'));
       watchCheckout();
     });
+  };
 
   /** 已有订阅时沿用原付款渠道（Waffo 走计划变更），否则让用户选择付款方式 */
   const choose = (sku: Sku) => {
-    const isSubscription = !sku.startsWith('credits_');
-    const provider = isSubscription ? entitlement?.subscription?.provider : undefined;
+    const provider = isPackSku(sku) ? undefined : entitlement?.subscription?.provider;
     if (provider) openCheckout(provider, sku);
     else setPendingSku(sku);
   };
@@ -67,7 +69,6 @@ export const AccountPage: React.FC = () => {
       setConfirmCancel(false);
       await manageSubscription(action);
       await refresh();
-      watchCheckout();
     });
 
   if (authLoading) {
@@ -124,7 +125,12 @@ export const AccountPage: React.FC = () => {
             onResume={() => setRenewal('resume')}
           />
           <ConfigSection title={t('billing.plansTitle')}>
-            <PlanGrid entitlement={entitlement} disabled={busy} onChoose={choose} />
+            <PlanGrid
+              key={entitlement.subscription?.interval ?? 'none'}
+              entitlement={entitlement}
+              disabled={busy}
+              onChoose={choose}
+            />
           </ConfigSection>
           <ConfigSection title={t('billing.packsTitle')}>
             <CreditPacks disabled={busy} onBuy={choose} />
@@ -137,6 +143,7 @@ export const AccountPage: React.FC = () => {
 
       <PaymentMethodDialog
         isOpen={pendingSku !== null}
+        busy={busy}
         onChoose={(provider) => pendingSku && openCheckout(provider, pendingSku)}
         onClose={() => setPendingSku(null)}
       />

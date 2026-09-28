@@ -13,31 +13,46 @@ export function useEntitlement(userId: string | null) {
   const [entitlement, setEntitlement] = useState<Entitlement | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<BillingErrorCode | null>(null);
+  const entitlementRef = useRef<Entitlement | null>(null);
+  entitlementRef.current = entitlement;
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  // 多个来源（聚焦、轮询、余额信号）可能并发刷新，只采用最后发出的请求结果
+  const requestSeq = useRef(0);
+  // 付款前的权益快照：轮询期间一旦变化就提前停止
+  const checkoutBaseline = useRef<string | null>(null);
+
+  const stopPolling = useCallback(() => {
+    if (pollTimer.current) clearInterval(pollTimer.current);
+    pollTimer.current = null;
+    checkoutBaseline.current = null;
+  }, []);
 
   const refresh = useCallback(async () => {
+    const seq = ++requestSeq.current;
     if (!userId) {
       setEntitlement(null);
       return;
     }
     setLoading(true);
     try {
-      setEntitlement(await fetchEntitlement());
+      const next = await fetchEntitlement();
+      if (seq !== requestSeq.current) return;
+      setEntitlement(next);
       setError(null);
+      const snapshot = JSON.stringify([next.plan, next.balance, next.subscription]);
+      if (checkoutBaseline.current !== null && checkoutBaseline.current !== snapshot) stopPolling();
     } catch (err) {
-      setError(err instanceof BillingError ? err.code : 'unknown');
+      if (seq === requestSeq.current) setError(err instanceof BillingError ? err.code : 'unknown');
     } finally {
-      setLoading(false);
+      if (seq === requestSeq.current) setLoading(false);
     }
-  }, [userId]);
-
-  const stopPolling = useCallback(() => {
-    if (pollTimer.current) clearInterval(pollTimer.current);
-    pollTimer.current = null;
-  }, []);
+  }, [userId, stopPolling]);
 
   const watchCheckout = useCallback(() => {
     stopPolling();
+    checkoutBaseline.current = entitlementRef.current
+      ? JSON.stringify([entitlementRef.current.plan, entitlementRef.current.balance, entitlementRef.current.subscription])
+      : '';
     const startedAt = Date.now();
     pollTimer.current = setInterval(() => {
       if (Date.now() - startedAt > CHECKOUT_POLL_DURATION_MS) stopPolling();

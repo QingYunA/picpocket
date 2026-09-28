@@ -13,9 +13,17 @@ interface CurrentPlanCardProps {
 
 const PROVIDER_NAMES = { waffo: 'Waffo', paypal: 'PayPal' } as const;
 
+/** 仍在续费的订阅可以取消；已设置到期的 Waffo 订阅可以恢复（PayPal 取消后无法恢复） */
+function availableRenewalAction(sub: NonNullable<Entitlement['subscription']>): 'cancel' | 'resume' | 'none' {
+  if (sub.status !== 'active' && sub.status !== 'past_due') return 'none';
+  if (!sub.cancelAtPeriodEnd) return 'cancel';
+  return sub.provider === 'waffo' ? 'resume' : 'none';
+}
+
 export const CurrentPlanCard: React.FC<CurrentPlanCardProps> = ({ entitlement, busy, onCancel, onResume }) => {
   const { t, language } = useI18n();
   const sub = entitlement.subscription;
+  const renewalAction = sub ? availableRenewalAction(sub) : 'none';
   const statusLine = !sub
     ? t('billing.monthlyAllowance', { credits: entitlement.monthlyCredits })
     : sub.status === 'past_due'
@@ -33,15 +41,19 @@ export const CurrentPlanCard: React.FC<CurrentPlanCardProps> = ({ entitlement, b
         {sub && (
           <div className="mt-4 flex items-center justify-between gap-3">
             <span className="text-[11px] text-zinc-400">{t('billing.managedBy', { provider: PROVIDER_NAMES[sub.provider] })}</span>
-            <button
-              type="button"
-              onClick={sub.cancelAtPeriodEnd ? onResume : onCancel}
-              disabled={busy}
-              className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 cursor-pointer"
-            >
-              {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              {sub.cancelAtPeriodEnd ? t('billing.resume') : t('billing.cancel')}
-            </button>
+            {renewalAction === 'none' ? (
+              sub.cancelAtPeriodEnd && <span className="text-[11px] text-zinc-500">{t('billing.resubscribeLater')}</span>
+            ) : (
+              <button
+                type="button"
+                onClick={renewalAction === 'resume' ? onResume : onCancel}
+                disabled={busy}
+                className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 cursor-pointer"
+              >
+                {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                {renewalAction === 'resume' ? t('billing.resume') : t('billing.cancel')}
+              </button>
+            )}
           </div>
         )}
       </div>

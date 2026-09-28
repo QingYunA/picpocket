@@ -45,6 +45,8 @@ export default defineConfig({
         alias: {
             ...(process.env.VITE_PICPOCKET_EXTENSION === "1"
                 ? {
+                      "@/lib/analytics": resolve(webDir, "src/lib/analytics.extension.ts"),
+                      "@/components/canvas/canvas-plugin-manager-modal": resolve(webDir, "src/components/canvas/canvas-plugin-manager-modal.extension.tsx"),
                       "@/lib/canvas/plugin-loader": resolve(webDir, "src/lib/canvas/plugin-loader.extension.ts"),
                       "@/services/api/image": resolve(webDir, "src/services/api/image.extension.ts"),
                       "@/services/api/model-plugin": resolve(webDir, "src/services/api/model-plugin.extension.ts"),

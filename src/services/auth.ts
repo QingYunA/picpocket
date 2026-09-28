@@ -4,7 +4,7 @@ import { supabase } from './supabase';
 
 export type OAuthProvider = 'google' | 'github';
 
-export type AuthErrorCode = 'cancelled' | 'invalid_email' | 'invalid_code' | 'rate_limited' | 'provider_error' | 'network' | 'unknown';
+export type AuthErrorCode = 'cancelled' | 'invalid_email' | 'invalid_code' | 'rate_limited' | 'provider_error' | 'expired' | 'network' | 'unknown';
 
 export class AuthError extends Error {
   constructor(public readonly code: AuthErrorCode, message?: string) {

@@ -117,6 +117,7 @@ export const en: Translations = {
       invalid_code: 'That code is wrong or has expired. Request a new one.',
       rate_limited: 'Too many attempts. Please try again later.',
       provider_error: 'Sign-in with that provider failed. Try again or use another method.',
+      expired: 'This sign-in request has expired. Click "Continue with Google" again.',
       network: 'Network error. Check your connection and try again.',
       unknown: 'Sign-in failed. Please try again later.',
     },

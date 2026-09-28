@@ -23,7 +23,7 @@ export default defineConfig({
     host_permissions: ['<all_urls>'],
     // 只允许官网登录页把 Google ID Token 交回扩展（见 src/services/googleWebSignIn.ts）
     externally_connectable: {
-      matches: ['https://www.picpocket.top/auth/*'],
+      matches: ['https://www.picpocket.top/auth/extension*'],
     },
     action: {
       default_title: '__MSG_actionTitle__',

@@ -115,6 +115,7 @@ export const zh = {
       invalid_code: '验证码错误或已过期，请重新获取',
       rate_limited: '操作太频繁，请稍后再试',
       provider_error: '第三方登录失败，请重试或换一种方式',
+      expired: '登录请求已失效，请重新点击「使用 Google 登录」',
       network: '网络连接失败，请检查网络后重试',
       unknown: '登录失败，请稍后重试',
     },

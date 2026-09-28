@@ -12,7 +12,7 @@ import {
   type AuthErrorCode,
   type OAuthProvider,
 } from '@/services/auth';
-import { GOOGLE_SIGN_IN_RESULT, startGoogleWebSignIn } from '@/services/googleWebSignIn';
+import { cancelGoogleWebSignIn, GOOGLE_SIGN_IN_RESULT, startGoogleWebSignIn } from '@/services/googleWebSignIn';
 import { AccountAvatar } from './AccountAvatar';
 
 interface AccountDialogProps {
@@ -27,6 +27,7 @@ const ERROR_KEYS: Record<AuthErrorCode, TranslationKey> = {
   invalid_code: 'account.errors.invalid_code',
   rate_limited: 'account.errors.rate_limited',
   provider_error: 'account.errors.provider_error',
+  expired: 'account.errors.expired',
   network: 'account.errors.network',
   unknown: 'account.errors.unknown',
 };
@@ -52,7 +53,7 @@ const GithubMark = () => (
 type Busy = null | OAuthProvider | 'send' | 'verify' | 'signout';
 
 export const AccountDialog: React.FC<AccountDialogProps> = ({ isOpen, onClose, user }) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [email, setEmail] = useState('');
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [code, setCode] = useState('');
@@ -146,7 +147,10 @@ export const AccountDialog: React.FC<AccountDialogProps> = ({ isOpen, onClose, u
             <>
               <p className="text-xs leading-relaxed text-zinc-600">{t('account.googleWaiting')}</p>
               <button
-                onClick={() => setAwaitingGoogle(false)}
+                onClick={() => {
+                  setAwaitingGoogle(false);
+                  cancelGoogleWebSignIn().catch(() => {});
+                }}
                 className="flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 cursor-pointer"
               >
                 {t('common.cancel')}
@@ -189,7 +193,7 @@ export const AccountDialog: React.FC<AccountDialogProps> = ({ isOpen, onClose, u
                   onClick={() =>
                     provider === 'google'
                       ? run('google', async () => {
-                          await startGoogleWebSignIn();
+                          await startGoogleWebSignIn(language);
                           setAwaitingGoogle(true);
                         })
                       : run(provider, () => signInWithOAuth(provider))

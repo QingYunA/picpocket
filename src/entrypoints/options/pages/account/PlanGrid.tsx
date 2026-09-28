@@ -24,7 +24,7 @@ export const PlanGrid: React.FC<PlanGridProps> = ({ entitlement, disabled, onCho
   const current = entitlement.subscription;
 
   return (
-    <div>
+    <div className="py-5">
       <div className="mb-4 inline-flex rounded-xl border border-zinc-200 bg-zinc-50 p-1">
         {(['month', 'year'] as const).map((value) => (
           <button

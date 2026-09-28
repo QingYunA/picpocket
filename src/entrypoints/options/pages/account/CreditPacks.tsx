@@ -11,7 +11,7 @@ interface CreditPacksProps {
 export const CreditPacks: React.FC<CreditPacksProps> = ({ disabled, onBuy }) => {
   const { t } = useI18n();
   return (
-    <div>
+    <div className="py-5">
       <p className="mb-3 text-xs text-zinc-500">{t('billing.packsDesc', { months: CREDIT_PACKS[0]!.validMonths })}</p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {CREDIT_PACKS.map((pack) => (
@@ -40,7 +40,7 @@ export const CreditPacks: React.FC<CreditPacksProps> = ({ disabled, onBuy }) => 
 export const PricingList: React.FC<{ pricing: Entitlement['pricing'] }> = ({ pricing }) => {
   const { t } = useI18n();
   return (
-    <div className="space-y-3 text-xs text-zinc-600">
+    <div className="space-y-3 py-5 text-xs text-zinc-600">
       <p>{t('billing.pricingVision', { min: pricing.vision.min, max: pricing.vision.max })}</p>
       <div>
         <div className="mb-1.5 font-semibold text-zinc-700">{t('billing.pricingImage')}</div>

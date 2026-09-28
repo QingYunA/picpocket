@@ -48,9 +48,10 @@ export const StoragePage: React.FC = () => {
   const tasksCount = useLiveQuery(() => db.generationTasks.count()) || 0;
   const promptsCount = useLiveQuery(() => db.promptItems.count()) || 0;
 
+  // 导入、删除等操作改变数据量后重新估算，否则会一直显示页面打开时的旧值
   useEffect(() => {
     getStorageEstimate().then(setEstimate);
-  }, []);
+  }, [itemsCount, tasksCount, promptsCount]);
 
   const handleExportZip = async () => {
     setIsExportingZip(true);

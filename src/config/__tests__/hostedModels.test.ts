@@ -9,9 +9,14 @@ import {
 } from '../hostedModels';
 
 describe('hosted model catalog', () => {
-  it('lists nine vision models and six image models', () => {
-    expect(HOSTED_VISION_MODELS).toHaveLength(9);
-    expect(HOSTED_IMAGE_MODELS).toHaveLength(6);
+  it('matches the server catalog in picpocket-cloud _shared/hosted-models.ts', () => {
+    expect(HOSTED_VISION_MODELS).toEqual([
+      'deepseek-flash', 'qwen3.7-plus', 'gemini-3.8-flash', 'gpt-6-sol', 'claude-sonnet-5',
+      'gemini-3.1-pro', 'glm-5.3-flash', 'kimi-k3', 'minimax-m3',
+    ]);
+    expect(HOSTED_IMAGE_MODELS).toEqual([
+      'gpt-image-2.5-sunburst', 'gpt-image-2.5-flare', 'gpt-image-2', 'grok-imagine-image-2.0', 'nano-banana-pro', 'seedream-5-pro',
+    ]);
     expect(HOSTED_VISION_MODELS).toContain(DEFAULT_HOSTED_VISION_MODEL);
     expect(HOSTED_IMAGE_MODELS).toContain(DEFAULT_HOSTED_IMAGE_MODEL);
   });

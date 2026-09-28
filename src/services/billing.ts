@@ -167,23 +167,34 @@ export function licenseUsableFor(settings: UserSettings | null | undefined, requ
   return remaining === undefined || remaining > 0;
 }
 
-/**
- * 当前反推渠道能否直接使用：自己的渠道要有 Key；PicPocket 渠道要有可用兑换码或已登录账号
- * （积分是否足够由网关判定）。
- */
-export function hasVisionAccess(settings?: UserSettings | null, accountSignedIn = false): boolean {
-  if (!settings) return false;
-  const mode = visionChannelMode(settings);
-  if (mode.kind !== 'picpocket') return mode.kind === 'own';
-  return licenseUsableFor(settings, 'vision') || accountSignedIn;
+/** 当前渠道不能直接使用的原因，界面据此给出具体提示 */
+export interface ChannelAccessBlock {
+  key: TranslationKey;
+  params?: Record<string, string>;
 }
 
-/** 当前生图渠道能否直接使用，规则同 hasVisionAccess */
+/**
+ * 当前反推 / 生图渠道能否直接使用；可用时返回 null。
+ * 自己的渠道要有 Key；PicPocket 渠道要有可用兑换码或已登录账号（积分是否足够由网关判定）。
+ */
+export function channelAccessBlock(
+  settings: UserSettings,
+  capability: 'vision' | 'image',
+  accountSignedIn = false
+): ChannelAccessBlock | null {
+  const mode = capability === 'vision' ? visionChannelMode(settings) : imageChannelMode(settings);
+  if (mode.kind === 'missing-key') return { key: 'billing.hostedErrors.channelMissingKey', params: { name: mode.channel.name } };
+  if (mode.kind === 'own') return null;
+  const licenseUsable = licenseUsableFor(settings, capability === 'vision' ? 'vision' : 'image-generation');
+  return licenseUsable || accountSignedIn ? null : { key: 'billing.hostedErrors.needCredentials' };
+}
+
+export function hasVisionAccess(settings?: UserSettings | null, accountSignedIn = false): boolean {
+  return settings ? !channelAccessBlock(settings, 'vision', accountSignedIn) : false;
+}
+
 export function hasImageGenAccess(settings?: UserSettings | null, accountSignedIn = false): boolean {
-  if (!settings) return false;
-  const mode = imageChannelMode(settings);
-  if (mode.kind !== 'picpocket') return mode.kind === 'own';
-  return licenseUsableFor(settings, 'image-generation') || accountSignedIn;
+  return settings ? !channelAccessBlock(settings, 'image', accountSignedIn) : false;
 }
 
 /** 激活失败原因，界面通过 getLicenseErrorKey 映射为本地化文案 */

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertCircle, Check, ChevronDown, Cpu, ExternalLink, Globe } from 'lucide-react';
+import { AlertCircle, Check, ChevronDown, ExternalLink, Globe } from 'lucide-react';
 import { Logo } from '@/components/Logo';
-import { BrandIcon, guessBrandIcon } from './BrandIcon';
+import { BrandIcon } from './BrandIcon';
 import { VISION_PROVIDERS } from '@/config/visionChannels';
 import { IMAGE_PROVIDERS } from '@/config/imageChannels';
 import {
@@ -106,9 +106,7 @@ export const ChannelModelPicker: React.FC<ChannelModelPickerProps> = ({
         aria-expanded={isOpen}
       >
         <ChannelIcon capability={capability} group={currentGroup} />
-        <span className="shrink-0 whitespace-nowrap font-semibold">{channelName(currentGroup)}</span>
-        <span className="text-zinc-300">·</span>
-        <span className={`min-w-0 flex-1 truncate text-left font-mono text-[11px] ${currentGroup?.missingKey ? 'text-amber-600' : 'text-zinc-600'}`}>
+        <span className={`min-w-0 flex-1 truncate text-left font-mono text-[11px] font-medium ${currentGroup?.missingKey ? 'text-amber-600' : 'text-zinc-800'}`}>
           {triggerDetail}
         </span>
         <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-zinc-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -121,28 +119,28 @@ export const ChannelModelPicker: React.FC<ChannelModelPickerProps> = ({
             role="listbox"
             className={`absolute ${align === 'left' ? 'left-0' : 'right-0'} top-full z-50 mt-1.5 w-[280px] max-w-[calc(100vw-24px)] rounded-2xl border border-zinc-200/90 bg-white p-2 text-zinc-900 shadow-xl`}
           >
-            <div className="max-h-72 space-y-2 overflow-y-auto pr-0.5">
-              {groups.map((group) => (
-                <div key={group.channelId}>
-                  <div className="flex items-center gap-1.5 px-2 pb-1 pt-0.5 text-[10px] font-semibold text-zinc-500">
+            <div className="max-h-80 overflow-y-auto">
+              {groups.map((group, index) => (
+                <div key={group.channelId} className={index > 0 ? 'mt-1.5 border-t border-zinc-100 pt-1.5' : ''}>
+                  <div className="sticky top-0 z-10 flex items-center gap-1.5 rounded-md bg-zinc-50 px-2 py-1 text-[10px] font-semibold tracking-wide text-zinc-500">
                     <ChannelIcon capability={capability} group={group} />
                     <span className="truncate">{channelName(group)}</span>
                     {group.channelId === PICPOCKET_CHANNEL_ID && (
-                      <span className="shrink-0 rounded bg-amber-50 px-1 py-px text-[9px] text-amber-700">{t('channels.picpocketTag')}</span>
+                      <span className="shrink-0 rounded bg-amber-100/70 px-1 py-px text-[9px] text-amber-700">{t('channels.picpocketTag')}</span>
                     )}
                     {group.missingKey && (
-                      <span className="flex shrink-0 items-center gap-0.5 rounded bg-amber-50 px-1 py-px text-[9px] text-amber-700">
+                      <span className="flex shrink-0 items-center gap-0.5 rounded bg-amber-100/70 px-1 py-px text-[9px] text-amber-700">
                         <AlertCircle className="h-2.5 w-2.5" />
                         {t('channels.missingKey')}
                       </span>
                     )}
                   </div>
-                  {group.models.length === 0 ? (
-                    <div className="px-2 py-1 text-[11px] text-zinc-400">{t('channels.noModel')}</div>
-                  ) : (
-                    group.models.map((model) => {
+                  <div className="mt-0.5 space-y-px">
+                    {group.models.length === 0 && (
+                      <div className="py-1 pl-7 pr-2 text-[11px] text-zinc-400">{t('channels.noModel')}</div>
+                    )}
+                    {group.models.map((model) => {
                       const isSelected = group.channelId === current.channelId && model === current.model;
-                      const icon = guessBrandIcon(model);
                       return (
                         <button
                           key={model}
@@ -150,19 +148,29 @@ export const ChannelModelPicker: React.FC<ChannelModelPickerProps> = ({
                           role="option"
                           aria-selected={isSelected}
                           onClick={() => handleSelect({ channelId: group.channelId, model })}
-                          className={`flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition-colors cursor-pointer ${
+                          className={`flex w-full items-center justify-between gap-2 rounded-lg py-1.5 pl-7 pr-2 text-left transition-colors cursor-pointer ${
                             isSelected ? 'bg-zinc-100 font-semibold text-zinc-900' : 'text-zinc-700 hover:bg-zinc-50'
-                          }`}
+                          } ${group.missingKey ? 'opacity-60' : ''}`}
                         >
-                          <span className="flex min-w-0 items-center gap-2">
-                            {icon ? <BrandIcon icon={icon} className="h-3.5 w-3.5 shrink-0" /> : <Cpu className="h-3.5 w-3.5 shrink-0 text-zinc-400" />}
-                            <span className="truncate font-mono text-[11px]">{model}</span>
-                          </span>
+                          <span className="truncate font-mono text-[11px]">{model}</span>
                           {isSelected && <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />}
                         </button>
                       );
-                    })
-                  )}
+                    })}
+                    {group.missingKey && onOpenSettings && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsOpen(false);
+                          onOpenSettings();
+                        }}
+                        className="flex w-full items-center gap-1 py-1 pl-7 pr-2 text-left text-[10px] font-medium text-amber-700 hover:underline cursor-pointer"
+                      >
+                        {t('channels.fillKey')}
+                        <ExternalLink className="h-2.5 w-2.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

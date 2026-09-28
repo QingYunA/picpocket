@@ -26,7 +26,7 @@ import {
   getSystemPrompt,
   assembleMasterPrompt,
 } from '@/services/ai';
-import { hasVisionAccess } from '@/services/billing';
+import { channelAccessBlock } from '@/services/billing';
 import { useAuth } from '@/hooks/useAuth';
 import { saveUserSettings } from '@/utils/storage';
 import { useI18n } from '@/i18n';
@@ -64,7 +64,8 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   // 当前反推渠道与模型：在图片下方的选择器里切换（含 PicPocket 官方渠道），选择即时持久化
-  const canAnalyze = hasVisionAccess(settings, Boolean(accountUser));
+  const accessBlock = channelAccessBlock(settings, 'vision', Boolean(accountUser));
+  const canAnalyze = !accessBlock;
   const savedVisionModel = currentChannelModel(settings, 'vision').model;
   const [currentVisionModel, setCurrentVisionModel] = useState(savedVisionModel);
 
@@ -193,8 +194,8 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
 
   const runAnalysis = async (targetModel?: string) => {
     const modelToUse = targetModel || currentVisionModel || settings.model;
-    if (!canAnalyze) {
-      setError(t('inspector.requireApiKey'));
+    if (accessBlock) {
+      setError(t(accessBlock.key, accessBlock.params));
       return;
     }
 
@@ -471,11 +472,11 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
         )}
 
         {/* Missing API Key Alert */}
-        {!canAnalyze && !prompt && (
+        {accessBlock && !prompt && (
           <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900">
             <div className="flex items-center gap-2">
               <Info className="h-4 w-4 text-amber-600 shrink-0" />
-              <span>{t('inspector.noApiKeyAlert')}</span>
+              <span>{t(accessBlock.key, accessBlock.params)}</span>
             </div>
             <button
               onClick={onOpenSettings}

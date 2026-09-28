@@ -26,7 +26,6 @@ import type {
 import {
   runForegroundGenerationTask,
   ratioToDimension,
-  resolveImageApiConfig,
 } from '@/services/imageGenerator';
 import { analyzeImageWithAI } from '@/services/ai';
 import { useForegroundGeneration } from '@/hooks/useForegroundGeneration';
@@ -37,7 +36,7 @@ import {
   type GenerationFormRequest,
   type ReferenceLoaders,
 } from '@/utils/generationRetry';
-import { hasVisionAccess } from '@/services/billing';
+import { channelAccessBlock } from '@/services/billing';
 import { useAuth } from '@/hooks/useAuth';
 import { getModelCapability } from '@/config/modelCapabilities';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -328,8 +327,9 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
   };
 
   const handleReverseFromReference = async (refUrl: string) => {
-    if (!hasVisionAccess(settings, Boolean(accountUser))) {
-      setErrorMsg(t('inspector.requireApiKey'));
+    const visionBlock = channelAccessBlock(settings, 'vision', Boolean(accountUser));
+    if (visionBlock) {
+      setErrorMsg(t(visionBlock.key, visionBlock.params));
       return;
     }
     setIsReversingRef(true);
@@ -708,9 +708,9 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
    * syncFormReferences 仅在来自表单时为 true，用于把入池后的参考图 ID 回写表单草稿。
    */
   const startGeneration = async (request: GenerationStartRequest, syncFormReferences: boolean) => {
-    const apiConfig = resolveImageApiConfig(settings, undefined, Boolean(accountUser));
-    if (!apiConfig.isProManaged && !apiConfig.apiKey) {
-      setErrorMsg(t('generator.noApiKeyHint'));
+    const imageBlock = channelAccessBlock(settings, 'image', Boolean(accountUser));
+    if (imageBlock) {
+      setErrorMsg(t(imageBlock.key, imageBlock.params));
       return;
     }
 

@@ -99,6 +99,7 @@ export const zh = {
     subtitle: '登录后可使用官方托管额度，换浏览器或电脑也能保留会员状态。自备 API Key 的功能无需登录。',
     continueGoogle: '使用 Google 登录',
     continueGithub: '使用 GitHub 登录',
+    googleWaiting: '已在新标签页打开 picpocket.top，请在那里完成 Google 登录，完成后会自动回到这里。',
     orEmail: '或使用邮箱',
     emailPlaceholder: 'you@example.com',
     sendCode: '发送验证码',

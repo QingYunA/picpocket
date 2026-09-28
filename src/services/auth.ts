@@ -49,7 +49,7 @@ export function extractAuthCallback(url: string): { code?: string; error?: strin
   return code ? { code } : {};
 }
 
-function fromSupabaseError(error: { status?: number; message?: string } | null, fallback: AuthErrorCode): AuthError {
+export function fromSupabaseError(error: { status?: number; message?: string } | null, fallback: AuthErrorCode): AuthError {
   if (!error) return new AuthError(fallback);
   if (error.status === 429 || /rate limit/i.test(error.message || '')) return new AuthError('rate_limited', error.message);
   if (/fetch|network/i.test(error.message || '')) return new AuthError('network', error.message);

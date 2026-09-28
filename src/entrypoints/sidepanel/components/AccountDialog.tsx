@@ -12,6 +12,7 @@ import {
   type AuthErrorCode,
   type OAuthProvider,
 } from '@/services/auth';
+import { GOOGLE_SIGN_IN_RESULT, startGoogleWebSignIn } from '@/services/googleWebSignIn';
 import { AccountAvatar } from './AccountAvatar';
 
 interface AccountDialogProps {
@@ -57,6 +58,7 @@ export const AccountDialog: React.FC<AccountDialogProps> = ({ isOpen, onClose, u
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState<Busy>(null);
   const [error, setError] = useState<AuthErrorCode | null>(null);
+  const [awaitingGoogle, setAwaitingGoogle] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -64,8 +66,21 @@ export const AccountDialog: React.FC<AccountDialogProps> = ({ isOpen, onClose, u
       setBusy(null);
       setCode('');
       setSentTo(null);
+      setAwaitingGoogle(false);
     }
   }, [isOpen]);
+
+  // 官网登录失败时由后台广播结果；成功则 user 变化后自动切换到已登录视图
+  useEffect(() => {
+    if (!awaitingGoogle) return;
+    const onMessage = (message: { action?: string; ok?: boolean; code?: AuthErrorCode }) => {
+      if (message?.action !== GOOGLE_SIGN_IN_RESULT) return;
+      setAwaitingGoogle(false);
+      if (!message.ok) setError(message.code ?? 'unknown');
+    };
+    chrome.runtime.onMessage.addListener(onMessage);
+    return () => chrome.runtime.onMessage.removeListener(onMessage);
+  }, [awaitingGoogle]);
 
   if (!isOpen) return null;
 
@@ -127,6 +142,16 @@ export const AccountDialog: React.FC<AccountDialogProps> = ({ isOpen, onClose, u
                 {t('account.signOut')}
               </button>
             </>
+          ) : awaitingGoogle ? (
+            <>
+              <p className="text-xs leading-relaxed text-zinc-600">{t('account.googleWaiting')}</p>
+              <button
+                onClick={() => setAwaitingGoogle(false)}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-50 cursor-pointer"
+              >
+                {t('common.cancel')}
+              </button>
+            </>
           ) : sentTo ? (
             <>
               <button
@@ -161,7 +186,14 @@ export const AccountDialog: React.FC<AccountDialogProps> = ({ isOpen, onClose, u
               {(['google', 'github'] as const).map((provider) => (
                 <button
                   key={provider}
-                  onClick={() => run(provider, () => signInWithOAuth(provider))}
+                  onClick={() =>
+                    provider === 'google'
+                      ? run('google', async () => {
+                          await startGoogleWebSignIn();
+                          setAwaitingGoogle(true);
+                        })
+                      : run(provider, () => signInWithOAuth(provider))
+                  }
                   disabled={disabled}
                   className="flex w-full items-center justify-center gap-2 rounded-xl border border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-800 hover:bg-zinc-50 disabled:opacity-60 cursor-pointer"
                 >

@@ -7,6 +7,8 @@ import {
   saveGeneratedImageToGallery,
 } from '../db';
 import { getTranslation } from '../i18n';
+import { AuthError } from '../services/auth';
+import { completeGoogleWebSignIn, GOOGLE_SIGN_IN_RESULT, isGoogleIdTokenMessage } from '../services/googleWebSignIn';
 import {
   getUserSettings,
   onLanguageChange,
@@ -147,6 +149,23 @@ export default defineBackground(() => {
         console.error('Failed to collect and analyze image:', err);
       }
     }
+  });
+
+  // 官网登录页交回的 Google ID Token：换取会话后关闭登录标签页，并通知扩展页面结果
+  chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
+    if (!isGoogleIdTokenMessage(message)) return false;
+    completeGoogleWebSignIn(message, sender)
+      .then(() => {
+        sendResponse({ ok: true });
+        if (sender.tab?.id !== undefined) chrome.tabs.remove(sender.tab.id).catch(() => {});
+        chrome.runtime.sendMessage({ action: GOOGLE_SIGN_IN_RESULT, ok: true }).catch(() => {});
+      })
+      .catch((err: unknown) => {
+        const code = err instanceof AuthError ? err.code : 'unknown';
+        sendResponse({ ok: false, code });
+        chrome.runtime.sendMessage({ action: GOOGLE_SIGN_IN_RESULT, ok: false, code }).catch(() => {});
+      });
+    return true;
   });
 
   // Handle messages from content script or sidepanel

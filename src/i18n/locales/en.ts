@@ -101,6 +101,7 @@ export const en: Translations = {
     subtitle: 'Sign in to use hosted credits and keep your plan across browsers and devices. Bring-your-own-key features work without an account.',
     continueGoogle: 'Continue with Google',
     continueGithub: 'Continue with GitHub',
+    googleWaiting: 'We opened picpocket.top in a new tab. Finish signing in with Google there and you will be brought back automatically.',
     orEmail: 'or use email',
     emailPlaceholder: 'you@example.com',
     sendCode: 'Send code',

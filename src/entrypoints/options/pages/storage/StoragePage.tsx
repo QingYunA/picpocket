@@ -9,9 +9,9 @@ import {
   getStorageEstimate,
   exportAllDataAsBackup,
   exportMetadataAsJsonBackup,
-  restoreFromBackupJson,
   type StorageEstimateResult,
 } from '@/services/storageBackup';
+import { restoreFromBackupFile } from '@/services/backupRestore';
 import {
   HardDrive,
   Download,
@@ -93,10 +93,14 @@ export const StoragePage: React.FC = () => {
     setActionErrorMsg(null);
 
     try {
-      const text = await file.text();
-      const res = await restoreFromBackupJson(text);
+      const res = await restoreFromBackupFile(file);
       setActionSuccessMsg(
-        `${t('options.storage.restoreSuccess')} (${res.promptsRestored} prompts, ${res.foldersRestored} folders)`
+        t('options.storage.restoreSummary', {
+          items: res.itemsRestored,
+          tasks: res.tasksRestored,
+          prompts: res.promptsRestored,
+          folders: res.foldersRestored,
+        })
       );
       setTimeout(() => setActionSuccessMsg(null), 5000);
     } catch (err: any) {
@@ -244,7 +248,7 @@ export const StoragePage: React.FC = () => {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".json"
+              accept=".zip,.json,application/zip,application/json"
               onChange={handleFileSelect}
               className="hidden"
             />

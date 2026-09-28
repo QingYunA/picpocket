@@ -168,7 +168,7 @@ describe('Storage and Backup Service', () => {
 
       const resultZip = await exportAllDataAsBackup('zip');
       expect(resultZip.count).toBeGreaterThanOrEqual(4);
-      expect(resultZip.filename).toContain('PromptSnap_Backup_');
+      expect(resultZip.filename).toContain('PicPocket_Backup_');
       expect(resultZip.filename).toContain('.zip');
       expect(downloadedFilename).toBe(resultZip.filename);
       expect(downloadedUrl).toBeTruthy();

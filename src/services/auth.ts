@@ -97,7 +97,12 @@ export async function verifyEmailCode(email: string, rawCode: string): Promise<A
   const code = codeSchema.safeParse(rawCode);
   if (!code.success) throw new AuthError('invalid_code');
   const { data, error } = await supabase.auth.verifyOtp({ email, token: code.data, type: 'email' });
-  if (error) throw error.status === 429 ? fromSupabaseError(error, 'rate_limited') : new AuthError('invalid_code', error.message);
+  if (error) {
+    // 只有服务端明确拒绝（4xx）才判定为验证码错误；网络与 5xx 故障如实报告，避免用户反复输入正确的码
+    const status = error.status ?? 0;
+    const isCodeRejected = status >= 400 && status < 500 && status !== 429;
+    throw isCodeRejected ? new AuthError('invalid_code', error.message) : fromSupabaseError(error, 'unknown');
+  }
   if (!data?.user) throw new AuthError('invalid_code');
   return toAccountUser(data.user);
 }

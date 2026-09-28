@@ -12,6 +12,7 @@ import {
   type AuthErrorCode,
   type OAuthProvider,
 } from '@/services/auth';
+import { AccountAvatar } from './AccountAvatar';
 
 interface AccountDialogProps {
   isOpen: boolean;
@@ -109,13 +110,7 @@ export const AccountDialog: React.FC<AccountDialogProps> = ({ isOpen, onClose, u
           {user ? (
             <>
               <div className="flex items-center gap-3">
-                {user.avatarUrl ? (
-                  <img src={user.avatarUrl} alt="" referrerPolicy="no-referrer" className="h-10 w-10 shrink-0 rounded-full object-cover" onError={(e) => ((e.currentTarget.style.display = 'none'))} />
-                ) : (
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-100 text-sm font-semibold text-amber-800">
-                    {user.name.slice(0, 1).toUpperCase()}
-                  </div>
-                )}
+                <AccountAvatar user={user} sizeClass="h-10 w-10" textClass="text-sm" />
                 <div className="min-w-0">
                   <div className="truncate text-sm font-medium">{user.email || user.name}</div>
                   <div className="text-[11px] text-zinc-500">

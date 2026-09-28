@@ -48,6 +48,7 @@ import { BatchActionBar } from './components/BatchActionBar';
 import { ImageLightboxModal } from './components/ImageLightboxModal';
 import { ProSubscriptionModal } from './components/ProSubscriptionModal';
 import { AccountDialog } from './components/AccountDialog';
+import { AccountAvatar } from './components/AccountAvatar';
 import { useAuth } from '@/hooks/useAuth';
 import { isProActive } from '@/services/billing';
 import { isAiGeneratedItem, isAgentCollabItem } from '@/utils/itemHelpers';
@@ -585,12 +586,8 @@ export default function App() {
                 className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 transition-colors cursor-pointer shrink-0"
                 title={accountUser ? accountUser.email || accountUser.name : t('account.signIn')}
               >
-                {accountUser?.avatarUrl ? (
-                  <img src={accountUser.avatarUrl} alt="" referrerPolicy="no-referrer" className="h-6 w-6 rounded-full object-cover" onError={(e) => ((e.currentTarget.style.display = 'none'))} />
-                ) : accountUser ? (
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-[11px] font-semibold text-amber-800">
-                    {accountUser.name.slice(0, 1).toUpperCase()}
-                  </span>
+                {accountUser ? (
+                  <AccountAvatar user={accountUser} sizeClass="h-6 w-6" textClass="text-[11px]" />
                 ) : (
                   <UserRound className="h-3.5 w-3.5" />
                 )}

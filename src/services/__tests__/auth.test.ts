@@ -120,6 +120,13 @@ describe('email one-time code', () => {
     expect(user.name).toBe('ada');
   });
 
+  it('reports network failures during verification as network, not as a wrong code', async () => {
+    vi.mocked(supabase.auth.verifyOtp).mockResolvedValue({ data: { user: null }, error: { status: 0, message: 'TypeError: Failed to fetch' } } as any);
+    await expect(verifyEmailCode('ada@example.com', '123456')).rejects.toMatchObject({ code: 'network' });
+    vi.mocked(supabase.auth.verifyOtp).mockResolvedValue({ data: { user: null }, error: { status: 503, message: 'Service Unavailable' } } as any);
+    await expect(verifyEmailCode('ada@example.com', '123456')).rejects.toMatchObject({ code: 'unknown' });
+  });
+
   it('rejects wrong or expired codes with invalid_code', async () => {
     await expect(verifyEmailCode('ada@example.com', '12ab')).rejects.toMatchObject({ code: 'invalid_code' });
     vi.mocked(supabase.auth.verifyOtp).mockResolvedValue({ data: { user: null }, error: { status: 403, message: 'Token has expired or is invalid' } } as any);

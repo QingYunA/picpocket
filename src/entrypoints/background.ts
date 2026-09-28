@@ -7,6 +7,7 @@ import {
   saveGeneratedImageToGallery,
 } from '../db';
 import { getTranslation } from '../i18n';
+import { handleExternalSignIn, handleSignInTabRemoved, isGoogleIdTokenMessage } from '../services/googleWebSignIn';
 import {
   getUserSettings,
   onLanguageChange,
@@ -147,6 +148,16 @@ export default defineBackground(() => {
         console.error('Failed to collect and analyze image:', err);
       }
     }
+  });
+
+  // 官网登录页交回的 Google ID Token（见 services/googleWebSignIn.ts）
+  chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
+    if (!isGoogleIdTokenMessage(message)) return false;
+    handleExternalSignIn(message, sender).then(sendResponse);
+    return true;
+  });
+  chrome.tabs.onRemoved.addListener((tabId) => {
+    handleSignInTabRemoved(tabId).catch(() => {});
   });
 
   // Handle messages from content script or sidepanel

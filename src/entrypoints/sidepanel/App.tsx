@@ -14,6 +14,7 @@ import {
   Bot,
   Maximize2,
   KeyRound,
+  UserRound,
   LayoutDashboard,
 } from 'lucide-react';
 import type { InspirationItem, UserSettings, FolderFilter } from '@/types';
@@ -46,6 +47,9 @@ import { CardActionPopover } from './components/CardActionPopover';
 import { BatchActionBar } from './components/BatchActionBar';
 import { ImageLightboxModal } from './components/ImageLightboxModal';
 import { ProSubscriptionModal } from './components/ProSubscriptionModal';
+import { AccountDialog } from './components/AccountDialog';
+import { AccountAvatar } from './components/AccountAvatar';
+import { useAuth } from '@/hooks/useAuth';
 import { isProActive } from '@/services/billing';
 import { isAiGeneratedItem, isAgentCollabItem } from '@/utils/itemHelpers';
 
@@ -131,6 +135,8 @@ export default function App() {
   }, []);
   const [isFolderNavOpen, setIsFolderNavOpen] = useState(false);
   const [isProModalOpen, setIsProModalOpen] = useState(false);
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const { user: accountUser } = useAuth();
 
   // In-context filing pill state (when collecting into a specific folder)
   const [pendingCollectedIds, setPendingCollectedIds] = useState<number[]>([]);
@@ -573,6 +579,19 @@ export default function App() {
               >
                 <Settings className="h-3.5 w-3.5" />
               </button>
+
+              {/* Account Button */}
+              <button
+                onClick={() => setIsAccountOpen(true)}
+                className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 transition-colors cursor-pointer shrink-0"
+                title={accountUser ? accountUser.email || accountUser.name : t('account.signIn')}
+              >
+                {accountUser ? (
+                  <AccountAvatar user={accountUser} sizeClass="h-6 w-6" textClass="text-[11px]" />
+                ) : (
+                  <UserRound className="h-3.5 w-3.5" />
+                )}
+              </button>
             </div>
           </header>
 
@@ -901,6 +920,8 @@ export default function App() {
       )}
 
       {/* Pro Subscription & License Redeem Modal */}
+      <AccountDialog isOpen={isAccountOpen} onClose={() => setIsAccountOpen(false)} user={accountUser} />
+
       <ProSubscriptionModal
         isOpen={isProModalOpen}
         onClose={() => setIsProModalOpen(false)}

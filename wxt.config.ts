@@ -10,7 +10,10 @@ export default defineConfig({
     name: '__MSG_extName__',
     description: '__MSG_extDescription__',
     version: '1.0.1',
+    // 使用 Chrome 应用商店分配的公钥，本地开发版与商店版 ID 一致（bncoffcoihlpfbicajogmpcdckcfpnfa），OAuth 回调地址依赖它
+    key: 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAkAji4+SQwftuqQBTtb4wC01+NlKJqLQKdLcFWJicLRscXGugwGNtqBvWs+9g40Ll9+3dZtuB1V0j7gEbaLStiq56J1j21vFghvzi9bde+9hN8zJZry3LMo7GqQ9w8qfpH65JC15+FfpCwglWTY4jq6CgtIysn7uR9BjbxS9uIIDrex7wb7i7vaSOuWro9dwvVjYVHNN60p3jOH1pTFVfqwios1eph7zu8ySne8K8+k5NsDMSdhiJVtD3/1Fo/BkGx48PrMHMlo/JzI2X56UNr5ftB4y9kINQTrOmxzSEnMljn2zmN05ND52OHQaFHLjHd4Xz2621+h0oMnrfB3yh5QIDAQAB',
     permissions: [
+      'identity',
       'sidePanel',
       'storage',
       'activeTab',
@@ -18,6 +21,10 @@ export default defineConfig({
       'unlimitedStorage',
     ],
     host_permissions: ['<all_urls>'],
+    // 只允许官网登录页把 Google ID Token 交回扩展（见 src/services/googleWebSignIn.ts）
+    externally_connectable: {
+      matches: ['https://www.picpocket.top/auth/extension*'],
+    },
     action: {
       default_title: '__MSG_actionTitle__',
       default_icon: {

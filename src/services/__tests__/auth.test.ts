@@ -23,7 +23,7 @@ import {
   AuthError,
 } from '../auth';
 
-const REDIRECT = 'https://lnmihmfcdidmggghgnkfghbpeaekdlea.chromiumapp.org/';
+const REDIRECT = 'https://bncoffcoihlpfbicajogmpcdckcfpnfa.chromiumapp.org/';
 
 function mockIdentity(launch: (opts: { url: string; interactive: boolean }) => Promise<string | undefined>) {
   (globalThis as any).chrome = {

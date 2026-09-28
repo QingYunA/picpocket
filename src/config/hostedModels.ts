@@ -23,6 +23,9 @@ export const HOSTED_IMAGE_MODELS = [
   'seedream-5-pro',
 ] as const;
 
+/** 内置的 PicPocket 官方渠道：不需要用户配置，按账号积分或兑换码使用下面的托管模型 */
+export const PICPOCKET_CHANNEL_ID = 'picpocket';
+
 export const DEFAULT_HOSTED_VISION_MODEL = 'deepseek-flash';
 export const DEFAULT_HOSTED_IMAGE_MODEL = 'gpt-image-2.5-sunburst';
 

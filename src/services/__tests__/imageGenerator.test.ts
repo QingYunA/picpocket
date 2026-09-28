@@ -192,7 +192,24 @@ describe('imageGenerator service', () => {
       prompt: 'A futuristic city',
       aspectRatio: '1:1',
     };
-    await expect(generateImagesWithAI(params, emptySettings)).rejects.toThrow(/API Key/i);
+    // 什么都没配置时默认是 PicPocket 渠道，未登录也没有兑换码时提示登录
+    await expect(generateImagesWithAI(params, emptySettings)).rejects.toThrow(/PicPocket/);
+  });
+
+  it('asks for the key of the selected channel instead of silently using PicPocket credits', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const settings: UserSettings = {
+      apiKey: '', baseUrl: '', model: '', autoAnalyzeOnCapture: false, language: 'zh',
+      imageChannels: [{ id: 'oa', name: 'OpenAI', providerId: 'openai', apiKey: '', baseUrl: 'https://api.openai.com/v1', model: 'dall-e-3', models: ['dall-e-3'] }],
+      activeImageChannelId: 'oa',
+      proMembership: { isPro: true, licenseKey: 'PP-PRO-YEAR-123456', expiresAt: Date.now() + 100000, plan: 'yearly' },
+    };
+    try {
+      await expect(generateImagesWithAI({ prompt: 'A futuristic city', aspectRatio: '1:1' }, settings)).rejects.toThrow(/OpenAI.*API Key/);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 
   it('does not send a request from an incomplete image channel', async () => {
@@ -296,6 +313,30 @@ describe('imageGenerator service', () => {
       const [url, init] = mockFetch.mock.calls[0]!;
       expect(url).toContain('/functions/v1/ai-proxy');
       expect(JSON.parse(init.body as string).model).toBe('seedream-5-pro');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('generates through the gateway when the canvas targets the PicPocket channel explicitly', async () => {
+    const originalFetch = globalThis.fetch;
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers(),
+      json: async () => ({ data: [{ b64_json: 'canvas_output' }] }),
+    });
+    globalThis.fetch = mockFetch as any;
+    const settings: UserSettings = {
+      apiKey: '', baseUrl: '', model: '', autoAnalyzeOnCapture: false, language: 'zh',
+      imageChannels: [{ id: 'oa', name: 'OpenAI', providerId: 'openai', apiKey: 'sk-oa', baseUrl: 'https://api.openai.com/v1', model: 'dall-e-3', models: ['dall-e-3'] }],
+      activeImageChannelId: 'oa',
+      proMembership: { isPro: true, licenseKey: 'PP-PRO-YEAR-123456', expiresAt: Date.now() + 100000, plan: 'yearly' },
+    };
+    try {
+      await generateImagesWithAI({ prompt: 'A lighthouse', aspectRatio: '1:1', model: 'nano-banana-pro', channelId: 'picpocket' }, settings);
+      const [url, init] = mockFetch.mock.calls[0]!;
+      expect(url).toContain('/functions/v1/ai-proxy');
+      expect(JSON.parse(init.body as string).model).toBe('nano-banana-pro');
     } finally {
       globalThis.fetch = originalFetch;
     }

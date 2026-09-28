@@ -1,5 +1,6 @@
 import presetModels from './presetModels.json';
-import type { UserSettings, VisionChannel } from '@/types';
+import { PICPOCKET_CHANNEL_ID } from './hostedModels';
+import type { UserSettings, VisionChannel } from '../types';
 
 export const VISION_PROVIDERS = presetModels.vision;
 
@@ -25,11 +26,18 @@ export const getVisionChannels = (settings: UserSettings): VisionChannel[] => {
   }];
 };
 
+/** 旧版设置在什么都没配置时会生成一个空的占位渠道；列表与选择器里不展示它 */
+export const getConfiguredVisionChannels = (settings: UserSettings): VisionChannel[] =>
+  getVisionChannels(settings).filter((channel) => channel.apiKey.trim() || channel.baseUrl.trim() || channel.model.trim());
+
 export const withVisionChannels = (
   settings: UserSettings,
   channels: VisionChannel[],
   activeId: string | undefined
 ): UserSettings => {
+  if (activeId === PICPOCKET_CHANNEL_ID) {
+    return { ...settings, visionChannels: channels, activeVisionChannelId: PICPOCKET_CHANNEL_ID, apiKey: '', baseUrl: '', model: '' };
+  }
   const active = channels.find((channel) => channel.id === activeId) || channels[0];
   return {
     ...settings,

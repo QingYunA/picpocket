@@ -1,4 +1,5 @@
 import { getUserSettings, saveUserSettings } from '../utils/storage';
+import { imageChannelMode, visionChannelMode } from '../config/channelMode';
 import type { ProMembership, UserSettings } from '../types';
 import { supabase, isSupabaseConfigured, getSupabaseConfig } from './supabase';
 import type { TranslationKey } from '../i18n';
@@ -166,18 +167,22 @@ export function licenseUsableFor(settings: UserSettings | null | undefined, requ
   return remaining === undefined || remaining > 0;
 }
 
-/** 是否具备视觉反推权限：自备 Key、可用兑换码，或已登录账号（积分是否足够由网关判定） */
+/**
+ * 当前反推渠道能否直接使用：自己的渠道要有 Key；PicPocket 渠道要有可用兑换码或已登录账号
+ * （积分是否足够由网关判定）。
+ */
 export function hasVisionAccess(settings?: UserSettings | null, accountSignedIn = false): boolean {
   if (!settings) return false;
-  if (settings.apiKey && settings.apiKey.trim()) return true;
+  const mode = visionChannelMode(settings);
+  if (mode.kind !== 'picpocket') return mode.kind === 'own';
   return licenseUsableFor(settings, 'vision') || accountSignedIn;
 }
 
-/** 是否具备 AI 生图权限：自备生图 / 通用 Key、可用兑换码，或已登录账号 */
+/** 当前生图渠道能否直接使用，规则同 hasVisionAccess */
 export function hasImageGenAccess(settings?: UserSettings | null, accountSignedIn = false): boolean {
   if (!settings) return false;
-  if (settings.imageApiKey && settings.imageApiKey.trim()) return true;
-  if (settings.apiKey && settings.apiKey.trim()) return true;
+  const mode = imageChannelMode(settings);
+  if (mode.kind !== 'picpocket') return mode.kind === 'own';
   return licenseUsableFor(settings, 'image-generation') || accountSignedIn;
 }
 

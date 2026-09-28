@@ -487,3 +487,24 @@ describe('hosted vision model selection', () => {
     }
   });
 });
+
+describe('vision channel without a key', () => {
+  it('asks for the key instead of silently using PicPocket credits', async () => {
+    const originalFetch = globalThis.fetch;
+    const mockFetch = vi.fn();
+    globalThis.fetch = mockFetch as any;
+    const settings: UserSettings = {
+      apiKey: '', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat',
+      autoAnalyzeOnCapture: false, language: 'zh',
+      visionChannels: [{ id: 'ds', name: 'DeepSeek', providerId: 'deepseek-official', apiKey: '', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat' }],
+      activeVisionChannelId: 'ds',
+      proMembership: { isPro: true, licenseKey: 'PP-PRO-YEAR-123456', expiresAt: Date.now() + 100000, plan: 'yearly' },
+    };
+    try {
+      await expect(completeChatWithAI([{ role: 'user', content: 'hi' }], settings)).rejects.toThrow(/DeepSeek.*API Key/);
+      expect(mockFetch).not.toHaveBeenCalled();
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});

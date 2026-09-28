@@ -2,6 +2,7 @@ import { getSupabaseConfig, supabase } from './supabase';
 import { buildHostedProxyHeaders, licenseUsableFor, type HostedRequestType } from './billing';
 import { getTranslation } from '../i18n';
 import type { Language, UserSettings } from '../types';
+import type { ChannelMode } from '../config/channelMode';
 
 /** 托管调用后网关回报了新余额：写入时间戳作为信号，界面据此刷新权益（数值以 get-entitlement 为准） */
 export const CREDIT_BALANCE_KEY = 'picpocket-credit-balance';
@@ -63,6 +64,25 @@ function parseErrorBody(body: string): { code?: string; balance?: number; requir
   } catch {
     return {};
   }
+}
+
+/**
+ * 按当前渠道解析调用凭据：自己的渠道用自己的 Key；PicPocket 渠道用兑换码或已登录账号。
+ * 选中的渠道没填 Key、或 PicPocket 渠道没有可用凭据时抛出可读错误，不会改走别的渠道。
+ */
+export async function resolveChannelCredential(
+  mode: ChannelMode<{ name: string; apiKey: string }>,
+  settings: UserSettings,
+  requestType: HostedRequestType
+): Promise<{ apiKey: string; credential: HostedCredential | null }> {
+  const language = settings.language || 'zh';
+  if (mode.kind === 'missing-key') {
+    throw new Error(String(getTranslation(language, 'billing.hostedErrors.channelMissingKey', { name: mode.channel.name })));
+  }
+  if (mode.kind === 'own') return { apiKey: (mode.channel.apiKey || settings.apiKey || '').trim(), credential: null };
+  const credential = await resolveHostedCredential(settings, requestType);
+  if (!credential) throw new Error(String(getTranslation(language, 'billing.hostedErrors.needCredentials')));
+  return { apiKey: '', credential };
 }
 
 /** 把账号托管调用的业务错误转换为可读提示；其他错误返回 null，由调用方按原逻辑处理 */

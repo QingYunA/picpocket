@@ -5,7 +5,11 @@ import { ConfigItem } from '../../components/config-item';
 import { EntityEditorLayout, type EntityListItem } from '../../components/entity-editor-layout';
 import { BrandIcon } from '@/entrypoints/sidepanel/components/BrandIcon';
 import { ModelCombobox } from '@/entrypoints/sidepanel/components/ModelCombobox';
-import { VISION_PROVIDERS, getVisionChannels, withVisionChannels } from '@/config/visionChannels';
+import { VISION_PROVIDERS, getConfiguredVisionChannels, withVisionChannels } from '@/config/visionChannels';
+import { currentChannelModel } from '@/config/channelSelection';
+import { PICPOCKET_CHANNEL_ID, hostedVisionModel } from '@/config/hostedModels';
+import { Logo } from '@/components/Logo';
+import { PicPocketChannelPanel } from '../../components/picpocket-channel-panel';
 import { useI18n } from '@/i18n';
 import type { UserSettings, VisionChannel } from '@/types';
 import { sanitizeHttpHeaderToken, sanitizeHttpUrl } from '@/utils/sanitize';
@@ -26,8 +30,10 @@ export const VisionModelPage: React.FC<VisionModelPageProps> = ({
   highlightField,
 }) => {
   const { t } = useI18n();
-  const channels = getVisionChannels(settings);
-  const activeChannelId = settings.activeVisionChannelId || channels[0]?.id;
+  const channels = getConfiguredVisionChannels(settings);
+  const activeChannelId = currentChannelModel(settings, 'vision').channelId;
+  // 编辑、添加渠道时保持当前使用的渠道不变
+  const keepActive = (prev: UserSettings) => currentChannelModel(prev, 'vision').channelId;
   const [selectedChannelId, setSelectedChannelId] = useState(() => {
     const initial = channels.find((channel) => channel.id === initialProvider || channel.providerId === initialProvider);
     return initial?.id || activeChannelId || '';
@@ -45,7 +51,6 @@ export const VisionModelPage: React.FC<VisionModelPageProps> = ({
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
-    if (!channels.length) return;
     const requested = channels.find((channel) => channel.id === initialProvider || channel.providerId === initialProvider);
     if (initialProvider && requested && appliedProviderRef.current !== initialProvider) {
       appliedProviderRef.current = initialProvider;
@@ -53,18 +58,26 @@ export const VisionModelPage: React.FC<VisionModelPageProps> = ({
       return;
     }
     if (!initialProvider) appliedProviderRef.current = undefined;
-    setSelectedChannelId((current) => channels.some((channel) => channel.id === current)
+    setSelectedChannelId((current) => current === PICPOCKET_CHANNEL_ID || channels.some((channel) => channel.id === current)
       ? current
-      : activeChannelId || channels[0]!.id);
+      : activeChannelId);
   }, [channels, initialProvider, activeChannelId]);
 
   const displayedChannels = channels.map((channel) => draft?.id === channel.id ? { ...channel, ...draft.changes } : channel);
-  const selectedChannel = displayedChannels.find((channel) => channel.id === selectedChannelId) || displayedChannels[0];
+  const picpocketSelected = selectedChannelId === PICPOCKET_CHANNEL_ID || !displayedChannels.length;
+  const selectedChannel = picpocketSelected ? undefined : displayedChannels.find((channel) => channel.id === selectedChannelId) || displayedChannels[0];
   const providerFor = (channel: VisionChannel) => VISION_PROVIDERS.find((provider) =>
     provider.id === channel.providerId && provider.baseUrl === channel.baseUrl.trim().replace(/\/+$/, '')
   );
   const selectedProvider = selectedChannel ? providerFor(selectedChannel) : undefined;
-  const railItems: EntityListItem[] = displayedChannels.map((channel) => {
+  const picpocketModel = hostedVisionModel(settings.hostedVisionModel);
+  const railItems: EntityListItem[] = [{
+    id: PICPOCKET_CHANNEL_ID,
+    name: t('channels.picpocketName'),
+    subtitle: picpocketModel,
+    icon: <Logo size={16} />,
+    isActive: activeChannelId === PICPOCKET_CHANNEL_ID,
+  }, ...displayedChannels.map((channel) => {
     const provider = providerFor(channel);
     return {
       id: channel.id,
@@ -73,7 +86,7 @@ export const VisionModelPage: React.FC<VisionModelPageProps> = ({
       icon: provider ? <BrandIcon icon={provider.icon} className="h-4 w-4" /> : <Globe className="h-4 w-4" />,
       isActive: channel.id === activeChannelId,
     };
-  });
+  })];
 
   const resetTest = () => {
     testRequestRef.current += 1;
@@ -100,8 +113,8 @@ export const VisionModelPage: React.FC<VisionModelPageProps> = ({
     try {
       await enqueueUpdate((prev) => withVisionChannels(
         prev,
-        getVisionChannels(prev).map((channel) => channel.id === channelId ? { ...channel, ...changes } : channel),
-        prev.activeVisionChannelId || getVisionChannels(prev)[0]?.id
+        getConfiguredVisionChannels(prev).map((channel) => channel.id === channelId ? { ...channel, ...changes } : channel),
+        keepActive(prev)
       ));
     } finally {
       if (editVersionRef.current === version) setDraft(null);
@@ -118,10 +131,7 @@ export const VisionModelPage: React.FC<VisionModelPageProps> = ({
       baseUrl: provider?.baseUrl || '',
       model: '',
     };
-    await enqueueUpdate((prev) => {
-      const previous = getVisionChannels(prev);
-      return withVisionChannels(prev, [...previous, channel], prev.activeVisionChannelId || previous[0]?.id || channel.id);
-    });
+    await enqueueUpdate((prev) => withVisionChannels(prev, [...getConfiguredVisionChannels(prev), channel], keepActive(prev)));
     setSelectedChannelId(channel.id);
     setAddingChannel(false);
     setDeletePending(false);
@@ -129,15 +139,21 @@ export const VisionModelPage: React.FC<VisionModelPageProps> = ({
   };
 
   const setDefaultChannel = async () => {
-    if (!selectedChannel) return;
-    await enqueueUpdate((prev) => withVisionChannels(prev, getVisionChannels(prev), selectedChannel.id));
+    const targetId = selectedChannel?.id ?? PICPOCKET_CHANNEL_ID;
+    await enqueueUpdate((prev) => withVisionChannels(prev, getConfiguredVisionChannels(prev), targetId));
+  };
+
+  const selectPicpocketModel = async (model: string) => {
+    await enqueueUpdate((prev) => ({ ...prev, hostedVisionModel: model }));
   };
 
   const deleteChannel = async () => {
     if (!selectedChannel) return;
     await enqueueUpdate((prev) => {
-      const remaining = getVisionChannels(prev).filter((channel) => channel.id !== selectedChannel.id);
-      return withVisionChannels(prev, remaining, prev.activeVisionChannelId === selectedChannel.id ? remaining[0]?.id : prev.activeVisionChannelId);
+      const remaining = getConfiguredVisionChannels(prev).filter((channel) => channel.id !== selectedChannel.id);
+      // 删掉的是当前使用的渠道时回到 PicPocket 官方渠道
+      const active = keepActive(prev);
+      return withVisionChannels(prev, remaining, active === selectedChannel.id ? PICPOCKET_CHANNEL_ID : active);
     });
     setDeletePending(false);
     resetTest();
@@ -189,7 +205,7 @@ export const VisionModelPage: React.FC<VisionModelPageProps> = ({
 
       <EntityEditorLayout
         items={railItems}
-        selectedId={selectedChannel?.id || ''}
+        selectedId={selectedChannel?.id || PICPOCKET_CHANNEL_ID}
         onSelectId={(id) => {
           setSelectedChannelId(id);
           setDeletePending(false);
@@ -302,12 +318,13 @@ export const VisionModelPage: React.FC<VisionModelPageProps> = ({
             </ConfigItem>
           </ConfigSection>
         ) : (
-          <div className="flex min-h-52 flex-col items-center justify-center border-y border-zinc-200 px-6 py-10 text-center">
-            <Globe className="mb-3 h-6 w-6 text-zinc-400" />
-            <h2 className="text-sm font-semibold text-zinc-900">{t('options.vision.emptyTitle')}</h2>
-            <p className="mt-1 text-xs text-zinc-500">{t('options.vision.emptyDescription')}</p>
-            <button type="button" onClick={() => setAddingChannel(true)} className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-semibold text-white hover:bg-zinc-800"><Plus className="h-4 w-4" />{t('options.vision.addChannel')}</button>
-          </div>
+          <PicPocketChannelPanel
+            capability="vision"
+            isActive={activeChannelId === PICPOCKET_CHANNEL_ID}
+            model={picpocketModel}
+            onSetActive={setDefaultChannel}
+            onSelectModel={selectPicpocketModel}
+          />
         )}
       </EntityEditorLayout>
     </ConfigLayout>

@@ -16,6 +16,7 @@ import {
   Maximize2,
   XCircle,
   Folder,
+  Settings,
 } from 'lucide-react';
 import type { InspirationItem, PromptResult, UserSettings } from '@/types';
 import { db } from '@/db';
@@ -29,8 +30,8 @@ import { hasVisionAccess } from '@/services/billing';
 import { useAuth } from '@/hooks/useAuth';
 import { saveUserSettings } from '@/utils/storage';
 import { useI18n } from '@/i18n';
-import { InlineModelPicker } from './InlineModelPicker';
-import { HOSTED_VISION_MODELS, hostedVisionModel } from '@/config/hostedModels';
+import { ChannelModelPicker } from './ChannelModelPicker';
+import { currentChannelModel } from '@/config/channelSelection';
 import { readFileAsDataUrl } from '@/utils/file';
 import { isAiGeneratedItem, isAgentCollabItem, withAnalyzedTag } from '@/utils/itemHelpers';
 
@@ -62,32 +63,14 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
   const [savedToVault, setSavedToVault] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Vision Model state with in-situ switching & persistence
+  // 当前反推渠道与模型：在图片下方的选择器里切换（含 PicPocket 官方渠道），选择即时持久化
   const canAnalyze = hasVisionAccess(settings, Boolean(accountUser));
-  // 没有自备 Key 时走托管（积分 / 兑换码），只能在托管目录里选模型，选择单独保存
-  const usesHostedVision = canAnalyze && !settings.apiKey?.trim();
-  const [currentVisionModel, setCurrentVisionModel] = useState(() =>
-    usesHostedVision ? hostedVisionModel(settings.hostedVisionModel) : settings.model || 'deepseek-chat'
-  );
+  const savedVisionModel = currentChannelModel(settings, 'vision').model;
+  const [currentVisionModel, setCurrentVisionModel] = useState(savedVisionModel);
 
   useEffect(() => {
-    if (usesHostedVision) {
-      setCurrentVisionModel(hostedVisionModel(settings.hostedVisionModel));
-    } else if (settings.visionChannels && settings.model !== currentVisionModel) {
-      setCurrentVisionModel(settings.model || '');
-    } else if (settings.model && settings.model !== currentVisionModel) {
-      setCurrentVisionModel(settings.model);
-    }
-  }, [settings.model, settings.visionChannels, settings.hostedVisionModel, usesHostedVision]);
-
-  const handleVisionModelSelect = async (newModel: string) => {
-    setCurrentVisionModel(newModel);
-    try {
-      await saveUserSettings(usesHostedVision ? { hostedVisionModel: newModel } : { model: newModel });
-    } catch (err) {
-      console.warn('Failed to persist vision model to settings:', err);
-    }
-  };
+    setCurrentVisionModel(savedVisionModel);
+  }, [savedVisionModel]);
 
   // Reverse Prompt Customization State (In-situ folded editor)
   const [isPresetEditorOpen, setIsPresetEditorOpen] = useState(false);
@@ -353,43 +336,6 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
         </button>
 
         <div className="flex items-center gap-1.5 min-w-0">
-          <InlineModelPicker
-            capability="vision"
-            allowedModels={usesHostedVision ? [...HOSTED_VISION_MODELS] : undefined}
-            currentModel={currentVisionModel}
-            baseUrl={settings.baseUrl || 'https://api.deepseek.com/v1'}
-            apiKey={settings.apiKey}
-            onSelectModel={handleVisionModelSelect}
-            onOpenSettings={onOpenSettings}
-            align="right"
-          />
-
-          <button
-            onClick={canAnalyze ? () => runAnalysis(currentVisionModel) : onOpenSettings}
-            disabled={isAnalyzing}
-            className="flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer disabled:opacity-50 shadow-2xs shrink-0"
-            title={
-              canAnalyze
-                ? isNativePrompt
-                  ? t('inspector.deconstructWithVision')
-                  : prompt
-                  ? t('inspector.reanalyze')
-                  : t('inspector.startAnalyze')
-                : t('inspector.configureKey')
-            }
-          >
-            <RotateCw className={`h-3 w-3 ${isAnalyzing ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">
-              {canAnalyze
-                ? isNativePrompt
-                  ? t('inspector.deconstructWithVision')
-                  : prompt
-                  ? t('inspector.reanalyze')
-                  : t('inspector.startAnalyze')
-                : t('inspector.configureKey')}
-            </span>
-          </button>
-
           {prompt && (
             <button
               onClick={copyMasterFlow}
@@ -448,6 +394,44 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
             >
               <Maximize2 className="h-3 w-3 text-sky-400" />
               <span>{t('gallery.viewLargeImage')}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 反推操作区：渠道与模型选择 + 开始反推 */}
+        <div className="space-y-1.5 rounded-xl border border-zinc-200 bg-white p-2.5 shadow-2xs">
+          <div className="text-[11px] font-semibold text-zinc-500">{t('inspector.visionModel')}</div>
+          <div className="flex items-center gap-2">
+            <ChannelModelPicker
+              capability="vision"
+              settings={settings}
+              onOpenSettings={onOpenSettings}
+              onSelected={(selection) => setCurrentVisionModel(selection.model)}
+              className="flex-1"
+            />
+            <button
+              onClick={canAnalyze ? () => runAnalysis(currentVisionModel) : onOpenSettings}
+              disabled={isAnalyzing}
+              className={`flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-3 text-xs font-semibold shadow-2xs transition-colors cursor-pointer disabled:opacity-50 ${
+                canAnalyze && !prompt
+                  ? 'bg-zinc-900 text-white hover:bg-zinc-800'
+                  : 'border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
+              }`}
+            >
+              {canAnalyze ? (
+                <RotateCw className={`h-3.5 w-3.5 ${isAnalyzing ? 'animate-spin' : ''}`} />
+              ) : (
+                <Settings className="h-3.5 w-3.5" />
+              )}
+              <span>
+                {canAnalyze
+                  ? isNativePrompt
+                    ? t('inspector.deconstructWithVision')
+                    : prompt
+                    ? t('inspector.reanalyze')
+                    : t('inspector.startAnalyze')
+                  : t('inspector.configureKey')}
+              </span>
             </button>
           </div>
         </div>

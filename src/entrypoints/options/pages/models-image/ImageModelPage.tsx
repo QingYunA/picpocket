@@ -7,6 +7,10 @@ import { BrandIcon } from '@/entrypoints/sidepanel/components/BrandIcon';
 import { ImageChannelModels } from './ImageChannelModels';
 import { IMAGE_PROVIDERS, enabledImageModels, getImageChannels, imageModelsForProvider, withImageChannels } from '@/config/imageChannels';
 import { useI18n, type TranslationKey } from '@/i18n';
+import { currentChannelModel } from '@/config/channelSelection';
+import { PICPOCKET_CHANNEL_ID, hostedImageModel } from '@/config/hostedModels';
+import { Logo } from '@/components/Logo';
+import { PicPocketChannelPanel } from '../../components/picpocket-channel-panel';
 import type { UserSettings, ImageAspectRatio, ImageChannel } from '@/types';
 import { sanitizeHttpHeaderToken, sanitizeHttpUrl } from '@/utils/sanitize';
 import { testApiEndpoint } from '../../utils/connectionTest';
@@ -49,7 +53,9 @@ export const ImageModelPage: React.FC<ImageModelPageProps> = ({
   const { t } = useI18n();
 
   const channels = getImageChannels(settings);
-  const activeChannelId = settings.activeImageChannelId || channels[0]?.id;
+  const activeChannelId = currentChannelModel(settings, 'image').channelId;
+  // 编辑、添加渠道时保持当前使用的渠道不变
+  const keepActive = (prev: UserSettings) => currentChannelModel(prev, 'image').channelId;
   const [selectedChannelId, setSelectedChannelId] = useState<string>(() => {
     const initial = channels.find((channel) => channel.id === initialProvider || channel.providerId === initialProvider);
     return initial?.id || activeChannelId || '';
@@ -62,7 +68,6 @@ export const ImageModelPage: React.FC<ImageModelPageProps> = ({
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
-    if (!channels.length) return;
     const requested = channels.find((channel) => channel.id === initialProvider || channel.providerId === initialProvider);
     if (initialProvider && requested && appliedProviderRef.current !== initialProvider) {
       appliedProviderRef.current = initialProvider;
@@ -70,9 +75,9 @@ export const ImageModelPage: React.FC<ImageModelPageProps> = ({
       return;
     }
     if (!initialProvider) appliedProviderRef.current = undefined;
-    setSelectedChannelId((current) => channels.some((channel) => channel.id === current)
+    setSelectedChannelId((current) => current === PICPOCKET_CHANNEL_ID || channels.some((channel) => channel.id === current)
       ? current
-      : activeChannelId || channels[0]!.id);
+      : activeChannelId);
   }, [channels, initialProvider, activeChannelId]);
 
   const [showKey, setShowKey] = useState(false);
@@ -81,11 +86,19 @@ export const ImageModelPage: React.FC<ImageModelPageProps> = ({
   const [testLatency, setTestLatency] = useState<number | null>(null);
 
   const displayedChannels = channels.map((channel) => draft?.id === channel.id ? { ...channel, ...draft.changes } : channel);
-  const selectedChannel = displayedChannels.find((channel) => channel.id === selectedChannelId) || displayedChannels[0];
+  const picpocketSelected = selectedChannelId === PICPOCKET_CHANNEL_ID || !displayedChannels.length;
+  const selectedChannel = picpocketSelected ? undefined : displayedChannels.find((channel) => channel.id === selectedChannelId) || displayedChannels[0];
   const selectedProvider = IMAGE_PROVIDERS.find((provider) => provider.id === selectedChannel?.providerId);
   const recommendedModels = selectedChannel ? imageModelsForProvider(selectedChannel.providerId) : [];
 
-  const railItems: EntityListItem[] = displayedChannels.map((channel) => {
+  const picpocketModel = hostedImageModel(settings.hostedImageModel);
+  const railItems: EntityListItem[] = [{
+    id: PICPOCKET_CHANNEL_ID,
+    name: t('channels.picpocketName'),
+    subtitle: picpocketModel,
+    icon: <Logo size={16} />,
+    isActive: activeChannelId === PICPOCKET_CHANNEL_ID,
+  }, ...displayedChannels.map((channel) => {
     const provider = IMAGE_PROVIDERS.find((item) => item.id === channel.providerId);
     return {
       id: channel.id,
@@ -96,7 +109,7 @@ export const ImageModelPage: React.FC<ImageModelPageProps> = ({
       icon: provider ? <BrandIcon icon={provider.icon} className="h-4 w-4" /> : <Globe className="h-4 w-4" />,
       isActive: channel.id === activeChannelId,
     };
-  });
+  })];
 
   const enqueueUpdate = (updater: (prev: UserSettings) => UserSettings): Promise<void> => {
     const operation = saveQueueRef.current.then(() => onUpdateSettings(updater));
@@ -117,7 +130,7 @@ export const ImageModelPage: React.FC<ImageModelPageProps> = ({
       await enqueueUpdate((prev) => withImageChannels(
         prev,
         getImageChannels(prev).map((channel) => channel.id === channelId ? { ...channel, ...changes } : channel),
-        prev.activeImageChannelId || getImageChannels(prev)[0]?.id
+        keepActive(prev)
       ));
     } finally {
       if (editVersionRef.current === version) setDraft(null);
@@ -135,25 +148,28 @@ export const ImageModelPage: React.FC<ImageModelPageProps> = ({
       model: imageModelsForProvider(providerId)[0]?.defaultModel || '',
       models: imageModelsForProvider(providerId)[0]?.defaultModel ? [imageModelsForProvider(providerId)[0]!.defaultModel] : [],
     };
-    await enqueueUpdate((prev) => {
-      const previous = getImageChannels(prev);
-      return withImageChannels(prev, [...previous, channel], prev.activeImageChannelId || previous[0]?.id || channel.id);
-    });
+    await enqueueUpdate((prev) => withImageChannels(prev, [...getImageChannels(prev), channel], keepActive(prev)));
     setSelectedChannelId(channel.id);
     setAddingChannel(false);
     setDeletePending(false);
   };
 
   const setDefaultChannel = async () => {
-    if (!selectedChannel) return;
-    await enqueueUpdate((prev) => withImageChannels(prev, getImageChannels(prev), selectedChannel.id));
+    const targetId = selectedChannel?.id ?? PICPOCKET_CHANNEL_ID;
+    await enqueueUpdate((prev) => withImageChannels(prev, getImageChannels(prev), targetId));
+  };
+
+  const selectPicpocketModel = async (model: string) => {
+    await enqueueUpdate((prev) => ({ ...prev, hostedImageModel: model }));
   };
 
   const deleteChannel = async () => {
     if (!selectedChannel) return;
     await enqueueUpdate((prev) => {
       const remaining = getImageChannels(prev).filter((channel) => channel.id !== selectedChannel.id);
-      return withImageChannels(prev, remaining, prev.activeImageChannelId === selectedChannel.id ? remaining[0]?.id : prev.activeImageChannelId);
+      // 删掉的是当前使用的渠道时回到 PicPocket 官方渠道
+      const active = keepActive(prev);
+      return withImageChannels(prev, remaining, active === selectedChannel.id ? PICPOCKET_CHANNEL_ID : active);
     });
     setDeletePending(false);
   };
@@ -208,7 +224,7 @@ export const ImageModelPage: React.FC<ImageModelPageProps> = ({
       )}
       <EntityEditorLayout
         items={railItems}
-        selectedId={selectedChannel?.id || ''}
+        selectedId={selectedChannel?.id || PICPOCKET_CHANNEL_ID}
         onSelectId={(id) => {
           setSelectedChannelId(id);
           setDeletePending(false);
@@ -376,12 +392,13 @@ export const ImageModelPage: React.FC<ImageModelPageProps> = ({
           </ConfigItem>
         </ConfigSection>
         ) : (
-          <div className="flex min-h-52 flex-col items-center justify-center border-y border-zinc-200 px-6 py-10 text-center">
-            <Globe className="mb-3 h-6 w-6 text-zinc-400" />
-            <h2 className="text-sm font-semibold text-zinc-900">{t('options.image.emptyTitle')}</h2>
-            <p className="mt-1 text-xs text-zinc-500">{t('options.image.emptyDescription')}</p>
-            <button type="button" onClick={() => setAddingChannel(true)} className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-2 text-xs font-semibold text-white hover:bg-zinc-800"><Plus className="h-4 w-4" />{t('options.image.addChannel')}</button>
-          </div>
+          <PicPocketChannelPanel
+            capability="image"
+            isActive={activeChannelId === PICPOCKET_CHANNEL_ID}
+            model={picpocketModel}
+            onSetActive={setDefaultChannel}
+            onSelectModel={selectPicpocketModel}
+          />
         )}
       </EntityEditorLayout>
       <ConfigSection title={t('options.image.preferencesTitle')}>

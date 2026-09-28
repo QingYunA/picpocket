@@ -1,4 +1,5 @@
 import presetModels from './presetModels.json';
+import { PICPOCKET_CHANNEL_ID } from './hostedModels';
 import type { ImageChannel, UserSettings } from '../types';
 
 export const IMAGE_PROVIDERS = [
@@ -48,6 +49,9 @@ export const withImageChannels = (
     const models = enabledImageModels(channel);
     return { ...channel, models, model: models.includes(channel.model) ? channel.model : (models[0] || '') };
   });
+  if (activeId === PICPOCKET_CHANNEL_ID) {
+    return { ...settings, imageChannels: normalized, activeImageChannelId: PICPOCKET_CHANNEL_ID, imageApiKey: '', imageBaseUrl: '', imageModel: '' };
+  }
   const active = normalized.find((channel) => channel.id === activeId) || normalized[0];
   return {
     ...settings,

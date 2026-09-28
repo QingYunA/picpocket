@@ -25,7 +25,8 @@ export function ratioToDimension(ratio: ImageAspectRatio): ImageDimension {
 import { sanitizeHttpHeaderToken, sanitizeHttpUrl } from '../utils/sanitize';
 import { getModelCapability } from '../config/modelCapabilities';
 import { hostedImageModel } from '../config/hostedModels';
-import { hostedCreditError, hostedHeaders, readCreditBalance, resolveHostedCredential } from './hostedAccount';
+import { imageChannelMode } from '../config/channelMode';
+import { hostedCreditError, hostedHeaders, readCreditBalance, resolveChannelCredential } from './hostedAccount';
 import { getTranslation } from '../i18n';
 import { DEFAULT_HOSTED_PROXY_URL, licenseUsableFor, syncRemainingQuota, syncDualRemainingQuota } from './billing';
 import { prepareReferenceImageForAi, dataUrlToFile } from '../utils/imageCompression';
@@ -34,7 +35,8 @@ import { GENERATION_REQUEST_TIMEOUT_MS, withRequestTimeout } from '../utils/requ
 export { sanitizeHttpHeaderToken, sanitizeHttpUrl };
 
 /**
- * 解析生图调用的凭据。无自备 Key 时走托管通道：有效兑换码优先，否则已登录账号按积分计费。
+ * 解析生图调用的凭据。当前渠道是 PicPocket 时走托管通道：有效兑换码优先，否则已登录账号按积分计费；
+ * 自己的渠道只用自己的 Key（没填时 apiKey 为空，由调用方提示）。
  * accountSignedIn 由调用方提供（界面用 useAuth，后台用 getAccountAccessToken）。
  */
 export function resolveImageApiConfig(settings: UserSettings, channelId?: string, accountSignedIn = false): {
@@ -55,10 +57,11 @@ export function resolveImageApiConfig(settings: UserSettings, channelId?: string
   let isProManaged = false;
   let licenseKey: string | undefined;
 
-  if (!apiKey && (licenseUsable || accountSignedIn)) {
+  if (imageChannelMode(settings, channelId).kind === 'picpocket') {
+    apiKey = '';
     rawBaseUrl = settings.hostedProxyUrl || DEFAULT_HOSTED_PROXY_URL;
     model = hostedImageModel(settings.hostedImageModel);
-    isProManaged = true;
+    isProManaged = licenseUsable || accountSignedIn;
     licenseKey = licenseUsable ? settings.proMembership?.licenseKey : undefined;
   }
 
@@ -157,18 +160,20 @@ async function runSingleGeneration(
   settings: UserSettings,
   signal: AbortSignal
 ): Promise<GeneratedImage[]> {
-  const ownKey = resolveImageApiConfig(settings, params.channelId).apiKey;
-  const credential = ownKey ? null : await resolveHostedCredential(settings, 'image-generation');
+  const mode = imageChannelMode(settings, params.channelId);
+  const { credential } = await resolveChannelCredential(mode, settings, 'image-generation');
   const { apiKey, baseUrl, model: defaultModel, isProManaged } = resolveImageApiConfig(settings, params.channelId, Boolean(credential));
   const useAccountCredits = credential?.kind === 'account';
   const model = isProManaged
     ? hostedImageModel(params.model, settings.hostedImageModel)
     : (params.model || defaultModel).trim();
 
-  const selectedChannel = params.channelId
-    ? settings.imageChannels?.find((channel) => channel.id === params.channelId)
-    : settings.imageChannels?.find((channel) => channel.id === settings.activeImageChannelId) || settings.imageChannels?.[0];
-  if (params.channelId && (!selectedChannel || !((selectedChannel.models || [selectedChannel.model]).includes(model)))) {
+  const selectedChannel = mode.kind === 'picpocket'
+    ? undefined
+    : params.channelId
+      ? settings.imageChannels?.find((channel) => channel.id === params.channelId)
+      : settings.imageChannels?.find((channel) => channel.id === settings.activeImageChannelId) || settings.imageChannels?.[0];
+  if (params.channelId && mode.kind !== 'picpocket' && (!selectedChannel || !((selectedChannel.models || [selectedChannel.model]).includes(model)))) {
     throw new Error('所选生图模型已不在该渠道中，请重新选择');
   }
   if (selectedChannel && !selectedChannel.baseUrl.trim()) {

@@ -2,8 +2,9 @@ import type { PromptResult, UserSettings, Language, TextElementSlot, ReverseProm
 import { sanitizeHttpHeaderToken, sanitizeHttpUrl } from '../utils/sanitize';
 import { prepareVisionImageForAi } from '../utils/imageCompression';
 import { DEFAULT_HOSTED_PROXY_URL, buildHostedProxyHeaders, isProExpired, syncRemainingQuota, syncDualRemainingQuota } from './billing';
-import { hostedCreditError, hostedHeaders, readCreditBalance, resolveHostedCredential } from './hostedAccount';
+import { hostedCreditError, hostedHeaders, readCreditBalance, resolveChannelCredential } from './hostedAccount';
 import { hostedVisionModel } from '../config/hostedModels';
+import { visionChannelMode } from '../config/channelMode';
 import { getTranslation } from '../i18n';
 import { ANALYSIS_REQUEST_TIMEOUT_MS, withRequestTimeout } from '../utils/requestTimeout';
 
@@ -650,13 +651,11 @@ export async function completeChatWithAI(
   targetModel?: string,
   signal?: AbortSignal
 ): Promise<string> {
-  const apiKey = sanitizeHttpHeaderToken((settings.apiKey || '').trim());
-  const credential = apiKey ? null : await resolveHostedCredential(settings, 'vision');
+  const access = await resolveChannelCredential(visionChannelMode(settings), settings, 'vision');
+  const apiKey = sanitizeHttpHeaderToken(access.apiKey);
+  const credential = access.credential;
   const isProManaged = Boolean(credential);
   assertVisionChannelConfigured(settings, isProManaged);
-  if (!apiKey && !credential) {
-    throw new Error(getTranslation(settings.language || 'zh', 'billing.hostedErrors.needCredentials'));
-  }
   const endpoint = isProManaged
     ? (settings.hostedProxyUrl || DEFAULT_HOSTED_PROXY_URL)
     : `${sanitizeHttpUrl(settings.baseUrl || 'https://api.openai.com/v1')}/chat/completions`;
@@ -720,18 +719,14 @@ async function runImageAnalysis(
   // 仅在外发边界做瞬态压缩（反推专用：最长边 1280px），库内原图保持不变（ADR 0007）
   const base64Url = await prepareVisionImageForAi(imageBlob);
 
-  const rawKey = (settings.apiKey || '').trim();
-  let apiKey = sanitizeHttpHeaderToken(rawKey);
-  let rawBaseUrl = (settings.baseUrl || 'https://api.deepseek.com/v1').trim();
+  const access = await resolveChannelCredential(visionChannelMode(settings), settings, 'vision');
+  const apiKey = sanitizeHttpHeaderToken(access.apiKey);
+  const rawBaseUrl = (settings.baseUrl || 'https://api.deepseek.com/v1').trim();
   let model = (targetModel || settings.model || 'deepseek-chat').trim();
 
-  const credential = apiKey ? null : await resolveHostedCredential(settings, 'vision');
+  const credential = access.credential;
   const isProManaged = Boolean(credential);
   assertVisionChannelConfigured(settings, isProManaged);
-
-  if (!apiKey && !credential) {
-    throw new Error(getTranslation(settings.language || 'zh', 'billing.hostedErrors.needCredentials'));
-  }
   if (isProManaged) model = hostedVisionModel(targetModel, settings.hostedVisionModel);
 
   if (apiKey && /[^\x20-\x7E]/.test(apiKey)) {

@@ -71,6 +71,7 @@ import { openInfiniteCanvasPage } from '@/utils/navigation';
 import { formatSafeErrorMessage, readApiErrorMessage } from '@/utils/errorMessage';
 import { useI18n } from '@/i18n';
 import { InlineModelPicker } from './InlineModelPicker';
+import { DEFAULT_HOSTED_IMAGE_MODEL, HOSTED_IMAGE_MODELS, hostedImageModel } from '@/config/hostedModels';
 import { enabledImageModels, getActiveImageChannel } from '@/config/imageChannels';
 import { ConfirmModal } from './ConfirmModal';
 import { ReferenceImagesTray } from './workbench/ReferenceImagesTray';
@@ -118,12 +119,18 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
   const { user: accountUser } = useAuth();
 
   // Model state with instant persistence
-  const [currentModel, setCurrentModel] = useState(settings.imageModel || 'gpt-image-2.5-sunburst');
+  // 没有自备 Key 时走托管（积分 / 兑换码），只能在托管目录里选模型，选择单独保存
+  const usesHostedImage = resolveImageApiConfig(settings, undefined, Boolean(accountUser)).isProManaged === true;
+  const [currentModel, setCurrentModel] = useState(() =>
+    usesHostedImage ? hostedImageModel(settings.hostedImageModel) : settings.imageModel || DEFAULT_HOSTED_IMAGE_MODEL
+  );
   const modelCapability = useMemo(() => getModelCapability(currentModel), [currentModel]);
   const activeImageChannel = settings.imageChannels ? getActiveImageChannel(settings) : undefined;
-  const allowedImageModels = settings.imageChannels
-    ? activeImageChannel ? enabledImageModels(activeImageChannel) : []
-    : undefined;
+  const allowedImageModels = usesHostedImage
+    ? [...HOSTED_IMAGE_MODELS]
+    : settings.imageChannels
+      ? activeImageChannel ? enabledImageModels(activeImageChannel) : []
+      : undefined;
 
   const initialDraft = useRef<GeneratorDraftState>(getInitialGeneratorDraft()).current;
 
@@ -361,12 +368,14 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
 
   // Sync settings when external changes happen
   useEffect(() => {
-    if (settings.imageChannels && settings.imageModel !== currentModel) {
+    if (usesHostedImage) {
+      setCurrentModel(hostedImageModel(settings.hostedImageModel));
+    } else if (settings.imageChannels && settings.imageModel !== currentModel) {
       setCurrentModel(settings.imageModel || '');
     } else if (settings.imageModel && settings.imageModel !== currentModel) {
       setCurrentModel(settings.imageModel);
     }
-  }, [settings.imageModel, settings.imageChannels]);
+  }, [settings.imageModel, settings.imageChannels, settings.hostedImageModel, usesHostedImage]);
 
   // Adjust count if current model has a lower maxCount
   useEffect(() => {
@@ -597,7 +606,7 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
   const handleModelSelect = async (newModel: string) => {
     setCurrentModel(newModel);
     try {
-      await saveUserSettings({ imageModel: newModel });
+      await saveUserSettings(usesHostedImage ? { hostedImageModel: newModel } : { imageModel: newModel });
     } catch (err) {
       console.warn('Failed to persist imageModel to storage:', err);
     }

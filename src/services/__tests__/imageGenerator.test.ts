@@ -272,6 +272,35 @@ describe('imageGenerator service', () => {
     expect(config.model).toBe('gpt-image-2.5-sunburst');
   });
 
+  it('sends the chosen hosted model to the gateway instead of a bring-your-own model name', async () => {
+    const originalFetch = globalThis.fetch;
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers(),
+      json: async () => ({ data: [{ b64_json: 'hosted_output' }] }),
+    });
+    globalThis.fetch = mockFetch as any;
+    const hostedSettings: UserSettings = {
+      apiKey: '',
+      baseUrl: '',
+      model: '',
+      autoAnalyzeOnCapture: false,
+      language: 'zh',
+      imageModel: 'dall-e-3',
+      hostedImageModel: 'seedream-5-pro',
+      proMembership: { isPro: true, licenseKey: 'PP-PRO-YEAR-123456', expiresAt: Date.now() + 100000, plan: 'yearly' },
+    };
+
+    try {
+      await generateImagesWithAI({ prompt: 'A lighthouse', aspectRatio: '1:1', model: 'dall-e-3' }, hostedSettings);
+      const [url, init] = mockFetch.mock.calls[0]!;
+      expect(url).toContain('/functions/v1/ai-proxy');
+      expect(JSON.parse(init.body as string).model).toBe('seedream-5-pro');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it('includes reference image in FormData and targets /images/edits endpoint', async () => {
     const originalFetch = globalThis.fetch;
     const mockFetch = vi.fn().mockResolvedValue({

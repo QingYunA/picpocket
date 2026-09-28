@@ -445,3 +445,45 @@ describe('analyzeImageWithAI cancellation & timeout', () => {
     }
   });
 });
+
+describe('hosted vision model selection', () => {
+  const hostedSettings: UserSettings = {
+    apiKey: '', baseUrl: '', model: 'deepseek-chat',
+    autoAnalyzeOnCapture: false, language: 'zh',
+    hostedVisionModel: 'gemini-3.8-flash',
+    proMembership: { isPro: true, licenseKey: 'PP-PRO-YEAR-123456', expiresAt: Date.now() + 100000, plan: 'yearly' },
+  };
+
+  const mockChatFetch = () =>
+    vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers(),
+      json: async () => ({ choices: [{ message: { content: 'ok' } }] }),
+    });
+
+  it('sends the saved hosted model instead of a bring-your-own model name', async () => {
+    const originalFetch = globalThis.fetch;
+    const mockFetch = mockChatFetch();
+    globalThis.fetch = mockFetch as any;
+    try {
+      await completeChatWithAI([{ role: 'user', content: 'hi' }], hostedSettings, 'deepseek-chat');
+      const [url, init] = mockFetch.mock.calls[0]!;
+      expect(url).toContain('/functions/v1/ai-proxy');
+      expect(JSON.parse(init.body as string).model).toBe('gemini-3.8-flash');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('honours an explicitly requested hosted model', async () => {
+    const originalFetch = globalThis.fetch;
+    const mockFetch = mockChatFetch();
+    globalThis.fetch = mockFetch as any;
+    try {
+      await completeChatWithAI([{ role: 'user', content: 'hi' }], hostedSettings, 'kimi-k3');
+      expect(JSON.parse(mockFetch.mock.calls[0]![1].body as string).model).toBe('kimi-k3');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});

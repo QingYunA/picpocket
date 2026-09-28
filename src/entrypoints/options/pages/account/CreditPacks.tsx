@@ -37,25 +37,34 @@ export const CreditPacks: React.FC<CreditPacksProps> = ({ disabled, onBuy }) => 
   );
 };
 
+const PriceRows: React.FC<{ title: string; rows: Array<{ id: string; price: string }> }> = ({ title, rows }) => (
+  <div>
+    <div className="mb-1.5 font-semibold text-zinc-700">{title}</div>
+    <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+      {rows.map((row) => (
+        <li key={row.id} className="flex justify-between gap-2 rounded-lg bg-zinc-50 px-2.5 py-1.5">
+          <span className="truncate font-mono text-zinc-700">{row.id}</span>
+          <span className="shrink-0 text-zinc-500">{row.price}</span>
+        </li>
+      ))}
+    </ul>
+  </div>
+);
+
 export const PricingList: React.FC<{ pricing: Entitlement['pricing'] }> = ({ pricing }) => {
   const { t } = useI18n();
+  const visionRows = pricing.vision.map(({ id, min, max }) => ({
+    id,
+    price: min === max ? `${min} ${t('billing.creditsUnit')}` : t('billing.pricingRange', { min, max }),
+  }));
+  const imageRows = pricing.image.map(({ id, credits, credits4k }) => ({
+    id,
+    price: `${credits} ${t('billing.creditsUnit')}${credits4k ? ` · ${t('billing.pricing4k', { credits: credits4k })}` : ''}`,
+  }));
   return (
-    <div className="space-y-3 py-5 text-xs text-zinc-600">
-      <p>{t('billing.pricingVision', { min: pricing.vision.min, max: pricing.vision.max })}</p>
-      <div>
-        <div className="mb-1.5 font-semibold text-zinc-700">{t('billing.pricingImage')}</div>
-        <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-          {Object.entries(pricing.image).map(([model, credits]) => (
-            <li key={model} className="flex justify-between rounded-lg bg-zinc-50 px-2.5 py-1.5">
-              <span className="font-mono text-zinc-700">{model}</span>
-              <span className="text-zinc-500">
-                {credits} {t('billing.creditsUnit')}
-                {pricing.image4k?.[model] ? ` · ${t('billing.pricing4k', { credits: pricing.image4k[model] })}` : ''}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
+    <div className="space-y-4 py-5 text-xs text-zinc-600">
+      <PriceRows title={t('billing.pricingVision')} rows={visionRows} />
+      <PriceRows title={t('billing.pricingImage')} rows={imageRows} />
     </div>
   );
 };

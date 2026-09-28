@@ -54,7 +54,11 @@ export interface Entitlement {
   monthlyCredits: number;
   balance: number;
   buckets: CreditBucket[];
-  pricing: { vision: { min: number; max: number }; image: Record<string, number>; image4k?: Record<string, number> };
+  pricing: {
+    defaultVisionModel: string;
+    vision: Array<{ id: string; min: number; max: number }>;
+    image: Array<{ id: string; credits: number; credits4k?: number }>;
+  };
 }
 
 export type BillingErrorCode =

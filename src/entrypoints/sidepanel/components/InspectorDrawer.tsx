@@ -30,6 +30,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { saveUserSettings } from '@/utils/storage';
 import { useI18n } from '@/i18n';
 import { InlineModelPicker } from './InlineModelPicker';
+import { HOSTED_VISION_MODELS, hostedVisionModel } from '@/config/hostedModels';
 import { readFileAsDataUrl } from '@/utils/file';
 import { isAiGeneratedItem, isAgentCollabItem, withAnalyzedTag } from '@/utils/itemHelpers';
 
@@ -62,21 +63,27 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   // Vision Model state with in-situ switching & persistence
-  const [currentVisionModel, setCurrentVisionModel] = useState(settings.model || 'deepseek-chat');
   const canAnalyze = hasVisionAccess(settings, Boolean(accountUser));
+  // 没有自备 Key 时走托管（积分 / 兑换码），只能在托管目录里选模型，选择单独保存
+  const usesHostedVision = canAnalyze && !settings.apiKey?.trim();
+  const [currentVisionModel, setCurrentVisionModel] = useState(() =>
+    usesHostedVision ? hostedVisionModel(settings.hostedVisionModel) : settings.model || 'deepseek-chat'
+  );
 
   useEffect(() => {
-    if (settings.visionChannels && settings.model !== currentVisionModel) {
+    if (usesHostedVision) {
+      setCurrentVisionModel(hostedVisionModel(settings.hostedVisionModel));
+    } else if (settings.visionChannels && settings.model !== currentVisionModel) {
       setCurrentVisionModel(settings.model || '');
     } else if (settings.model && settings.model !== currentVisionModel) {
       setCurrentVisionModel(settings.model);
     }
-  }, [settings.model, settings.visionChannels]);
+  }, [settings.model, settings.visionChannels, settings.hostedVisionModel, usesHostedVision]);
 
   const handleVisionModelSelect = async (newModel: string) => {
     setCurrentVisionModel(newModel);
     try {
-      await saveUserSettings({ model: newModel });
+      await saveUserSettings(usesHostedVision ? { hostedVisionModel: newModel } : { model: newModel });
     } catch (err) {
       console.warn('Failed to persist vision model to settings:', err);
     }
@@ -348,6 +355,7 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
         <div className="flex items-center gap-1.5 min-w-0">
           <InlineModelPicker
             capability="vision"
+            allowedModels={usesHostedVision ? [...HOSTED_VISION_MODELS] : undefined}
             currentModel={currentVisionModel}
             baseUrl={settings.baseUrl || 'https://api.deepseek.com/v1'}
             apiKey={settings.apiKey}

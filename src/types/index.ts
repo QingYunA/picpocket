@@ -101,6 +101,9 @@ export interface UserSettings {
   // Pro Membership & Hosted Gateway
   proMembership?: ProMembership;
   hostedProxyUrl?: string;
+  /** 托管（积分 / 兑换码）模式下选用的模型，与自备 Key 时的 model / imageModel 互不覆盖 */
+  hostedVisionModel?: string;
+  hostedImageModel?: string;
   // Reverse Prompt Customization & Preferences
   reversePromptPresetId?: string;
   customReversePrompt?: string;

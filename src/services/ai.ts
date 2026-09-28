@@ -3,6 +3,7 @@ import { sanitizeHttpHeaderToken, sanitizeHttpUrl } from '../utils/sanitize';
 import { prepareVisionImageForAi } from '../utils/imageCompression';
 import { DEFAULT_HOSTED_PROXY_URL, buildHostedProxyHeaders, isProExpired, syncRemainingQuota, syncDualRemainingQuota } from './billing';
 import { hostedCreditError, hostedHeaders, readCreditBalance, resolveHostedCredential } from './hostedAccount';
+import { hostedVisionModel } from '../config/hostedModels';
 import { getTranslation } from '../i18n';
 import { ANALYSIS_REQUEST_TIMEOUT_MS, withRequestTimeout } from '../utils/requestTimeout';
 
@@ -668,7 +669,7 @@ export async function completeChatWithAI(
     headers,
     signal,
     body: JSON.stringify({
-      model: targetModel || settings.model,
+      model: isProManaged ? hostedVisionModel(targetModel, settings.hostedVisionModel) : targetModel || settings.model,
       messages,
       temperature: 0.2,
       max_tokens: 8192,
@@ -731,6 +732,7 @@ async function runImageAnalysis(
   if (!apiKey && !credential) {
     throw new Error(getTranslation(settings.language || 'zh', 'billing.hostedErrors.needCredentials'));
   }
+  if (isProManaged) model = hostedVisionModel(targetModel, settings.hostedVisionModel);
 
   if (apiKey && /[^\x20-\x7E]/.test(apiKey)) {
     throw new Error('API Key 格式无效（包含中文字符或非 ASCII 编码），请在设置中重新粘贴纯英文 Key');

@@ -24,6 +24,7 @@ export function ratioToDimension(ratio: ImageAspectRatio): ImageDimension {
 
 import { sanitizeHttpHeaderToken, sanitizeHttpUrl } from '../utils/sanitize';
 import { getModelCapability } from '../config/modelCapabilities';
+import { hostedImageModel } from '../config/hostedModels';
 import { hostedCreditError, hostedHeaders, readCreditBalance, resolveHostedCredential } from './hostedAccount';
 import { getTranslation } from '../i18n';
 import { DEFAULT_HOSTED_PROXY_URL, licenseUsableFor, syncRemainingQuota, syncDualRemainingQuota } from './billing';
@@ -31,9 +32,6 @@ import { prepareReferenceImageForAi, dataUrlToFile } from '../utils/imageCompres
 import { formatSafeErrorMessage } from '../utils/errorMessage';
 import { GENERATION_REQUEST_TIMEOUT_MS, withRequestTimeout } from '../utils/requestTimeout';
 export { sanitizeHttpHeaderToken, sanitizeHttpUrl };
-
-export const PRO_MANAGED_IMAGE_MODEL = 'gpt-image-2.5-sunburst';
-
 
 /**
  * 解析生图调用的凭据。无自备 Key 时走托管通道：有效兑换码优先，否则已登录账号按积分计费。
@@ -59,7 +57,7 @@ export function resolveImageApiConfig(settings: UserSettings, channelId?: string
 
   if (!apiKey && (licenseUsable || accountSignedIn)) {
     rawBaseUrl = settings.hostedProxyUrl || DEFAULT_HOSTED_PROXY_URL;
-    model = settings.imageModel || PRO_MANAGED_IMAGE_MODEL;
+    model = hostedImageModel(settings.hostedImageModel);
     isProManaged = true;
     licenseKey = licenseUsable ? settings.proMembership?.licenseKey : undefined;
   }
@@ -163,7 +161,9 @@ async function runSingleGeneration(
   const credential = ownKey ? null : await resolveHostedCredential(settings, 'image-generation');
   const { apiKey, baseUrl, model: defaultModel, isProManaged } = resolveImageApiConfig(settings, params.channelId, Boolean(credential));
   const useAccountCredits = credential?.kind === 'account';
-  const model = (params.model || defaultModel).trim();
+  const model = isProManaged
+    ? hostedImageModel(params.model, settings.hostedImageModel)
+    : (params.model || defaultModel).trim();
 
   const selectedChannel = params.channelId
     ? settings.imageChannels?.find((channel) => channel.id === params.channelId)

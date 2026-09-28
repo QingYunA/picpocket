@@ -7,6 +7,7 @@ import {
   Layers,
   HardDrive,
   KeyRound,
+  CreditCard,
 } from 'lucide-react';
 
 import type { TranslationKey } from '@/i18n';
@@ -85,6 +86,12 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     groupKey: 'options.nav.groupAccount',
     items: [
+      {
+        id: 'account',
+        path: '/account',
+        icon: CreditCard,
+        labelKey: 'options.nav.account',
+      },
       {
         id: 'pro',
         path: '/pro',

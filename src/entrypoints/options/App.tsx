@@ -8,6 +8,7 @@ import { McpPage } from './pages/mcp/McpPage';
 import { PromptsPage } from './pages/prompts/PromptsPage';
 import { StoragePage } from './pages/storage/StoragePage';
 import { ProPage } from './pages/pro/ProPage';
+import { AccountPage } from './pages/account/AccountPage';
 import { getUserSettings, saveUserSettings, DEFAULT_SETTINGS } from '@/utils/storage';
 import type { UserSettings } from '@/types';
 
@@ -90,6 +91,8 @@ export const App: React.FC = () => {
         );
       case '/storage':
         return <StoragePage />;
+      case '/account':
+        return <AccountPage />;
       case '/pro':
         return (
           <ProPage

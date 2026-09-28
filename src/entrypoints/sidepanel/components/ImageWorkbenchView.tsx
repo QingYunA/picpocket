@@ -38,6 +38,7 @@ import {
   type ReferenceLoaders,
 } from '@/utils/generationRetry';
 import { hasVisionAccess } from '@/services/billing';
+import { useAuth } from '@/hooks/useAuth';
 import { getModelCapability } from '@/config/modelCapabilities';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
@@ -114,6 +115,7 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
   onOpenSettings,
 }) => {
   const { t, language } = useI18n();
+  const { user: accountUser } = useAuth();
 
   // Model state with instant persistence
   const [currentModel, setCurrentModel] = useState(settings.imageModel || 'gpt-image-2.5-sunburst');
@@ -328,7 +330,7 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
   };
 
   const handleReverseFromReference = async (refUrl: string) => {
-    if (!hasVisionAccess(settings)) {
+    if (!hasVisionAccess(settings, Boolean(accountUser))) {
       setErrorMsg(t('inspector.requireApiKey'));
       return;
     }
@@ -710,7 +712,7 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
    * syncFormReferences 仅在来自表单时为 true，用于把入池后的参考图 ID 回写表单草稿。
    */
   const startGeneration = async (request: GenerationStartRequest, syncFormReferences: boolean) => {
-    const apiConfig = resolveImageApiConfig(settings);
+    const apiConfig = resolveImageApiConfig(settings, undefined, Boolean(accountUser));
     if (!apiConfig.isProManaged && !apiConfig.apiKey) {
       setErrorMsg(t('generator.noApiKeyHint'));
       return;

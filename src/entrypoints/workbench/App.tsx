@@ -92,6 +92,7 @@ import {
 import { dataUrlToBlob } from '@/db';
 import { analyzeImageWithAI } from '@/services/ai';
 import { hasVisionAccess } from '@/services/billing';
+import { useAuth } from '@/hooks/useAuth';
 import { calculateSplitPiecePlacement, type SplitResultPiece } from './utils/canvasSplitUtils';
 import type { CanvasImageAngleParams } from './utils/canvasAngleUtils';
 import type { CanvasProject } from './types';
@@ -110,6 +111,10 @@ import type {
 
 export const App: React.FC = () => {
   const { t, language } = useI18n();
+  const { user: accountUser } = useAuth();
+  // 供依赖数组为空的回调读取最新登录状态
+  const accountSignedInRef = useRef(false);
+  accountSignedInRef.current = Boolean(accountUser);
 
   // 1. 主题状态 (浅色 / 暗色双模，持久化)
   const [theme, setTheme] = useState<CanvasTheme>(() => {
@@ -1338,7 +1343,7 @@ export const App: React.FC = () => {
         return;
       }
 
-      const apiConfig = resolveImageApiConfig(settings);
+      const apiConfig = resolveImageApiConfig(settings, undefined, accountSignedInRef.current);
       if (!apiConfig.isProManaged && !apiConfig.apiKey) {
         setErrorMsg(t('generator.noApiKeyHint'));
         return;
@@ -1466,7 +1471,7 @@ export const App: React.FC = () => {
 
     if (!activePrompt || isGenerating) return;
 
-    const apiConfig = resolveImageApiConfig(settings);
+    const apiConfig = resolveImageApiConfig(settings, undefined, Boolean(accountUser));
     if (!apiConfig.isProManaged && !apiConfig.apiKey) {
       setErrorMsg(t('generator.noApiKeyHint'));
       return;
@@ -1785,7 +1790,7 @@ export const App: React.FC = () => {
 
   // 视觉反推提示词
   const handleReversePrompt = async (img: GeneratedImage) => {
-    if (!hasVisionAccess(settings)) {
+    if (!hasVisionAccess(settings, Boolean(accountUser))) {
       setErrorMsg(t('inspector.requireApiKey'));
       return;
     }

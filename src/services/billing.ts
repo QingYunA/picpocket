@@ -158,10 +158,11 @@ export async function syncRemainingQuota(newQuota: number): Promise<void> {
 /**
  * 检查当前设置是否具备视觉反推权限（自备 Key 或有效 Pro 反推托管算力）
  */
-export function hasVisionAccess(settings?: UserSettings | null): boolean {
+export function hasVisionAccess(settings?: UserSettings | null, accountSignedIn = false): boolean {
   if (!settings) return false;
   if (settings.apiKey && settings.apiKey.trim()) return true;
-  if (!isProActive(settings)) return false;
+  // 已登录账号可用积分托管；积分是否足够由网关判定并给出提示
+  if (!isProActive(settings)) return accountSignedIn;
   const mem = settings.proMembership;
   if (mem?.visionQuotaRemaining !== undefined) {
     return mem.visionQuotaRemaining > 0;
@@ -172,11 +173,11 @@ export function hasVisionAccess(settings?: UserSettings | null): boolean {
 /**
  * 检查当前设置是否具备 AI 生图权限（自备生图/通用 Key 或有效 Pro 生图托管算力）
  */
-export function hasImageGenAccess(settings?: UserSettings | null): boolean {
+export function hasImageGenAccess(settings?: UserSettings | null, accountSignedIn = false): boolean {
   if (!settings) return false;
   if (settings.imageApiKey && settings.imageApiKey.trim()) return true;
   if (settings.apiKey && settings.apiKey.trim()) return true;
-  if (!isProActive(settings)) return false;
+  if (!isProActive(settings)) return accountSignedIn;
   const mem = settings.proMembership;
   if (mem?.imageQuotaRemaining !== undefined) {
     return mem.imageQuotaRemaining > 0;

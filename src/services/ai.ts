@@ -2,6 +2,7 @@ import type { PromptResult, UserSettings, Language, TextElementSlot, ReverseProm
 import { sanitizeHttpHeaderToken, sanitizeHttpUrl } from '../utils/sanitize';
 import { prepareVisionImageForAi } from '../utils/imageCompression';
 import { DEFAULT_HOSTED_PROXY_URL, buildHostedProxyHeaders, isProExpired, syncRemainingQuota, syncDualRemainingQuota } from './billing';
+import { accountHostedHeaders, getAccountAccessToken, hostedCreditError, readCreditBalance } from './hostedAccount';
 import { ANALYSIS_REQUEST_TIMEOUT_MS, withRequestTimeout } from '../utils/requestTimeout';
 
 export interface StructuredPromptOutput {
@@ -648,9 +649,9 @@ export async function completeChatWithAI(
   signal?: AbortSignal
 ): Promise<string> {
   const apiKey = sanitizeHttpHeaderToken((settings.apiKey || '').trim());
-  const isProManaged = !apiKey && Boolean(
-    settings.proMembership?.isPro && !isProExpired(settings.proMembership)
-  );
+  const licenseActive = Boolean(settings.proMembership?.isPro && !isProExpired(settings.proMembership));
+  const accountToken = !apiKey && !licenseActive ? await getAccountAccessToken() : null;
+  const isProManaged = !apiKey && (licenseActive || Boolean(accountToken));
   assertVisionChannelConfigured(settings, isProManaged);
   if (!apiKey && !isProManaged) {
     throw new Error('未配置视觉模型 API Key');
@@ -659,8 +660,10 @@ export async function completeChatWithAI(
     ? (settings.hostedProxyUrl || DEFAULT_HOSTED_PROXY_URL)
     : `${sanitizeHttpUrl(settings.baseUrl || 'https://api.openai.com/v1')}/chat/completions`;
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (isProManaged && settings.proMembership?.licenseKey) {
+  if (isProManaged && licenseActive && settings.proMembership?.licenseKey) {
     Object.assign(headers, buildHostedProxyHeaders(settings.proMembership.licenseKey, 'vision'));
+  } else if (isProManaged && accountToken) {
+    Object.assign(headers, accountHostedHeaders(accountToken, 'vision'));
   } else {
     headers.Authorization = `Bearer ${apiKey}`;
   }
@@ -677,8 +680,11 @@ export async function completeChatWithAI(
   });
   if (!response.ok) {
     const detail = await response.text().catch(() => '');
+    const creditError = accountToken ? hostedCreditError(response.status, detail) : null;
+    if (creditError) throw creditError;
     throw new Error(`API 请求失败 (${response.status}): ${detail || response.statusText}`);
   }
+  if (accountToken) await readCreditBalance(response.headers);
   const data = await response.json();
   const content = data.choices?.[0]?.message?.content;
   const text = typeof content === 'string'
@@ -726,12 +732,13 @@ async function runImageAnalysis(
     settings.proMembership?.isPro && !isProExpired(settings.proMembership)
   );
 
-  const isProManaged = !apiKey && isProActive;
-  const licenseKey = isProManaged ? settings.proMembership?.licenseKey : undefined;
+  const accountToken = !apiKey && !isProActive ? await getAccountAccessToken() : null;
+  const isProManaged = !apiKey && (isProActive || Boolean(accountToken));
+  const licenseKey = isProManaged && isProActive ? settings.proMembership?.licenseKey : undefined;
   assertVisionChannelConfigured(settings, isProManaged);
 
   if (!isProManaged && !apiKey) {
-    throw new Error('未配置视觉反推 API Key，请在设置中配置凭据或输入 Pro 激活码解锁官方托管通道');
+    throw new Error('未配置视觉反推 API Key，请在设置中配置凭据，或登录账号使用积分托管');
   }
 
   if (apiKey && /[^\x20-\x7E]/.test(apiKey)) {
@@ -780,11 +787,14 @@ async function runImageAnalysis(
 
   if (isProManaged && licenseKey) {
     Object.assign(headers, buildHostedProxyHeaders(licenseKey, 'vision'));
+  } else if (isProManaged && accountToken) {
+    Object.assign(headers, accountHostedHeaders(accountToken, 'vision'));
   } else if (apiKey) {
     headers['Authorization'] = `Bearer ${apiKey}`;
   }
 
   return sendAnalysisRequest(endpoint, headers, payload, signal, {
+    useAccountCredits: Boolean(isProManaged && !licenseKey && accountToken),
     isProManaged,
     language: settings.language || 'zh',
     model,
@@ -797,9 +807,9 @@ async function sendAnalysisRequest(
   headers: Record<string, string>,
   payload: unknown,
   signal: AbortSignal,
-  ctx: { isProManaged: boolean; language: Language; model: string; startTime: number }
+  ctx: { isProManaged: boolean; useAccountCredits: boolean; language: Language; model: string; startTime: number }
 ): Promise<Omit<PromptResult, 'id' | 'itemId' | 'createdAt'>> {
-  const { isProManaged, model, startTime } = ctx;
+  const { isProManaged, useAccountCredits, model, startTime } = ctx;
   const response = await fetch(endpoint, {
     method: 'POST',
     headers,
@@ -809,6 +819,8 @@ async function sendAnalysisRequest(
 
   if (!response.ok) {
     const errText = await response.text().catch(() => '');
+    const creditError = useAccountCredits ? hostedCreditError(response.status, errText) : null;
+    if (creditError) throw creditError;
     let parsedMessage = '';
     try {
       const errObj = JSON.parse(errText);
@@ -823,6 +835,7 @@ async function sendAnalysisRequest(
     throw new Error(`API 请求失败 (${response.status}): ${parsedMessage || errText || response.statusText}`);
   }
 
+  if (useAccountCredits) await readCreditBalance(response.headers);
   const visionQuotaHeader = response.headers?.get?.('X-Remaining-Vision-Quota');
   const imageQuotaHeader = response.headers?.get?.('X-Remaining-Image-Quota');
   const quotaHeader = response.headers?.get?.('X-Remaining-Quota');

@@ -26,6 +26,7 @@ import {
   assembleMasterPrompt,
 } from '@/services/ai';
 import { hasVisionAccess } from '@/services/billing';
+import { useAuth } from '@/hooks/useAuth';
 import { saveUserSettings } from '@/utils/storage';
 import { useI18n } from '@/i18n';
 import { InlineModelPicker } from './InlineModelPicker';
@@ -52,6 +53,7 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
   onOpenLightbox,
 }) => {
   const { t } = useI18n();
+  const { user: accountUser } = useAuth();
 
   const [imageUrl, setImageUrl] = useState<string>('');
   const [prompt, setPrompt] = useState<PromptResult | null>(null);
@@ -61,7 +63,7 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
 
   // Vision Model state with in-situ switching & persistence
   const [currentVisionModel, setCurrentVisionModel] = useState(settings.model || 'deepseek-chat');
-  const canAnalyze = hasVisionAccess(settings);
+  const canAnalyze = hasVisionAccess(settings, Boolean(accountUser));
 
   useEffect(() => {
     if (settings.visionChannels && settings.model !== currentVisionModel) {

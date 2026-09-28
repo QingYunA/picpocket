@@ -23,6 +23,7 @@ export function ratioToDimension(ratio: ImageAspectRatio): ImageDimension {
 
 import { sanitizeHttpHeaderToken, sanitizeHttpUrl } from '../utils/sanitize';
 import { getModelCapability } from '../config/modelCapabilities';
+import { accountHostedHeaders, getAccountAccessToken, hostedCreditError, readCreditBalance } from './hostedAccount';
 import { DEFAULT_HOSTED_PROXY_URL, buildHostedProxyHeaders, isProExpired, syncRemainingQuota, syncDualRemainingQuota } from './billing';
 import { prepareReferenceImageForAi, dataUrlToFile } from '../utils/imageCompression';
 import { formatSafeErrorMessage } from '../utils/errorMessage';
@@ -32,7 +33,11 @@ export { sanitizeHttpHeaderToken, sanitizeHttpUrl };
 export const PRO_MANAGED_IMAGE_MODEL = 'gpt-image-2.5-sunburst';
 
 
-export function resolveImageApiConfig(settings: UserSettings, channelId?: string): {
+/**
+ * 解析生图调用的凭据。无自备 Key 时走托管通道：有效兑换码优先，否则已登录账号按积分计费。
+ * accountSignedIn 由调用方提供（界面用 useAuth，后台用 getAccountAccessToken）。
+ */
+export function resolveImageApiConfig(settings: UserSettings, channelId?: string, accountSignedIn = false): {
   apiKey: string;
   baseUrl: string;
   model: string;
@@ -53,11 +58,11 @@ export function resolveImageApiConfig(settings: UserSettings, channelId?: string
   let isProManaged = false;
   let licenseKey: string | undefined;
 
-  if (!apiKey && isProActive) {
+  if (!apiKey && (isProActive || accountSignedIn)) {
     rawBaseUrl = settings.hostedProxyUrl || DEFAULT_HOSTED_PROXY_URL;
     model = settings.imageModel || PRO_MANAGED_IMAGE_MODEL;
     isProManaged = true;
-    licenseKey = settings.proMembership?.licenseKey;
+    licenseKey = isProActive ? settings.proMembership?.licenseKey : undefined;
   }
 
   const baseUrl = sanitizeHttpUrl(rawBaseUrl);
@@ -155,7 +160,10 @@ async function runSingleGeneration(
   settings: UserSettings,
   signal: AbortSignal
 ): Promise<GeneratedImage[]> {
-  const { apiKey, baseUrl, model: defaultModel, isProManaged, licenseKey } = resolveImageApiConfig(settings, params.channelId);
+  const licenseActive = Boolean(settings.proMembership?.isPro && !isProExpired(settings.proMembership));
+  const accountToken = licenseActive ? null : await getAccountAccessToken();
+  const { apiKey, baseUrl, model: defaultModel, isProManaged, licenseKey } = resolveImageApiConfig(settings, params.channelId, Boolean(accountToken));
+  const useAccountCredits = Boolean(isProManaged && !licenseKey && accountToken);
   const model = (params.model || defaultModel).trim();
 
   const selectedChannel = params.channelId
@@ -172,7 +180,7 @@ async function runSingleGeneration(
   }
 
   if (!isProManaged && !apiKey) {
-    throw new Error('未配置有效生图 API Key，请在设置中配置凭据或输入 Pro 激活码解锁官方托管通道');
+    throw new Error('未配置有效生图 API Key，请在设置中配置凭据，或登录账号使用积分托管');
   }
 
   // 终极前置断言：杜绝 non ISO-8859-1 code point 传入 fetch headers
@@ -201,6 +209,8 @@ async function runSingleGeneration(
 
   if (isProManaged && licenseKey) {
     Object.assign(headers, buildHostedProxyHeaders(licenseKey, 'image-generation'));
+  } else if (useAccountCredits && accountToken) {
+    Object.assign(headers, accountHostedHeaders(accountToken, 'image-generation'));
   } else if (apiKey) {
     headers['Authorization'] = `Bearer ${apiKey}`;
   }
@@ -253,6 +263,7 @@ async function runSingleGeneration(
     prompt,
     aspectRatio: params.aspectRatio,
     dimension,
+    useAccountCredits,
   });
 }
 
@@ -261,9 +272,14 @@ async function sendGenerationRequest(
   headers: Record<string, string>,
   requestBody: BodyInit,
   signal: AbortSignal,
-  ctx: { prompt: string; aspectRatio: ImageGenerationParams['aspectRatio']; dimension: ReturnType<typeof ratioToDimension> }
+  ctx: {
+    prompt: string;
+    aspectRatio: ImageGenerationParams['aspectRatio'];
+    dimension: ReturnType<typeof ratioToDimension>;
+    useAccountCredits: boolean;
+  }
 ): Promise<GeneratedImage[]> {
-  const { prompt, dimension } = ctx;
+  const { prompt, dimension, useAccountCredits } = ctx;
   let response: Response;
   try {
     response = await fetch(endpoint, {
@@ -281,9 +297,12 @@ async function sendGenerationRequest(
 
   if (!response.ok) {
     const errText = await response.text().catch(() => '');
+    const creditError = useAccountCredits ? hostedCreditError(response.status, errText) : null;
+    if (creditError) throw creditError;
     const cleanError = formatSafeErrorMessage(errText, response.status);
     throw new Error(`生图请求失败 (${response.status}): ${cleanError}`);
   }
+  if (useAccountCredits) await readCreditBalance(response.headers);
 
   const visionQuotaHeader = response.headers?.get?.('X-Remaining-Vision-Quota');
   const imageQuotaHeader = response.headers?.get?.('X-Remaining-Image-Quota');

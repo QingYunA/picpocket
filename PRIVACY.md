@@ -1,132 +1,27 @@
 # Privacy Policy for PicPocket
 
-**Last Updated: September 18, 2026**  
-**Effective Date: September 18, 2026**
+The authoritative, up-to-date privacy policy is published at **https://www.picpocket.top/privacy**. This file is a short summary; if the two ever differ, the website version applies.
 
-PicPocket ("we", "our", or "the Extension") is committed to protecting your privacy. This Privacy Policy explains how PicPocket handles your information when you use our Chrome Extension.
+**Last updated: September 28, 2026**
 
-PicPocket is designed with a **Privacy-First, Local-First** architecture. We do **not** collect, store, sell, or transmit any of your personal browsing history, visual data, or credentials to external servers operated by us.
-
----
-
-## 1. Information We Access and Process
-
-PicPocket operates entirely inside your local browser environment.
-
-### A. Web Page Content & Images
-- **Purpose**: To allow you to capture, crop, and collect design reference images from web pages you visit into your personal sidepanel moodboard.
-- **Processing**: When you hover over an image to collect it, or use the interactive screen snippet tool, the image binary/data is extracted locally.
-- **Storage**: All collected images, tags, notes, and color palettes are stored directly in your browser's local **IndexedDB** storage. **No images are uploaded to any developer-owned or third-party centralized server.**
-
-### B. AI Vision & API Keys (BYOK - Bring Your Own Key)
-- **Purpose**: To provide image-to-prompt visual reverse engineering (e.g., extracting subject, style, lighting, and composition) and AI image generation.
-- **Storage**: Your custom API keys (e.g., DeepSeek, OpenAI, or other compatible endpoints) and base URLs are stored strictly in your browser's local `chrome.storage.local`. They are never synced or transmitted to our servers.
-- **Transmission**: When you trigger visual analysis or image generation, requests are dispatched directly from your browser client to the corresponding AI service provider's endpoint that you have configured. Please refer to your respective AI provider's privacy policy for their data handling terms.
-
-### C. Permissions Used
-- `sidePanel`: Used to display the PicPocket workspace, moodboard waterfall, and prompt library seamlessly alongside your active webpage.
-- `storage` & `unlimitedStorage`: Used to persist your collected images, custom tags, folder hierarchies, and client settings in local IndexedDB without browser quota constraints.
-- `activeTab`: Used to inspect images on the current active tab only when you interact with the extension (e.g., hovering on images or collecting design inspiration).
-- `contextMenus`: Used to provide quick-action right-click menus (e.g., "Collect Image to PicPocket", "Deconstruct Prompt with AI").
-- `<all_urls>` (Host Permission): Required to enable content scripts to extract image blobs, detect image dimensions, and capture images across arbitrary websites where you choose to collect design inspiration.
+- **Your library stays local.** Saved images, prompts, tags, folders and settings are stored in your browser (IndexedDB and `chrome.storage.local`). We don't run a server that stores them, and signing in doesn't upload them.
+- **Your own API key goes straight to your provider.** With your own key, analysis and generation requests go directly from your browser to the AI endpoint you configured.
+- **Hosted quota (optional).** If you use a redeem code instead of your own key, requests pass through our server (Supabase Edge Functions) to an upstream AI provider. Images, prompts and results are relayed in memory and not stored.
+- **Account sign-in (optional).** You can sign in with Google, GitHub or an emailed one-time code. We keep an account record: email address, display name, avatar URL, sign-in method, that provider's user ID, and created / last-sign-in times. For Google we request only the `openid`, `email` and `profile` scopes. This information is used only to sign you in and provide account features, never for advertising, and is processed only by Supabase, Resend (sign-in emails) and the provider you choose. PicPocket's use and transfer of information received from Google APIs adheres to the [Google API Services User Data Policy](https://developers.google.com/terms/api-services-user-data-policy), including the Limited Use requirements.
+- **No tracking, no selling.** No analytics, crash-reporting or advertising SDKs. We never sell your data or use it for advertising, credit or lending decisions.
+- **Deletion.** Delete anything in the side panel at any time; uninstalling removes all local data. To delete your account or a redeem-code record, email serein7z@163.com and we will delete it within 30 days.
 
 ---
 
-## 2. Information We Do NOT Collect
+# PicPocket 隐私权政策（摘要）
 
-- We do **NOT** collect your name, email address, phone number, physical address, or identity documents.
-- We do **NOT** track, monitor, or record your web browsing history or search queries.
-- We do **NOT** use tracking cookies, analytics SDKs (e.g., Google Analytics, Mixpanel), or fingerprinting mechanisms.
-- We do **NOT** sell, rent, monetize, or trade any user data to data brokers, advertising networks, or third parties.
-- We do **NOT** use or transfer your data for creditworthiness, lending, or personalized advertising purposes.
+完整且最新的隐私政策以 **https://www.picpocket.top/privacy** 为准。本文件只是摘要，两者如有出入，以网站版本为准。
 
----
+**最近更新：2026 年 9 月 28 日**
 
-## 3. Data Retention and Deletion
-
-All data created within PicPocket resides in your local browser profile:
-- You can delete any individual image, folder, tag, or prompt at any time directly through the extension's user interface.
-- You can clear all extension data at any time via Chrome's Settings (`chrome://settings/clearBrowserData`) or by uninstalling the extension. Once uninstalled, all local IndexedDB database records and cached images are permanently deleted by Chrome.
-
----
-
-## 4. Third-Party Services
-
-When you use AI analysis or image generation features:
-- Requests are sent directly from your device to the API endpoint you specified (such as DeepSeek API or OpenAI API).
-- We do not operate an intermediary proxy or relay server; your prompt queries and image payloads are transmitted directly between your browser and the AI provider under your own API credentials.
-
----
-
-## 5. Changes to This Privacy Policy
-
-We may update this Privacy Policy from time to time to reflect new features or regulatory requirements. Any updates will be posted to this repository with a revised "Last Updated" date.
-
----
-
-## 6. Contact Us
-
-If you have any questions or suggestions regarding this Privacy Policy or PicPocket's data practices, please open an issue on our GitHub repository:
-- **GitHub**: [https://github.com/QingYunA/picpocket](https://github.com/QingYunA/picpocket)
-- **Repository Issues**: [https://github.com/QingYunA/picpocket/issues](https://github.com/QingYunA/picpocket/issues)
-
----
----
-
-# PicPocket 隐私权政策 (中文版)
-
-**最近更新日期：2026 年 9 月 18 日**  
-**生效日期：2026 年 9 月 18 日**
-
-PicPocket（以下简称“我们”或“本扩展程序”）非常重视保护您的个人隐私。本《隐私权政策》旨在向您说明当您使用 PicPocket Chrome 扩展程序时，我们如何处理您的信息。
-
-PicPocket 采用 **“隐私优先、本地优先 (Local-First)”** 的产品架构。我们**绝不会**向由我们运营的外部服务器收集、存储、出售或传输您的任何个人浏览历史、图片资产或账号凭据。
-
----
-
-### 1. 我们访问与处理的信息
-
-PicPocket 的所有核心功能均在您的浏览器本地客户端内部运行：
-
-#### A. 网页内容与图片素材
-- **用途**：允许您在浏览网页时，将灵感设计图片、局部框选截图一键收纳进侧边栏本地素材库。
-- **处理方式**：当您将鼠标悬停在网页大图上点击采集，或使用框选截屏工具时，仅在本地提取该图片的二进制/数据内容。
-- **存储机制**：所有采集的图片、分类标签、笔记与色彩卡片均直接持久化保存在您本机的浏览器 **IndexedDB** 数据库中。**任何图片均不会上传至开发者或任何第三方的中心化服务器。**
-
-#### B. AI 视觉反推与 API 密钥 (BYOK)
-- **用途**：提供将图片自动拆解为四维结构化提示词（主体、风格、光影、构图）及 AI 生图功能。
-- **存储机制**：您自主配置的第三方大模型 API Key（如 DeepSeek、OpenAI 或其他兼容接口）及自定义 API Base URL 均严格保存在本地 `chrome.storage.local` 中，绝不回传至我们的服务器。
-- **传输机制**：当您触发视觉反推或生图时，网络请求由您的浏览器客户端直接发送至您所配置的官方 API 服务端点。相关数据处理受您所使用的对应 AI 服务商隐私政策约束。
-
-#### C. 所申请权限说明
-- `sidePanel`：用于在网页侧边常驻呼出 PicPocket 工作台、瀑布流图库与提示词库；
-- `storage` 与 `unlimitedStorage`：用于突破浏览器默认配额限制，将您采集的高清素材与提示词稳定持久化保存在本地 IndexedDB；
-- `activeTab`：仅在您明确触发交互（如悬停识别采集）时，用于读取当前标签页内的图片元素尺寸与内容；
-- `contextMenus`：用于在浏览器网页右键菜单中提供“采集到 PicPocket”等便捷捷径；
-- `<all_urls>`（主机权限）：用于确保扩展能在您所浏览的各类灵感设计站点上正常提取图片资源。
-
----
-
-### 2. 我们绝不收集的信息
-
-- 我们**不收集**您的真实姓名、电子邮箱、手机号、实体住址或任何身份证明文件；
-- 我们**不追踪、不记录、不监视**您的任何网页浏览历史记录或搜索引擎检索内容；
-- 我们**不集成**任何第三方追踪 SDK（如 Google Analytics 等），不进行用户行为打点与设备指纹追踪；
-- 我们**绝不出售、出租、转让或变现**任何用户数据；
-- 我们**绝不**将您的数据用于征信评估、信贷审查或个性化商业广告投放。
-
----
-
-### 3. 数据留存与彻底删除
-
-在 PicPocket 中生成的所有数据均完全受您自主控制：
-- 您可随时在侧边栏扩展界面中手动删除任意单张图片、文件夹、标签或提示词；
-- 您亦可通过 Chrome 设置（`chrome://settings/clearBrowserData`）或直接卸载本扩展程序，即可一键彻底销毁本机 IndexedDB 中存储的所有图库数据及缓存。
-
----
-
-### 4. 政策变更与联系方式
-
-若本政策发生调整，我们将在 GitHub 开源仓库发布最新修订版本。如您对本隐私权政策有任何疑问、建议或合规反馈，请随时通过以下渠道联系我们：
-- **GitHub 项目主页**：[https://github.com/QingYunA/picpocket](https://github.com/QingYunA/picpocket)
-- **提交 Issue**：[https://github.com/QingYunA/picpocket/issues](https://github.com/QingYunA/picpocket/issues)
+- **灵感库只存在本地。** 收藏的图片、提示词、标签、文件夹和设置保存在浏览器中（IndexedDB 与 `chrome.storage.local`）。我们没有存储这些内容的服务器，登录也不会上传它们。
+- **自己的 API Key 直连服务商。** 使用自己的 Key 时，反推和生图请求直接从浏览器发往你配置的 AI 接口。
+- **托管额度（可选）。** 使用兑换码代替自己的 Key 时，请求会经过我们的服务器（Supabase Edge Functions）转发给上游 AI 服务商。图片、提示词和结果只在内存中中转，不会保存。
+- **账号登录（可选）。** 可使用 Google、GitHub 或邮箱验证码登录。我们保留账号记录：邮箱地址、显示名称、头像地址、登录方式、该登录方式下的用户 ID，以及创建和最近登录时间。Google 登录只申请 `openid`、`email`、`profile` 权限。这些信息只用于登录和提供账号功能，绝不用于广告，仅由 Supabase、Resend（发送登录邮件）和你选择的登录服务商处理。PicPocket 对从 Google API 获取的信息的使用和传输，遵守 [Google API 服务用户数据政策](https://developers.google.com/terms/api-services-user-data-policy)，包括其中的“限制使用”要求。
+- **不追踪，不出售。** 不集成任何统计、崩溃上报或广告 SDK；绝不出售数据，也不将其用于广告、征信或借贷决策。
+- **删除。** 可随时在侧边栏中删除任何内容，卸载扩展会删除全部本地数据。如需注销账号或删除兑换码记录，请发邮件至 serein7z@163.com，我们会在 30 天内删除。

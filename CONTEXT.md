@@ -130,17 +130,53 @@
 
 ---
 
-- **Pure Free & BYOK Mode (纯净免费与自备 Key 模式)**
-  回归工具纯粹性。前端全量隐藏所有商业化 Pro 徽章、付费订阅套餐及 PayPal 支付弹窗。用户自备 API Key（如 DeepSeek、OpenAI、SiliconFlow、CheaperInference 等）即可完全免费、无限制享受视觉反推、提示词库管理与 AI 生图能力。
+### 8. 渠道、托管模型与积分计费 (Channels, Hosted Models & Credits)
+
+- **BYOK Channel (自备 Key 渠道)**
+  用户自己配置的视觉反推 / 生图渠道（Base URL + API Key + 模型），请求由浏览器直连该渠道，**不消耗积分**，也不需要账号。核心功能在只用 BYOK 渠道时完全免费可用，扩展对托管服务零依赖。
+
+- **PicPocket Official Channel (PicPocket 官方渠道)**
+  内置渠道（`PICPOCKET_CHANNEL_ID = 'picpocket'`），无需配置 Key，使用 PicPocket 精选的托管模型，按账号积分（或旧版兑换码额度）计费。请求经 Chrome Runtime IPC 交给后台 Service Worker，再发往托管网关 `ai-proxy`。
+
+- **Channel Mode (渠道模式)**
+  由当前选中渠道推导出的运行模式（`ChannelMode`）：`picpocket`（走官方托管）、`own`（走自己的渠道）、`missing-key`（选中了自己的渠道但没填 Key）。铁律：选中渠道缺 Key 时**绝不悄悄改走托管**，界面提示去填 Key；从未选过渠道时，有可用 Key 的自备渠道优先，否则用 PicPocket。`migrateToPicpocketChannel` 一次性把旧版「缺 Key 时悄悄走托管」的用户切到 PicPocket 渠道，保持其原有实际行为。
+
+- **Hosted Model Catalog (托管模型目录)**
+  托管模式可选的反推 / 生图模型（`HOSTED_VISION_MODELS`、`HOSTED_IMAGE_MODELS`，`src/config/hostedModels.ts`），与服务端 `ai-proxy` 的目录保持一致；服务端只放行目录内的模型，路由与计价都在服务端完成。**价格不在前端保存**，由服务端 `get-entitlement` 的 `pricing` 字段下发，界面据此展示，避免前后端漂移。
+
+- **Credits (积分)**
+  托管服务的计价单位（约 1 积分 ≈ 0.01 美元上游成本）。每个账号每月赠送 30 积分；订阅套餐（Plus / Pro / Max）按月发放，**未用完的订阅积分在周期结束时过期**；积分包一次性购买、12 个月有效；优先使用即将到期的积分。图片反推按实际 token 计费（每次 1～8 积分，随所选模型），生图按张固定计费（约 6～20 积分，支持 4K 的模型最高 32）。因服务端原因失败的请求，积分自动退回。
+
+- **Credit Display (积分展示)**
+  积分余额与单次预计消耗展示在**生成 / 反推按钮旁**，侧边栏与 PicPocket 画布体验一致：余额胶囊（点击进入设置页「账号与套餐」）+ 按钮上的消耗（多张时按张数折算；有 4K 价的模型显示「标准～4K」区间）；余额低于最低消耗时标红。仅在官方渠道下显示，自备 Key 的渠道不显示也不请求余额。共用逻辑在 `creditPricing.ts` 与 `useHostedCredits`，两端只各自实现外观（`CreditBalanceButton` / `canvas-credits.tsx`）。
+
+- **Insufficient Credits Prompt (积分不足与去升级)**
+  网关返回 402（`insufficient_credits`）时，扩展生成带有余额与所需积分的可读错误，并在报错旁给出「去升级」入口，跳转设置页 `#/account`。因为错误会经 `String(err)`、Chrome 消息与落库的任务记录才到达界面，Error 子类与错误码都带不过去，所以在消息开头附一个不可见标记（U+2063，`markInsufficientCredits` / `isInsufficientCreditsMessage`）来识别。
+
+- **Redeem Code (兑换码)**
+  账号体系上线前发放的托管额度，在标注的有效期内仍然可用；某类请求的兑换码额度用完后，已登录用户改用账号积分。
 
 ---
 
-### 9. Google 身份鉴权与用户态 (Google Identity & Profile)
+### 9. 账号、权益与订阅 (Account, Entitlement & Subscription)
 
-- **Chrome Native Google Auth (Chrome 原生 Google 鉴权)**
-  基于 Chrome MV3 原生 `chrome.identity` API（`getAuthToken` / `launchWebAuthFlow`），实现免后端依赖的单点授权登录。
-- **User Profile State (用户身份凭据与会话)**
-  前端持久化当前登录用户的 Google 邮箱、公开头像与昵称。在 Header 右侧呈现轻量用户头像与状态菜单，为未来多设备云端备份及协同提供无缝身份载体。
+- **Account Sign-in (账号登录)**
+  可选，支持 Google、GitHub 与邮箱 6 位验证码，基于 Supabase Auth（PKCE）。Google 登录改由官网 `picpocket.top` 页面完成（用 Google Identity Services 取得 ID Token，再由扩展 `signInWithIdToken` 换取会话），使 Google 账号选择页显示的是 picpocket.top 而不是 Supabase 域名。自备 Key 的功能无需登录。
+
+- **Session Sharing (会话共享)**
+  登录会话持久化在 `chrome.storage.local` 的 `picpocket-auth`，经 `authStorage` 做「`chrome.storage.local` → `localStorage` → 内存」三层降级，侧边栏、工作台、设置页、后台与 PicPocket 画布共用同一登录状态（`useAuth`），任一页面登录或退出，其他页面立即同步。
+
+- **Entitlement (账号权益)**
+  当前账号的套餐、积分余额、积分明细（各批次与到期时间）与托管计价，由 `get-entitlement` 返回（`useEntitlement`）。窗口重新获得焦点（从付款页返回）、托管调用回报新余额（`CREDIT_BALANCE_KEY`）时自动刷新；付款后短时间轮询直到到账。
+
+- **Plans & Credit Packs (套餐与积分包)**
+  免费（30 积分/月）、Plus（400）、Pro（1100）、Max（3000），可按月或按年订阅；积分包 300 / 1000 两档。价格与积分公开于官网 `/pricing`，服务条款见 `/terms`，隐私政策见 `/privacy`。
+
+- **Payment (支付)**
+  由 Waffo Pancake（银行卡 / Apple Pay / Google Pay，Waffo 作为商户主体处理税费与争议）和 PayPal 处理，扩展不接触银行卡信息。订阅自动续费，可随时在「账号与套餐」取消续费（保留到已付费周期结束）；PayPal 订阅取消后不能直接恢复或切换套餐。付款结果以支付回调为准，界面随后刷新权益。
+
+- **Hosted Backend Boundary (托管后端边界)**
+  账号、积分、支付运行在独立的私有后端（`picpocket-cloud`），扩展只通过 `docs/api-contract.md` 约定的 HTTP 接口与之通信，扩展源码不含后端逻辑。
 
 ---
 

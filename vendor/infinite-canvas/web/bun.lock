@@ -25,7 +25,7 @@
         "localforage": "^1.10.0",
         "lucide-react": "^1.16.0",
         "motion": "^12.38.0",
-        "nanoid": "^5.1.11",
+        "nanoid": "^6.0.1",
         "radix-ui": "^1.4.3",
         "react": "19.2.5",
         "react-dom": "19.2.5",
@@ -1425,7 +1425,7 @@
 
     "mute-stream": ["mute-stream@3.0.0", "https://registry.npmmirror.com/mute-stream/-/mute-stream-3.0.0.tgz", {}, "sha512-dkEJPVvun4FryqBmZ5KhDo0K9iDXAwn08tMLDinNdRBNPcYEDiWYysLcc6k3mjTMlbP9KyylvRpd4wFtwrT9rw=="],
 
-    "nanoid": ["nanoid@5.1.11", "https://registry.npmmirror.com/nanoid/-/nanoid-5.1.11.tgz", { "bin": { "nanoid": "bin/nanoid.js" } }, "sha512-v+KEsUv2ps74PaSKv0gHTxTCgMXOIfBEbaqa6w6ISIGC7ZsvHN4N9oJ8d4cmf0n5oTzQz2SLmThbQWhjd/8eKg=="],
+    "nanoid": ["nanoid@6.0.1", "", { "bin": { "nanoid": "bin/nanoid.js" } }, "sha512-3wVS3i51pE2pi1k5FFL/95BGfVS0kSsvDVuGXHOtxox/TywUmtgq+3qiTOTbs9J7KfHaXPiN171k/A6dBnaXFw=="],
 
     "negotiator": ["negotiator@1.0.0", "https://registry.npmmirror.com/negotiator/-/negotiator-1.0.0.tgz", {}, "sha512-8Ofs/AUQh8MaEcrlq5xOX0CQ9ypTF5dl78mjlMNfOK08fzpgTHQRQPBxcPlEtIw0yRpws+Zo/3r+5WRby7u3Gg=="],
 

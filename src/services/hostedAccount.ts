@@ -95,6 +95,7 @@ export function hostedCreditError(status: number, body: string, language: Langua
   }
   if (status === 429 || parsed.code === 'rate_limited') return new Error(t('billing.hostedErrors.rateLimited'));
   if (parsed.code === 'unsupported_model') return new Error(t('billing.hostedErrors.unsupportedModel'));
+  if (parsed.code === 'edit_unsupported') return new Error(t('billing.hostedErrors.editUnsupported'));
   if (status === 503) return new Error(t('billing.hostedErrors.unavailable'));
   return null;
 }

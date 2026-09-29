@@ -179,6 +179,7 @@ export const en: Translations = {
       insufficient: 'Not enough credits: balance {balance}, this request needs {required}. Upgrade your plan or buy a credit pack in Settings → Account & Plans',
       rateLimited: 'Too many requests. Please try again shortly.',
       unsupportedModel: 'This model is not available with hosted credits. Choose another model or use your own API key.',
+      editUnsupported: 'This model does not support reference images. Use a GPT Image model, or remove the reference image and try again.',
       unavailable: 'The hosted service is temporarily unavailable. Try again later or use your own API key.',
       needCredentials: 'Sign in to use the PicPocket channel (free monthly credits), or switch to your own channel in Settings.',
       channelMissingKey: 'The "{name}" channel has no API key yet. Add one in Settings, or switch to the PicPocket channel.',

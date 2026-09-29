@@ -140,7 +140,6 @@ export default function App() {
   const [isProModalOpen, setIsProModalOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const { user: accountUser } = useAuth();
-  const { entitlement } = useEntitlement(accountUser?.id ?? null);
 
   // In-context filing pill state (when collecting into a specific folder)
   const [pendingCollectedIds, setPendingCollectedIds] = useState<number[]>([]);
@@ -180,8 +179,14 @@ export default function App() {
     hoverBadgePromptDismissed: false,
     contextMenuMode: 'direct-analyze',
   });
-  // 只有 PicPocket 官方渠道按积分计费，自带 Key 的渠道不显示余额
-  const creditBalance = accountUser && entitlement && usesPicpocketCredits(settings) ? entitlement.balance : null;
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  // 只有 PicPocket 官方渠道按积分计费：自带 Key 的渠道既不显示余额，也不请求权益；设置加载完成前不判定，避免闪现
+  const showsCredits = Boolean(accountUser) && settingsLoaded && usesPicpocketCredits(settings);
+  const { entitlement } = useEntitlement(showsCredits ? accountUser?.id ?? null : null);
+  const creditBalance = showsCredits && entitlement ? entitlement.balance : null;
+  const accountLabel = accountUser
+    ? [accountUser.email || accountUser.name, creditBalance !== null ? t('channels.balance', { balance: creditBalance }) : ''].filter(Boolean).join(' · ')
+    : t('account.signIn');
 
   // Reactive IndexedDB query
   const items = useLiveQuery(() => db.items.orderBy('createdAt').reverse().toArray()) || [];
@@ -199,6 +204,7 @@ export default function App() {
   useEffect(() => {
     getUserSettings().then((s) => {
       setSettings(s);
+      setSettingsLoaded(true);
     });
 
     if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
@@ -591,11 +597,8 @@ export default function App() {
                 <button
                   onClick={() => setIsAccountOpen(true)}
                   className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 transition-colors cursor-pointer shrink-0"
-                  title={
-                    accountUser
-                      ? [accountUser.email || accountUser.name, creditBalance !== null && t('channels.balance', { balance: creditBalance })].filter(Boolean).join(' · ')
-                      : t('account.signIn')
-                  }
+                  title={accountLabel}
+                  aria-label={accountLabel}
                 >
                   {accountUser ? (
                     <AccountAvatar user={accountUser} sizeClass="h-6 w-6" textClass="text-[11px]" />

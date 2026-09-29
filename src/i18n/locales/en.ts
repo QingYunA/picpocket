@@ -128,6 +128,7 @@ export const en: Translations = {
     pastDue: 'Renewal payment failed. Please update your payment method.',
     managedBy: 'Paid with {provider}',
     resubscribeLater: 'You can subscribe again after it ends',
+    upgradeCta: 'Upgrade',
     cancel: 'Cancel renewal',
     resume: 'Resume renewal',
     cancelConfirmTitle: 'Cancel auto-renewal?',

@@ -69,6 +69,7 @@ import { readFileAsDataUrl } from '@/utils/file';
 import { downloadBlobOrUrl } from '@/services/storageBackup';
 import { openInfiniteCanvasPage } from '@/utils/navigation';
 import { formatSafeErrorMessage, readApiErrorMessage } from '@/utils/errorMessage';
+import { UpgradeCreditsButton } from '@/components/UpgradeCreditsButton';
 import { useI18n } from '@/i18n';
 import { ChannelModelPicker } from './ChannelModelPicker';
 import { currentChannelModel, selectChannelModel } from '@/config/channelSelection';
@@ -1147,6 +1148,7 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
               <div className="flex-1 leading-tight line-clamp-3 select-text">
                 {formatSafeErrorMessage(errorMsg)}
               </div>
+              <UpgradeCreditsButton message={errorMsg} />
             </div>
           )}
 
@@ -1318,6 +1320,7 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
                     <span className="break-words leading-tight">
                       {formatSafeErrorMessage(task.error || t('generator.failed'))}
                     </span>
+                    <UpgradeCreditsButton message={task.error} />
                   </div>
                 ) : (
                   <>

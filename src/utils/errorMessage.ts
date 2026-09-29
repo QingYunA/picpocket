@@ -79,6 +79,22 @@ export function readApiErrorMessage(value: unknown): string {
 }
 
 /**
+ * 「积分不足」错误的不可见标记（U+2063 隐形分隔符）。
+ * 错误消息会经 String(err) / chrome.runtime 消息 / 任务记录落库后才到达 UI，Error 子类与错误码都带不过去，
+ * 而按本地化文案反查又会随语言与措辞失效，所以在消息开头附一个不可见字符，UI 据此显示「去升级」入口。
+ * 它不是空白字符，能穿过 formatSafeErrorMessage 的清洗与截断。
+ */
+const INSUFFICIENT_CREDITS_MARKER = '\u2063';
+
+export function markInsufficientCredits(message: string): string {
+  return `${INSUFFICIENT_CREDITS_MARKER}${message}`;
+}
+
+export function isInsufficientCreditsMessage(message: unknown): boolean {
+  return typeof message === 'string' && message.includes(INSUFFICIENT_CREDITS_MARKER);
+}
+
+/**
  * 全局格式化安全错误信息：无论传入的是什么异常，输出保证人话、无 HTML、且绝对不超过 100 字符。
  */
 export function formatSafeErrorMessage(rawError: unknown, status?: number): string {

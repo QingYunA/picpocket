@@ -14,6 +14,7 @@ import {
   resolveHostedCredential,
   CREDIT_BALANCE_KEY,
 } from '../hostedAccount';
+import { isInsufficientCreditsMessage } from '../../utils/errorMessage';
 import type { UserSettings } from '../../types';
 
 const signedIn = () => vi.mocked(supabase.auth.getSession).mockResolvedValue({ data: { session: { access_token: 'jwt-1' } }, error: null } as any);
@@ -98,5 +99,12 @@ describe('hosted credit responses', () => {
     expect(hostedCreditError(400, JSON.stringify({ code: 'unsupported_model' }))?.message).toMatch(/模型/);
     expect(hostedCreditError(503, '{}')?.message).toMatch(/暂不可用/);
     expect(hostedCreditError(500, 'boom')).toBeNull();
+  });
+
+  it('only tags the insufficient-credits error so the UI can offer an upgrade action', () => {
+    const insufficient = hostedCreditError(402, JSON.stringify({ code: 'insufficient_credits', balance: 3, required: 8 }), 'en');
+    expect(isInsufficientCreditsMessage(insufficient?.message)).toBe(true);
+    expect(isInsufficientCreditsMessage(hostedCreditError(429, '{}', 'en')?.message)).toBe(false);
+    expect(isInsufficientCreditsMessage(hostedCreditError(503, '{}', 'en')?.message)).toBe(false);
   });
 });

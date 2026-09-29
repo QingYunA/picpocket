@@ -49,7 +49,6 @@ import {
 } from '@/db';
 import {
   runForegroundGenerationTask,
-  resolveImageApiConfig,
 } from '@/services/imageGenerator';
 import { downloadBlobOrUrl } from '@/services/storageBackup';
 import { openOptionsPage } from '@/utils/navigation';
@@ -91,7 +90,8 @@ import {
 } from './types';
 import { dataUrlToBlob } from '@/db';
 import { analyzeImageWithAI } from '@/services/ai';
-import { hasVisionAccess } from '@/services/billing';
+import { channelAccessBlock } from '@/services/billing';
+import { useAuth } from '@/hooks/useAuth';
 import { calculateSplitPiecePlacement, type SplitResultPiece } from './utils/canvasSplitUtils';
 import type { CanvasImageAngleParams } from './utils/canvasAngleUtils';
 import type { CanvasProject } from './types';
@@ -110,6 +110,10 @@ import type {
 
 export const App: React.FC = () => {
   const { t, language } = useI18n();
+  const { user: accountUser } = useAuth();
+  // 供依赖数组为空的回调读取最新登录状态
+  const accountSignedInRef = useRef(false);
+  accountSignedInRef.current = Boolean(accountUser);
 
   // 1. 主题状态 (浅色 / 暗色双模，持久化)
   const [theme, setTheme] = useState<CanvasTheme>(() => {
@@ -1338,9 +1342,9 @@ export const App: React.FC = () => {
         return;
       }
 
-      const apiConfig = resolveImageApiConfig(settings);
-      if (!apiConfig.isProManaged && !apiConfig.apiKey) {
-        setErrorMsg(t('generator.noApiKeyHint'));
+      const imageBlock = channelAccessBlock(settings, 'image', accountSignedInRef.current);
+      if (imageBlock) {
+        setErrorMsg(t(imageBlock.key, imageBlock.params));
         return;
       }
 
@@ -1466,9 +1470,9 @@ export const App: React.FC = () => {
 
     if (!activePrompt || isGenerating) return;
 
-    const apiConfig = resolveImageApiConfig(settings);
-    if (!apiConfig.isProManaged && !apiConfig.apiKey) {
-      setErrorMsg(t('generator.noApiKeyHint'));
+    const imageBlock = channelAccessBlock(settings, 'image', Boolean(accountUser));
+    if (imageBlock) {
+      setErrorMsg(t(imageBlock.key, imageBlock.params));
       return;
     }
 
@@ -1785,8 +1789,9 @@ export const App: React.FC = () => {
 
   // 视觉反推提示词
   const handleReversePrompt = async (img: GeneratedImage) => {
-    if (!hasVisionAccess(settings)) {
-      setErrorMsg(t('inspector.requireApiKey'));
+    const visionBlock = channelAccessBlock(settings, 'vision', Boolean(accountUser));
+    if (visionBlock) {
+      setErrorMsg(t(visionBlock.key, visionBlock.params));
       return;
     }
     setFeedbackMsg(t('workbench.reversePrompt') + '...');

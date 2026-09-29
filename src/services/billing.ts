@@ -1,4 +1,5 @@
 import { getUserSettings, saveUserSettings } from '../utils/storage';
+import { imageChannelMode, visionChannelMode } from '../config/channelMode';
 import type { ProMembership, UserSettings } from '../types';
 import { supabase, isSupabaseConfigured, getSupabaseConfig } from './supabase';
 import type { TranslationKey } from '../i18n';
@@ -156,32 +157,44 @@ export async function syncRemainingQuota(newQuota: number): Promise<void> {
 }
 
 /**
- * 检查当前设置是否具备视觉反推权限（自备 Key 或有效 Pro 反推托管算力）
+ * 兑换码能否用于这类托管调用：未过期、带有兑换码本身，且对应额度仍有剩余。
+ * 额度用尽时返回 false，已登录用户随即改用账号积分。
  */
-export function hasVisionAccess(settings?: UserSettings | null): boolean {
-  if (!settings) return false;
-  if (settings.apiKey && settings.apiKey.trim()) return true;
-  if (!isProActive(settings)) return false;
-  const mem = settings.proMembership;
-  if (mem?.visionQuotaRemaining !== undefined) {
-    return mem.visionQuotaRemaining > 0;
-  }
-  return true;
+export function licenseUsableFor(settings: UserSettings | null | undefined, requestType: HostedRequestType): boolean {
+  const mem = settings?.proMembership;
+  if (!mem?.isPro || !mem.licenseKey || isProExpired(mem)) return false;
+  const remaining = requestType === 'vision' ? mem.visionQuotaRemaining : mem.imageQuotaRemaining;
+  return remaining === undefined || remaining > 0;
+}
+
+/** 当前渠道不能直接使用的原因，界面据此给出具体提示 */
+export interface ChannelAccessBlock {
+  key: TranslationKey;
+  params?: Record<string, string>;
 }
 
 /**
- * 检查当前设置是否具备 AI 生图权限（自备生图/通用 Key 或有效 Pro 生图托管算力）
+ * 当前反推 / 生图渠道能否直接使用；可用时返回 null。
+ * 自己的渠道要有 Key；PicPocket 渠道要有可用兑换码或已登录账号（积分是否足够由网关判定）。
  */
-export function hasImageGenAccess(settings?: UserSettings | null): boolean {
-  if (!settings) return false;
-  if (settings.imageApiKey && settings.imageApiKey.trim()) return true;
-  if (settings.apiKey && settings.apiKey.trim()) return true;
-  if (!isProActive(settings)) return false;
-  const mem = settings.proMembership;
-  if (mem?.imageQuotaRemaining !== undefined) {
-    return mem.imageQuotaRemaining > 0;
-  }
-  return true;
+export function channelAccessBlock(
+  settings: UserSettings,
+  capability: 'vision' | 'image',
+  accountSignedIn = false
+): ChannelAccessBlock | null {
+  const mode = capability === 'vision' ? visionChannelMode(settings) : imageChannelMode(settings);
+  if (mode.kind === 'missing-key') return { key: 'billing.hostedErrors.channelMissingKey', params: { name: mode.channel.name } };
+  if (mode.kind === 'own') return null;
+  const licenseUsable = licenseUsableFor(settings, capability === 'vision' ? 'vision' : 'image-generation');
+  return licenseUsable || accountSignedIn ? null : { key: 'billing.hostedErrors.needCredentials' };
+}
+
+export function hasVisionAccess(settings?: UserSettings | null, accountSignedIn = false): boolean {
+  return settings ? !channelAccessBlock(settings, 'vision', accountSignedIn) : false;
+}
+
+export function hasImageGenAccess(settings?: UserSettings | null, accountSignedIn = false): boolean {
+  return settings ? !channelAccessBlock(settings, 'image', accountSignedIn) : false;
 }
 
 /** 激活失败原因，界面通过 getLicenseErrorKey 映射为本地化文案 */

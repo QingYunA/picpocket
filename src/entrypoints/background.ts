@@ -10,6 +10,7 @@ import { getTranslation } from '../i18n';
 import { handleExternalSignIn, handleSignInTabRemoved, isGoogleIdTokenMessage } from '../services/googleWebSignIn';
 import {
   getUserSettings,
+  saveUserSettings,
   onLanguageChange,
   setActiveGeneration,
   clearActiveGeneration,
@@ -20,6 +21,7 @@ import {
   getActiveFolder,
   setPendingAutoAnalyzeItemId,
 } from '../utils/storage';
+import { migrateToPicpocketChannel } from '../config/channelMode';
 import {
   generateImagesWithReport,
   finalizeGenerationTaskSuccess,
@@ -103,6 +105,14 @@ export default defineBackground(() => {
 
   // Also initialize on startup
   updateContextMenus();
+
+  // 一次性迁移：选中渠道没填 Key 的老用户（原本实际在走托管）切到 PicPocket 渠道，保持原有行为
+  getUserSettings()
+    .then((settings) => {
+      const patch = migrateToPicpocketChannel(settings);
+      return patch ? saveUserSettings(patch) : undefined;
+    })
+    .catch((err) => console.warn('PicPocket channel migration failed:', err));
 
   // Listen for storage changes to update context menus immediately
   chrome.storage?.onChanged?.addListener((changes, areaName) => {

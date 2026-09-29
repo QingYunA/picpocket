@@ -26,7 +26,6 @@ import type {
 import {
   runForegroundGenerationTask,
   ratioToDimension,
-  resolveImageApiConfig,
 } from '@/services/imageGenerator';
 import { analyzeImageWithAI } from '@/services/ai';
 import { useForegroundGeneration } from '@/hooks/useForegroundGeneration';
@@ -37,7 +36,8 @@ import {
   type GenerationFormRequest,
   type ReferenceLoaders,
 } from '@/utils/generationRetry';
-import { hasVisionAccess } from '@/services/billing';
+import { channelAccessBlock } from '@/services/billing';
+import { useAuth } from '@/hooks/useAuth';
 import { getModelCapability } from '@/config/modelCapabilities';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
@@ -55,6 +55,7 @@ import {
   dataUrlToBlob,
 } from '@/db';
 import {
+  getUserSettings,
   saveUserSettings,
   getInitialGeneratorDraft,
   getGeneratorDraft,
@@ -69,8 +70,8 @@ import { downloadBlobOrUrl } from '@/services/storageBackup';
 import { openInfiniteCanvasPage } from '@/utils/navigation';
 import { formatSafeErrorMessage, readApiErrorMessage } from '@/utils/errorMessage';
 import { useI18n } from '@/i18n';
-import { InlineModelPicker } from './InlineModelPicker';
-import { enabledImageModels, getActiveImageChannel } from '@/config/imageChannels';
+import { ChannelModelPicker } from './ChannelModelPicker';
+import { currentChannelModel, selectChannelModel } from '@/config/channelSelection';
 import { ConfirmModal } from './ConfirmModal';
 import { ReferenceImagesTray } from './workbench/ReferenceImagesTray';
 import { GenerationControlsBar } from './workbench/GenerationControlsBar';
@@ -114,14 +115,12 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
   onOpenSettings,
 }) => {
   const { t, language } = useI18n();
+  const { user: accountUser } = useAuth();
 
-  // Model state with instant persistence
-  const [currentModel, setCurrentModel] = useState(settings.imageModel || 'gpt-image-2.5-sunburst');
+  // 当前生图渠道与模型（含 PicPocket 官方渠道），在「模型」一行的选择器里切换并即时持久化
+  const savedImageSelection = currentChannelModel(settings, 'image');
+  const [currentModel, setCurrentModel] = useState(savedImageSelection.model);
   const modelCapability = useMemo(() => getModelCapability(currentModel), [currentModel]);
-  const activeImageChannel = settings.imageChannels ? getActiveImageChannel(settings) : undefined;
-  const allowedImageModels = settings.imageChannels
-    ? activeImageChannel ? enabledImageModels(activeImageChannel) : []
-    : undefined;
 
   const initialDraft = useRef<GeneratorDraftState>(getInitialGeneratorDraft()).current;
 
@@ -328,8 +327,9 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
   };
 
   const handleReverseFromReference = async (refUrl: string) => {
-    if (!hasVisionAccess(settings)) {
-      setErrorMsg(t('inspector.requireApiKey'));
+    const visionBlock = channelAccessBlock(settings, 'vision', Boolean(accountUser));
+    if (visionBlock) {
+      setErrorMsg(t(visionBlock.key, visionBlock.params));
       return;
     }
     setIsReversingRef(true);
@@ -359,12 +359,8 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
 
   // Sync settings when external changes happen
   useEffect(() => {
-    if (settings.imageChannels && settings.imageModel !== currentModel) {
-      setCurrentModel(settings.imageModel || '');
-    } else if (settings.imageModel && settings.imageModel !== currentModel) {
-      setCurrentModel(settings.imageModel);
-    }
-  }, [settings.imageModel, settings.imageChannels]);
+    setCurrentModel(savedImageSelection.model);
+  }, [savedImageSelection.model]);
 
   // Adjust count if current model has a lower maxCount
   useEffect(() => {
@@ -591,11 +587,13 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
     };
   }, [isGenerating]);
 
-  // Model switch with automatic persistence to user settings
+  // 复用历史任务时沿用它的模型：只在当前渠道内切换，不改变渠道
   const handleModelSelect = async (newModel: string) => {
     setCurrentModel(newModel);
     try {
-      await saveUserSettings({ imageModel: newModel });
+      const fresh = await getUserSettings();
+      const { channelId } = currentChannelModel(fresh, 'image');
+      await saveUserSettings(selectChannelModel(fresh, 'image', { channelId, model: newModel }));
     } catch (err) {
       console.warn('Failed to persist imageModel to storage:', err);
     }
@@ -710,9 +708,9 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
    * syncFormReferences 仅在来自表单时为 true，用于把入池后的参考图 ID 回写表单草稿。
    */
   const startGeneration = async (request: GenerationStartRequest, syncFormReferences: boolean) => {
-    const apiConfig = resolveImageApiConfig(settings);
-    if (!apiConfig.isProManaged && !apiConfig.apiKey) {
-      setErrorMsg(t('generator.noApiKeyHint'));
+    const imageBlock = channelAccessBlock(settings, 'image', Boolean(accountUser));
+    if (imageBlock) {
+      setErrorMsg(t(imageBlock.key, imageBlock.params));
       return;
     }
 
@@ -1010,17 +1008,13 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
             <span className="shrink-0 pl-1 text-[10px] font-semibold text-zinc-500">
               {t('generator.modelLabel')}
             </span>
-            <InlineModelPicker
+            <ChannelModelPicker
               capability="image"
-              allowedModels={allowedImageModels}
-              currentModel={currentModel}
-              baseUrl={settings.imageBaseUrl || settings.baseUrl || 'https://api.openai.com/v1'}
-              apiKey={settings.imageApiKey || settings.apiKey || (settings.proMembership?.isPro ? 'pro-managed' : '')}
-              onSelectModel={handleModelSelect}
+              settings={settings}
               onOpenSettings={onOpenSettings}
+              onSelected={(selection) => setCurrentModel(selection.model)}
               align="right"
-              fullWidth
-              className="min-w-0 flex-1"
+              className="flex-1"
             />
           </div>
 

@@ -5,6 +5,7 @@ import type {
   GeneratedImage,
   GenerationBatchTask,
   UserSettings,
+  Language,
 } from '../types';
 
 export const ASPECT_RATIO_CONFIGS: Record<ImageAspectRatio, ImageDimension> = {
@@ -23,16 +24,22 @@ export function ratioToDimension(ratio: ImageAspectRatio): ImageDimension {
 
 import { sanitizeHttpHeaderToken, sanitizeHttpUrl } from '../utils/sanitize';
 import { getModelCapability } from '../config/modelCapabilities';
-import { DEFAULT_HOSTED_PROXY_URL, buildHostedProxyHeaders, isProExpired, syncRemainingQuota, syncDualRemainingQuota } from './billing';
+import { hostedImageModel } from '../config/hostedModels';
+import { imageChannelMode } from '../config/channelMode';
+import { hostedCreditError, hostedHeaders, readCreditBalance, resolveChannelCredential } from './hostedAccount';
+import { getTranslation } from '../i18n';
+import { DEFAULT_HOSTED_PROXY_URL, licenseUsableFor, syncRemainingQuota, syncDualRemainingQuota } from './billing';
 import { prepareReferenceImageForAi, dataUrlToFile } from '../utils/imageCompression';
 import { formatSafeErrorMessage } from '../utils/errorMessage';
 import { GENERATION_REQUEST_TIMEOUT_MS, withRequestTimeout } from '../utils/requestTimeout';
 export { sanitizeHttpHeaderToken, sanitizeHttpUrl };
 
-export const PRO_MANAGED_IMAGE_MODEL = 'gpt-image-2.5-sunburst';
-
-
-export function resolveImageApiConfig(settings: UserSettings, channelId?: string): {
+/**
+ * 解析生图调用的凭据。当前渠道是 PicPocket 时走托管通道：有效兑换码优先，否则已登录账号按积分计费；
+ * 自己的渠道只用自己的 Key（没填时 apiKey 为空，由调用方提示）。
+ * accountSignedIn 由调用方提供（界面用 useAuth，后台用 getAccountAccessToken）。
+ */
+export function resolveImageApiConfig(settings: UserSettings, channelId?: string, accountSignedIn = false): {
   apiKey: string;
   baseUrl: string;
   model: string;
@@ -46,18 +53,16 @@ export function resolveImageApiConfig(settings: UserSettings, channelId?: string
   let rawBaseUrl = (channel ? channel.baseUrl : settings.imageBaseUrl || settings.baseUrl || 'https://api.openai.com/v1').trim();
   let model = (channel ? channel.model : settings.imageModel || 'dall-e-3').trim();
 
-  const isProActive = Boolean(
-    settings.proMembership?.isPro && !isProExpired(settings.proMembership)
-  );
-
+  const licenseUsable = licenseUsableFor(settings, 'image-generation');
   let isProManaged = false;
   let licenseKey: string | undefined;
 
-  if (!apiKey && isProActive) {
+  if (imageChannelMode(settings, channelId).kind === 'picpocket') {
+    apiKey = '';
     rawBaseUrl = settings.hostedProxyUrl || DEFAULT_HOSTED_PROXY_URL;
-    model = settings.imageModel || PRO_MANAGED_IMAGE_MODEL;
-    isProManaged = true;
-    licenseKey = settings.proMembership?.licenseKey;
+    model = hostedImageModel(settings.hostedImageModel);
+    isProManaged = licenseUsable || accountSignedIn;
+    licenseKey = licenseUsable ? settings.proMembership?.licenseKey : undefined;
   }
 
   const baseUrl = sanitizeHttpUrl(rawBaseUrl);
@@ -155,13 +160,20 @@ async function runSingleGeneration(
   settings: UserSettings,
   signal: AbortSignal
 ): Promise<GeneratedImage[]> {
-  const { apiKey, baseUrl, model: defaultModel, isProManaged, licenseKey } = resolveImageApiConfig(settings, params.channelId);
-  const model = (params.model || defaultModel).trim();
+  const mode = imageChannelMode(settings, params.channelId);
+  const { credential } = await resolveChannelCredential(mode, settings, 'image-generation');
+  const { apiKey, baseUrl, model: defaultModel, isProManaged } = resolveImageApiConfig(settings, params.channelId, Boolean(credential));
+  const useAccountCredits = credential?.kind === 'account';
+  const model = isProManaged
+    ? hostedImageModel(params.model, settings.hostedImageModel)
+    : (params.model || defaultModel).trim();
 
-  const selectedChannel = params.channelId
-    ? settings.imageChannels?.find((channel) => channel.id === params.channelId)
-    : settings.imageChannels?.find((channel) => channel.id === settings.activeImageChannelId) || settings.imageChannels?.[0];
-  if (params.channelId && (!selectedChannel || !((selectedChannel.models || [selectedChannel.model]).includes(model)))) {
+  const selectedChannel = mode.kind === 'picpocket'
+    ? undefined
+    : params.channelId
+      ? settings.imageChannels?.find((channel) => channel.id === params.channelId)
+      : settings.imageChannels?.find((channel) => channel.id === settings.activeImageChannelId) || settings.imageChannels?.[0];
+  if (params.channelId && mode.kind !== 'picpocket' && (!selectedChannel || !((selectedChannel.models || [selectedChannel.model]).includes(model)))) {
     throw new Error('所选生图模型已不在该渠道中，请重新选择');
   }
   if (selectedChannel && !selectedChannel.baseUrl.trim()) {
@@ -172,7 +184,7 @@ async function runSingleGeneration(
   }
 
   if (!isProManaged && !apiKey) {
-    throw new Error('未配置有效生图 API Key，请在设置中配置凭据或输入 Pro 激活码解锁官方托管通道');
+    throw new Error(getTranslation(settings.language || 'zh', 'billing.hostedErrors.needCredentials'));
   }
 
   // 终极前置断言：杜绝 non ISO-8859-1 code point 传入 fetch headers
@@ -199,8 +211,8 @@ async function runSingleGeneration(
   let requestBody: BodyInit;
   const headers: Record<string, string> = {};
 
-  if (isProManaged && licenseKey) {
-    Object.assign(headers, buildHostedProxyHeaders(licenseKey, 'image-generation'));
+  if (credential) {
+    Object.assign(headers, hostedHeaders(credential, 'image-generation'));
   } else if (apiKey) {
     headers['Authorization'] = `Bearer ${apiKey}`;
   }
@@ -253,6 +265,8 @@ async function runSingleGeneration(
     prompt,
     aspectRatio: params.aspectRatio,
     dimension,
+    useAccountCredits,
+    language: settings.language || 'zh',
   });
 }
 
@@ -261,9 +275,15 @@ async function sendGenerationRequest(
   headers: Record<string, string>,
   requestBody: BodyInit,
   signal: AbortSignal,
-  ctx: { prompt: string; aspectRatio: ImageGenerationParams['aspectRatio']; dimension: ReturnType<typeof ratioToDimension> }
+  ctx: {
+    prompt: string;
+    aspectRatio: ImageGenerationParams['aspectRatio'];
+    dimension: ReturnType<typeof ratioToDimension>;
+    useAccountCredits: boolean;
+    language: Language;
+  }
 ): Promise<GeneratedImage[]> {
-  const { prompt, dimension } = ctx;
+  const { prompt, dimension, useAccountCredits, language } = ctx;
   let response: Response;
   try {
     response = await fetch(endpoint, {
@@ -281,9 +301,12 @@ async function sendGenerationRequest(
 
   if (!response.ok) {
     const errText = await response.text().catch(() => '');
+    const creditError = useAccountCredits ? hostedCreditError(response.status, errText, language) : null;
+    if (creditError) throw creditError;
     const cleanError = formatSafeErrorMessage(errText, response.status);
     throw new Error(`生图请求失败 (${response.status}): ${cleanError}`);
   }
+  if (useAccountCredits) await readCreditBalance(response.headers);
 
   const visionQuotaHeader = response.headers?.get?.('X-Remaining-Vision-Quota');
   const imageQuotaHeader = response.headers?.get?.('X-Remaining-Image-Quota');

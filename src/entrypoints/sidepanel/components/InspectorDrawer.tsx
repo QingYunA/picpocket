@@ -16,6 +16,7 @@ import {
   Maximize2,
   XCircle,
   Folder,
+  Settings,
 } from 'lucide-react';
 import type { InspirationItem, PromptResult, UserSettings } from '@/types';
 import { db } from '@/db';
@@ -25,10 +26,12 @@ import {
   getSystemPrompt,
   assembleMasterPrompt,
 } from '@/services/ai';
-import { hasVisionAccess } from '@/services/billing';
+import { channelAccessBlock } from '@/services/billing';
+import { useAuth } from '@/hooks/useAuth';
 import { saveUserSettings } from '@/utils/storage';
 import { useI18n } from '@/i18n';
-import { InlineModelPicker } from './InlineModelPicker';
+import { ChannelModelPicker } from './ChannelModelPicker';
+import { currentChannelModel } from '@/config/channelSelection';
 import { readFileAsDataUrl } from '@/utils/file';
 import { isAiGeneratedItem, isAgentCollabItem, withAnalyzedTag } from '@/utils/itemHelpers';
 
@@ -52,6 +55,7 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
   onOpenLightbox,
 }) => {
   const { t } = useI18n();
+  const { user: accountUser } = useAuth();
 
   const [imageUrl, setImageUrl] = useState<string>('');
   const [prompt, setPrompt] = useState<PromptResult | null>(null);
@@ -59,26 +63,15 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
   const [savedToVault, setSavedToVault] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Vision Model state with in-situ switching & persistence
-  const [currentVisionModel, setCurrentVisionModel] = useState(settings.model || 'deepseek-chat');
-  const canAnalyze = hasVisionAccess(settings);
+  // 当前反推渠道与模型：在图片下方的选择器里切换（含 PicPocket 官方渠道），选择即时持久化
+  const accessBlock = channelAccessBlock(settings, 'vision', Boolean(accountUser));
+  const canAnalyze = !accessBlock;
+  const savedVisionModel = currentChannelModel(settings, 'vision').model;
+  const [currentVisionModel, setCurrentVisionModel] = useState(savedVisionModel);
 
   useEffect(() => {
-    if (settings.visionChannels && settings.model !== currentVisionModel) {
-      setCurrentVisionModel(settings.model || '');
-    } else if (settings.model && settings.model !== currentVisionModel) {
-      setCurrentVisionModel(settings.model);
-    }
-  }, [settings.model, settings.visionChannels]);
-
-  const handleVisionModelSelect = async (newModel: string) => {
-    setCurrentVisionModel(newModel);
-    try {
-      await saveUserSettings({ model: newModel });
-    } catch (err) {
-      console.warn('Failed to persist vision model to settings:', err);
-    }
-  };
+    setCurrentVisionModel(savedVisionModel);
+  }, [savedVisionModel]);
 
   // Reverse Prompt Customization State (In-situ folded editor)
   const [isPresetEditorOpen, setIsPresetEditorOpen] = useState(false);
@@ -201,8 +194,8 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
 
   const runAnalysis = async (targetModel?: string) => {
     const modelToUse = targetModel || currentVisionModel || settings.model;
-    if (!canAnalyze) {
-      setError(t('inspector.requireApiKey'));
+    if (accessBlock) {
+      setError(t(accessBlock.key, accessBlock.params));
       return;
     }
 
@@ -344,42 +337,6 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
         </button>
 
         <div className="flex items-center gap-1.5 min-w-0">
-          <InlineModelPicker
-            capability="vision"
-            currentModel={currentVisionModel}
-            baseUrl={settings.baseUrl || 'https://api.deepseek.com/v1'}
-            apiKey={settings.apiKey}
-            onSelectModel={handleVisionModelSelect}
-            onOpenSettings={onOpenSettings}
-            align="right"
-          />
-
-          <button
-            onClick={canAnalyze ? () => runAnalysis(currentVisionModel) : onOpenSettings}
-            disabled={isAnalyzing}
-            className="flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer disabled:opacity-50 shadow-2xs shrink-0"
-            title={
-              canAnalyze
-                ? isNativePrompt
-                  ? t('inspector.deconstructWithVision')
-                  : prompt
-                  ? t('inspector.reanalyze')
-                  : t('inspector.startAnalyze')
-                : t('inspector.configureKey')
-            }
-          >
-            <RotateCw className={`h-3 w-3 ${isAnalyzing ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">
-              {canAnalyze
-                ? isNativePrompt
-                  ? t('inspector.deconstructWithVision')
-                  : prompt
-                  ? t('inspector.reanalyze')
-                  : t('inspector.startAnalyze')
-                : t('inspector.configureKey')}
-            </span>
-          </button>
-
           {prompt && (
             <button
               onClick={copyMasterFlow}
@@ -442,6 +399,44 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
           </div>
         </div>
 
+        {/* 反推操作区：渠道与模型选择 + 开始反推 */}
+        <div className="space-y-1.5 rounded-xl border border-zinc-200 bg-white p-2.5 shadow-2xs">
+          <div className="text-[11px] font-semibold text-zinc-500">{t('inspector.visionModel')}</div>
+          <div className="flex items-center gap-2">
+            <ChannelModelPicker
+              capability="vision"
+              settings={settings}
+              onOpenSettings={onOpenSettings}
+              onSelected={(selection) => setCurrentVisionModel(selection.model)}
+              className="flex-1"
+            />
+            <button
+              onClick={canAnalyze ? () => runAnalysis(currentVisionModel) : onOpenSettings}
+              disabled={isAnalyzing}
+              className={`flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-lg px-3 text-xs font-semibold shadow-2xs transition-colors cursor-pointer disabled:opacity-50 ${
+                canAnalyze && !prompt
+                  ? 'bg-zinc-900 text-white hover:bg-zinc-800'
+                  : 'border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
+              }`}
+            >
+              {canAnalyze ? (
+                <RotateCw className={`h-3.5 w-3.5 ${isAnalyzing ? 'animate-spin' : ''}`} />
+              ) : (
+                <Settings className="h-3.5 w-3.5" />
+              )}
+              <span>
+                {canAnalyze
+                  ? isNativePrompt
+                    ? t('inspector.deconstructWithVision')
+                    : prompt
+                    ? t('inspector.reanalyze')
+                    : t('inspector.startAnalyze')
+                  : t('inspector.configureKey')}
+              </span>
+            </button>
+          </div>
+        </div>
+
         {/* Folder Attribution Banner */}
         <div className="flex items-center justify-between gap-2 rounded-lg border border-zinc-200/80 bg-zinc-50/80 px-3 py-2 text-xs">
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
@@ -477,11 +472,11 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
         )}
 
         {/* Missing API Key Alert */}
-        {!canAnalyze && !prompt && (
+        {accessBlock && !prompt && (
           <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900">
             <div className="flex items-center gap-2">
               <Info className="h-4 w-4 text-amber-600 shrink-0" />
-              <span>{t('inspector.noApiKeyAlert')}</span>
+              <span>{t(accessBlock.key, accessBlock.params)}</span>
             </div>
             <button
               onClick={onOpenSettings}

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import type { UserSettings } from '@/types';
 import {
   SUBSCRIPTION_PLANS,
   buildPayPalCheckoutUrl,
@@ -7,6 +8,7 @@ import {
   isProExpired,
   hasVisionAccess,
   hasImageGenAccess,
+  channelAccessBlock,
   DEFAULT_HOSTED_PROXY_URL,
   buildHostedProxyHeaders,
   getLicenseErrorKey,
@@ -294,5 +296,29 @@ describe('Billing & Pro Membership Service', () => {
       expect(getLicenseErrorKey('network')).toBe('subscription.verifyNetworkError');
       expect(getLicenseErrorKey('server')).toBe('subscription.verifyServerError');
     });
+  });
+});
+
+describe('channelAccessBlock', () => {
+  const base: UserSettings = { apiKey: '', baseUrl: '', model: '', autoAnalyzeOnCapture: false, language: 'zh' };
+
+  it('names the selected channel when its key is missing', () => {
+    const settings: UserSettings = {
+      ...base,
+      visionChannels: [{ id: 'ds', name: 'DeepSeek', providerId: 'deepseek-official', apiKey: '', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat' }],
+      activeVisionChannelId: 'ds',
+    };
+    expect(channelAccessBlock(settings, 'vision', true)).toEqual({ key: 'billing.hostedErrors.channelMissingKey', params: { name: 'DeepSeek' } });
+    expect(hasVisionAccess(settings, true)).toBe(false);
+  });
+
+  it('asks to sign in on the PicPocket channel without an account or redeem code', () => {
+    expect(channelAccessBlock(base, 'image', false)).toEqual({ key: 'billing.hostedErrors.needCredentials' });
+    expect(channelAccessBlock(base, 'image', true)).toBeNull();
+    expect(hasImageGenAccess(base, true)).toBe(true);
+  });
+
+  it('allows an own channel that has a key', () => {
+    expect(channelAccessBlock({ ...base, apiKey: 'sk-legacy', baseUrl: 'https://api.deepseek.com/v1' }, 'vision', false)).toBeNull();
   });
 });

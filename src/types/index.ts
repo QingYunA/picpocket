@@ -101,6 +101,11 @@ export interface UserSettings {
   // Pro Membership & Hosted Gateway
   proMembership?: ProMembership;
   hostedProxyUrl?: string;
+  /** 托管（积分 / 兑换码）模式下选用的模型，与自备 Key 时的 model / imageModel 互不覆盖 */
+  hostedVisionModel?: string;
+  hostedImageModel?: string;
+  /** 已完成「没填 Key 的选中渠道 → PicPocket 渠道」的一次性迁移 */
+  picpocketChannelMigrated?: boolean;
   // Reverse Prompt Customization & Preferences
   reversePromptPresetId?: string;
   customReversePrompt?: string;

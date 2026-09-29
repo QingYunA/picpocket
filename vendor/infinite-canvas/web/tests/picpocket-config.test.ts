@@ -25,6 +25,7 @@ describe("buildPicPocketCanvasConfig", () => {
         });
 
         expect(patch.channels).toEqual([
+            expect.objectContaining({ id: "picpocket-image-picpocket", name: "PicPocket" }),
             expect.objectContaining({
                 id: "picpocket-image",
                 baseUrl: "https://image.example/v1",
@@ -58,6 +59,24 @@ describe("buildPicPocketCanvasConfig", () => {
             expect.objectContaining({ id: "picpocket-image-b", baseUrl: "https://b.example/v1", apiKey: "key-b", models: [{ name: "model-b", capability: "image" }] }),
         ]));
         expect(patch.imageModel).toBe("picpocket-image-a::model-a2");
+    });
+
+    test("offers the PicPocket channel with its hosted models and selects it when it is the active channel", () => {
+        const patch = buildPicPocketCanvasConfig({
+            apiKey: "", baseUrl: "", model: "",
+            imageChannels: [
+                { id: "a", name: "Channel A", providerId: "custom", apiKey: "key-a", baseUrl: "https://a.example/v1", model: "model-a", models: ["model-a"] },
+            ],
+            activeImageChannelId: "picpocket", hostedImageModel: "seedream-5-pro", language: "zh", autoAnalyzeOnCapture: false,
+        });
+        const picpocket = patch.channels!.find((channel) => channel.id === "picpocket-image-picpocket")!;
+        expect(picpocket.models.map((entry) => entry.name)).toContain("gpt-image-2.5-sunburst");
+        expect(picpocket.apiKey).not.toBe("");
+        expect(patch.imageModel).toBe("picpocket-image-picpocket::seedream-5-pro");
+        expect(resolveCanvasImageSelection(
+            { apiKey: "", baseUrl: "", model: "", activeImageChannelId: "picpocket", language: "zh", autoAnalyzeOnCapture: false },
+            { model: "picpocket-image-picpocket::seedream-5-pro", imageModel: "" },
+        )).toEqual({ model: "seedream-5-pro", channelId: "picpocket" });
     });
 
     test("retains the legacy canvas channel ID after settings migration", () => {

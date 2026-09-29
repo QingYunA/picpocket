@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Mail, LogOut, Loader2, ArrowLeft } from 'lucide-react';
+import { X, Mail, LogOut, Loader2, ArrowLeft, Coins, ChevronRight } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { TranslationKey } from '@/i18n';
 import {
@@ -14,6 +14,7 @@ import {
 } from '@/services/auth';
 import { cancelGoogleWebSignIn, GOOGLE_SIGN_IN_RESULT, startGoogleWebSignIn } from '@/services/googleWebSignIn';
 import { AccountAvatar } from './AccountAvatar';
+import { useEntitlement } from '@/hooks/useEntitlement';
 
 interface AccountDialogProps {
   isOpen: boolean;
@@ -60,6 +61,7 @@ export const AccountDialog: React.FC<AccountDialogProps> = ({ isOpen, onClose, u
   const [busy, setBusy] = useState<Busy>(null);
   const [error, setError] = useState<AuthErrorCode | null>(null);
   const [awaitingGoogle, setAwaitingGoogle] = useState(false);
+  const { entitlement } = useEntitlement(isOpen && user ? user.id : null);
 
   useEffect(() => {
     if (isOpen) {
@@ -134,6 +136,25 @@ export const AccountDialog: React.FC<AccountDialogProps> = ({ isOpen, onClose, u
                   </div>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL('/options.html#/account') })}
+                className="flex w-full items-center justify-between rounded-xl border border-amber-200 bg-amber-50/50 px-3 py-2.5 text-left hover:bg-amber-50 cursor-pointer"
+              >
+                <span className="flex items-center gap-2 text-xs text-zinc-700">
+                  <Coins className="h-4 w-4 shrink-0 text-amber-600" />
+                  {entitlement ? (
+                    <span>
+                      <span className="font-semibold">{t(`billing.plans.${entitlement.plan}`)}</span>
+                      {' · '}
+                      <span className="font-mono font-semibold">{entitlement.balance}</span> {t('billing.creditsUnit')}
+                    </span>
+                  ) : (
+                    t('billing.title')
+                  )}
+                </span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-zinc-400" />
+              </button>
               <button
                 onClick={() => run('signout', async () => { await signOut(); onClose(); })}
                 disabled={disabled}

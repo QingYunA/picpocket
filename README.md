@@ -12,7 +12,7 @@
 [![Built with WXT](https://img.shields.io/badge/Built%20with-WXT-black?style=flat-square)](https://wxt.dev/)
 [![React 19](https://img.shields.io/badge/React-19-61dafb?style=flat-square)](https://react.dev/)
 [![Tailwind CSS v4](https://img.shields.io/badge/Tailwind-v4-f59e0b?style=flat-square)](https://tailwindcss.com/)
-[![License MIT](https://img.shields.io/badge/License-MIT-green?style=flat-square)](./LICENSE)
+[![License GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square)](./LICENSE)
 
 </div>
 
@@ -83,6 +83,12 @@ bun run build
 
 ## 开源协议
 
-代码以 [MIT](./LICENSE) 协议开源。内置的无限画布来自 [basketikun/infinite-canvas](https://github.com/basketikun/infinite-canvas)（MIT），许可证见 [`vendor/infinite-canvas/LICENSE`](./vendor/infinite-canvas/LICENSE)。
+版权所有 © 2026 PicPocket Team。本项目以 [GNU GPL-3.0](./LICENSE)（`GPL-3.0-only`）协议开源。
 
-**商标说明**：「PicPocket」名称与 Logo 不在 MIT 授权范围内。欢迎基于代码二次开发，但请勿使用 PicPocket 的名称或 Logo 发布衍生版本（包括上架 Chrome 应用商店）。
+> 本次变更之前已发布的版本以 MIT 发布，那些版本仍可按 MIT 使用；此后的版本按 GPL-3.0。
+
+内置的无限画布来自 [basketikun/infinite-canvas](https://github.com/basketikun/infinite-canvas)（MIT），其原始版权声明与许可证保留在 [`vendor/infinite-canvas/LICENSE`](./vendor/infinite-canvas/LICENSE)，第三方组件清单见 [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md)。
+
+参与贡献前请阅读 [`CONTRIBUTING.md`](./CONTRIBUTING.md)。托管服务（账号、积分、支付）运行在独立的私有后端上，不在本协议范围内，两者只通过 [`docs/api-contract.md`](./docs/api-contract.md) 约定的 HTTP 接口通信。
+
+**商标说明**：「PicPocket」名称与 Logo 不在 GPL-3.0 授权范围内。欢迎基于代码二次开发，但请勿使用 PicPocket 的名称或 Logo 发布衍生版本（包括上架 Chrome 应用商店）。

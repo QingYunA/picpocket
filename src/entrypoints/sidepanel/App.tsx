@@ -462,6 +462,7 @@ export default function App() {
           onOpenSettings={() => openOptionsPage({ route: '/models/vision' })}
           onGeneratePrompt={handleTriggerGenerate}
           onOpenLightbox={() => setLightboxItem(selectedItem)}
+          onMoveToFolder={() => setMovingItem(selectedItem)}
         />
       ) : (
         <>
@@ -889,6 +890,8 @@ export default function App() {
               onSelectFolder={async (targetFolderId) => {
                 if (movingItem.id) {
                   await moveItemToFolder(movingItem.id, targetFolderId);
+                  // 详情页持有的是打开时的快照，移动后同步归属文件夹
+                  setSelectedItem((prev) => (prev && prev.id === movingItem.id ? { ...prev, folderId: targetFolderId } : prev));
                 }
                 setMovingItem(null);
               }}

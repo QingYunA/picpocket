@@ -1,6 +1,7 @@
 import { getSupabaseConfig, supabase } from './supabase';
 import { buildHostedProxyHeaders, licenseUsableFor, type HostedRequestType } from './billing';
 import { getTranslation } from '../i18n';
+import { markInsufficientCredits } from '../utils/errorMessage';
 import type { Language, UserSettings } from '../types';
 import type { ChannelMode } from '../config/channelMode';
 
@@ -90,7 +91,7 @@ export function hostedCreditError(status: number, body: string, language: Langua
   const parsed = parseErrorBody(body);
   const t = (key: string, params?: Record<string, string | number>) => String(getTranslation(language, key, params));
   if (status === 402 || parsed.code === 'insufficient_credits') {
-    return new Error(t('billing.hostedErrors.insufficient', { balance: parsed.balance ?? 0, required: parsed.required ?? '?' }));
+    return new Error(markInsufficientCredits(t('billing.hostedErrors.insufficient', { balance: parsed.balance ?? 0, required: parsed.required ?? '?' })));
   }
   if (status === 429 || parsed.code === 'rate_limited') return new Error(t('billing.hostedErrors.rateLimited'));
   if (parsed.code === 'unsupported_model') return new Error(t('billing.hostedErrors.unsupportedModel'));

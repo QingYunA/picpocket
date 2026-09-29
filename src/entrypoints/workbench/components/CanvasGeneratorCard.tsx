@@ -17,6 +17,7 @@ import { clampScreenPosition, getResponsiveCardWidth, getViewportDimensions } fr
 import { CONSOLE_HEIGHT_COLLAPSED, CONSOLE_HEIGHT_EXPANDED } from '../types';
 import type { CanvasTheme } from '../types';
 import { formatSafeErrorMessage } from '@/utils/errorMessage';
+import { UpgradeCreditsButton } from '@/components/UpgradeCreditsButton';
 
 interface CanvasGeneratorCardProps {
   theme: CanvasTheme;
@@ -495,6 +496,7 @@ export const CanvasGeneratorCard: React.FC<CanvasGeneratorCardProps> = ({
             <div className="flex-1 leading-relaxed line-clamp-3 select-text">
               {formatSafeErrorMessage(errorMsg)}
             </div>
+            <UpgradeCreditsButton message={errorMsg} />
           </div>
         )}
         {feedbackMsg && (

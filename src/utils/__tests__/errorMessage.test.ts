@@ -3,6 +3,8 @@ import {
   readApiErrorMessage,
   readStatusError,
   formatSafeErrorMessage,
+  markInsufficientCredits,
+  isInsufficientCreditsMessage,
 } from '../errorMessage';
 
 describe('formatSafeErrorMessage & readApiErrorMessage', () => {
@@ -71,5 +73,37 @@ body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "S
     const result = formatSafeErrorMessage(longText);
     expect(result.length).toBeLessThanOrEqual(100);
     expect(result.endsWith('...')).toBe(true);
+  });
+});
+
+describe('积分不足标记 (insufficient credits marker)', () => {
+  it('标记后的消息可被识别，且中英文文案都不影响判定', () => {
+    expect(isInsufficientCreditsMessage(markInsufficientCredits('积分不足：当前余额 3，本次需要 8'))).toBe(true);
+    expect(isInsufficientCreditsMessage(markInsufficientCredits('Not enough credits: balance 3, need 8'))).toBe(true);
+  });
+
+  it('未标记的消息、空值与非字符串一律不算积分不足', () => {
+    expect(isInsufficientCreditsMessage('积分不足：当前余额 3')).toBe(false);
+    expect(isInsufficientCreditsMessage('请求太频繁，请稍后再试')).toBe(false);
+    expect(isInsufficientCreditsMessage('')).toBe(false);
+    expect(isInsufficientCreditsMessage(undefined)).toBe(false);
+    expect(isInsufficientCreditsMessage(null)).toBe(false);
+    expect(isInsufficientCreditsMessage({ message: 'x' })).toBe(false);
+  });
+
+  it('标记不改变可见文案，并能穿过 formatSafeErrorMessage 的清洗与截断', () => {
+    const marked = markInsufficientCredits('积分不足：当前余额 3，本次需要 8');
+    expect(marked.replace(/\u2063/g, '')).toBe('积分不足：当前余额 3，本次需要 8');
+    expect(isInsufficientCreditsMessage(formatSafeErrorMessage(marked))).toBe(true);
+    const long = markInsufficientCredits('积分不足'.repeat(60));
+    const cleaned = formatSafeErrorMessage(long);
+    expect(cleaned.length).toBeLessThanOrEqual(100);
+    expect(isInsufficientCreditsMessage(cleaned)).toBe(true);
+  });
+
+  it('经 String(err) 与 Error.message 往返后仍可识别（IPC 序列化场景）', () => {
+    const err = new Error(markInsufficientCredits('积分不足'));
+    expect(isInsufficientCreditsMessage(String(err))).toBe(true);
+    expect(isInsufficientCreditsMessage(err.message)).toBe(true);
   });
 });

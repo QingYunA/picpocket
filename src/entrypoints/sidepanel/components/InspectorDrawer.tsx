@@ -27,6 +27,7 @@ import {
   assembleMasterPrompt,
 } from '@/services/ai';
 import { channelAccessBlock } from '@/services/billing';
+import { UpgradeCreditsButton } from '@/components/UpgradeCreditsButton';
 import { useAuth } from '@/hooks/useAuth';
 import { saveUserSettings } from '@/utils/storage';
 import { useI18n } from '@/i18n';
@@ -491,6 +492,7 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
         {error && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800">
             {error}
+            <UpgradeCreditsButton message={error} className="ml-2 align-middle" />
           </div>
         )}
 

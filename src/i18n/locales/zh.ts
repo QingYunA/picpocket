@@ -126,6 +126,7 @@ export const zh = {
     pastDue: '续费扣款失败，请更新付款方式',
     managedBy: '通过 {provider} 付款',
     resubscribeLater: '到期后可重新订阅',
+    upgradeCta: '去升级',
     cancel: '取消续费',
     resume: '恢复续费',
     cancelConfirmTitle: '取消自动续费？',

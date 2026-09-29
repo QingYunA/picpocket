@@ -50,6 +50,9 @@ import { ProSubscriptionModal } from './components/ProSubscriptionModal';
 import { AccountDialog } from './components/AccountDialog';
 import { AccountAvatar } from './components/AccountAvatar';
 import { useAuth } from '@/hooks/useAuth';
+import { useEntitlement } from '@/hooks/useEntitlement';
+import { usesPicpocketCredits } from '@/config/channelMode';
+import { formatCreditsCompact } from '@/utils/credits';
 import { isProActive } from '@/services/billing';
 import { isAiGeneratedItem, isAgentCollabItem } from '@/utils/itemHelpers';
 
@@ -137,6 +140,7 @@ export default function App() {
   const [isProModalOpen, setIsProModalOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const { user: accountUser } = useAuth();
+  const { entitlement } = useEntitlement(accountUser?.id ?? null);
 
   // In-context filing pill state (when collecting into a specific folder)
   const [pendingCollectedIds, setPendingCollectedIds] = useState<number[]>([]);
@@ -176,6 +180,8 @@ export default function App() {
     hoverBadgePromptDismissed: false,
     contextMenuMode: 'direct-analyze',
   });
+  // 只有 PicPocket 官方渠道按积分计费，自带 Key 的渠道不显示余额
+  const creditBalance = accountUser && entitlement && usesPicpocketCredits(settings) ? entitlement.balance : null;
 
   // Reactive IndexedDB query
   const items = useLiveQuery(() => db.items.orderBy('createdAt').reverse().toArray()) || [];
@@ -580,18 +586,32 @@ export default function App() {
                 <Settings className="h-3.5 w-3.5" />
               </button>
 
-              {/* Account Button */}
-              <button
-                onClick={() => setIsAccountOpen(true)}
-                className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 transition-colors cursor-pointer shrink-0"
-                title={accountUser ? accountUser.email || accountUser.name : t('account.signIn')}
-              >
-                {accountUser ? (
-                  <AccountAvatar user={accountUser} sizeClass="h-6 w-6" textClass="text-[11px]" />
-                ) : (
-                  <UserRound className="h-3.5 w-3.5" />
+              {/* Account Button：PicPocket 官方渠道时，头像右下角常驻积分余额角标（不占用顶栏宽度） */}
+              <div className="relative shrink-0">
+                <button
+                  onClick={() => setIsAccountOpen(true)}
+                  className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 transition-colors cursor-pointer shrink-0"
+                  title={
+                    accountUser
+                      ? [accountUser.email || accountUser.name, creditBalance !== null && t('channels.balance', { balance: creditBalance })].filter(Boolean).join(' · ')
+                      : t('account.signIn')
+                  }
+                >
+                  {accountUser ? (
+                    <AccountAvatar user={accountUser} sizeClass="h-6 w-6" textClass="text-[11px]" />
+                  ) : (
+                    <UserRound className="h-3.5 w-3.5" />
+                  )}
+                </button>
+                {creditBalance !== null && (
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -bottom-1 -right-1.5 flex h-4 min-w-4 items-center justify-center whitespace-nowrap rounded-full bg-amber-500 px-1 text-[9px] font-bold leading-none tabular-nums text-white ring-2 ring-white"
+                  >
+                    {formatCreditsCompact(creditBalance)}
+                  </span>
                 )}
-              </button>
+              </div>
             </div>
           </header>
 

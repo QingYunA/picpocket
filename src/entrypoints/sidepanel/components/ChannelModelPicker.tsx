@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, Check, ChevronDown, ExternalLink, Globe } from 'lucide-react';
 import { Logo } from '@/components/Logo';
+import { useHostedCatalog } from '@/hooks/useHostedCatalog';
 import { BrandIcon } from './BrandIcon';
 import { VISION_PROVIDERS } from '@/config/visionChannels';
 import { IMAGE_PROVIDERS } from '@/config/imageChannels';
@@ -55,8 +56,9 @@ export const ChannelModelPicker: React.FC<ChannelModelPickerProps> = ({
   const [pending, setPending] = useState<ChannelModelSelection | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const groups = useMemo(() => channelModelGroups(settings, capability), [settings, capability]);
-  const saved = useMemo(() => currentChannelModel(settings, capability), [settings, capability]);
+  const hostedCatalog = useHostedCatalog();
+  const groups = useMemo(() => channelModelGroups(settings, capability), [settings, capability, hostedCatalog]);
+  const saved = useMemo(() => currentChannelModel(settings, capability), [settings, capability, hostedCatalog]);
   // 保存完成、设置回流之前先显示刚选的值
   const current = pending ?? saved;
   const currentGroup = groups.find((group) => group.channelId === current.channelId);

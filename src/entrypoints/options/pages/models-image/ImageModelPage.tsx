@@ -10,6 +10,7 @@ import { useI18n, type TranslationKey } from '@/i18n';
 import { currentChannelModel } from '@/config/channelSelection';
 import { PICPOCKET_CHANNEL_ID, hostedImageModel } from '@/config/hostedModels';
 import { Logo } from '@/components/Logo';
+import { useHostedCatalog } from '@/hooks/useHostedCatalog';
 import { PicPocketChannelPanel } from '../../components/picpocket-channel-panel';
 import type { UserSettings, ImageAspectRatio, ImageChannel } from '@/types';
 import { sanitizeHttpHeaderToken, sanitizeHttpUrl } from '@/utils/sanitize';
@@ -91,6 +92,7 @@ export const ImageModelPage: React.FC<ImageModelPageProps> = ({
   const selectedProvider = IMAGE_PROVIDERS.find((provider) => provider.id === selectedChannel?.providerId);
   const recommendedModels = selectedChannel ? imageModelsForProvider(selectedChannel.providerId) : [];
 
+  useHostedCatalog(); // 服务端目录更新后重新计算当前托管模型
   const picpocketModel = hostedImageModel(settings.hostedImageModel);
   const railItems: EntityListItem[] = [{
     id: PICPOCKET_CHANNEL_ID,

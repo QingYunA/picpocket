@@ -3,7 +3,7 @@ import { sanitizeHttpHeaderToken, sanitizeHttpUrl } from '../utils/sanitize';
 import { prepareVisionImageForAi } from '../utils/imageCompression';
 import { DEFAULT_HOSTED_PROXY_URL, buildHostedProxyHeaders, isProExpired, syncRemainingQuota, syncDualRemainingQuota } from './billing';
 import { hostedCreditError, hostedHeaders, readCreditBalance, resolveChannelCredential } from './hostedAccount';
-import { hostedVisionModel } from '../config/hostedModels';
+import { ensureHostedCatalogLoaded, hostedVisionModel } from '../config/hostedModels';
 import { visionChannelMode } from '../config/channelMode';
 import { getTranslation } from '../i18n';
 import { ANALYSIS_REQUEST_TIMEOUT_MS, withRequestTimeout } from '../utils/requestTimeout';
@@ -651,6 +651,7 @@ export async function completeChatWithAI(
   targetModel?: string,
   signal?: AbortSignal
 ): Promise<string> {
+  await ensureHostedCatalogLoaded();
   const access = await resolveChannelCredential(visionChannelMode(settings), settings, 'vision');
   const apiKey = sanitizeHttpHeaderToken(access.apiKey);
   const credential = access.credential;
@@ -719,6 +720,7 @@ async function runImageAnalysis(
   // 仅在外发边界做瞬态压缩（反推专用：最长边 1280px），库内原图保持不变（ADR 0007）
   const base64Url = await prepareVisionImageForAi(imageBlob);
 
+  await ensureHostedCatalogLoaded();
   const access = await resolveChannelCredential(visionChannelMode(settings), settings, 'vision');
   const apiKey = sanitizeHttpHeaderToken(access.apiKey);
   const rawBaseUrl = (settings.baseUrl || 'https://api.deepseek.com/v1').trim();

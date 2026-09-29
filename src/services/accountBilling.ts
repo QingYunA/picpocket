@@ -1,4 +1,5 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
+import { applyHostedCatalog } from '../config/hostedModels';
 import { supabase } from './supabase';
 
 export type PlanId = 'free' | 'plus' | 'pro' | 'max';
@@ -56,8 +57,9 @@ export interface Entitlement {
   buckets: CreditBucket[];
   pricing: {
     defaultVisionModel: string;
+    defaultImageModel?: string;
     vision: Array<{ id: string; min: number; max: number }>;
-    image: Array<{ id: string; credits: number; credits4k?: number }>;
+    image: Array<{ id: string; credits: number; credits4k?: number; supportsEdit?: boolean }>;
   };
 }
 
@@ -98,8 +100,10 @@ async function invoke<T>(name: string, options: { method?: 'GET'; body?: Record<
   return data as T;
 }
 
-export function fetchEntitlement(): Promise<Entitlement> {
-  return invoke<Entitlement>('get-entitlement', { method: 'GET' });
+export async function fetchEntitlement(): Promise<Entitlement> {
+  const entitlement = await invoke<Entitlement>('get-entitlement', { method: 'GET' });
+  applyHostedCatalog(entitlement.pricing);
+  return entitlement;
 }
 
 /** 生成支付链接；付款结果以支付回调为准，界面随后刷新权益即可 */

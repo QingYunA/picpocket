@@ -1,3 +1,4 @@
+import { HOSTED_CATALOG_STORAGE_KEY } from "@picpocket/config/hostedModels";
 import { getUserSettings } from "@picpocket/utils/storage";
 
 import { useConfigStore, type AiConfig } from "@/stores/use-config-store";
@@ -22,7 +23,7 @@ export async function syncPicPocketConfig(): Promise<void> {
 export function subscribePicPocketConfig(): () => void {
     if (import.meta.env.VITE_PICPOCKET_EXTENSION !== "1" || typeof chrome === "undefined" || !chrome.storage?.onChanged) return () => {};
     const listener = (changes: Record<string, chrome.storage.StorageChange>, areaName: string) => {
-        if (areaName === "local" && changes[SETTINGS_KEY]) void syncPicPocketConfig();
+        if (areaName === "local" && (changes[SETTINGS_KEY] || changes[HOSTED_CATALOG_STORAGE_KEY])) void syncPicPocketConfig();
     };
     chrome.storage.onChanged.addListener(listener);
     return () => chrome.storage.onChanged.removeListener(listener);

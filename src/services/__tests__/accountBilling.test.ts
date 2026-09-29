@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { getHostedCatalog } from '../../config/hostedModels';
 
 const { FakeFunctionsHttpError } = vi.hoisted(() => ({
   FakeFunctionsHttpError: class extends Error {
@@ -31,6 +32,13 @@ describe('billing requests', () => {
     vi.mocked(supabase.functions.invoke).mockResolvedValue({ data: { plan: 'pro', balance: 10 }, error: null } as any);
     await expect(fetchEntitlement()).resolves.toMatchObject({ plan: 'pro', balance: 10 });
     expect(supabase.functions.invoke).toHaveBeenCalledWith('get-entitlement', { method: 'GET' });
+  });
+
+  it('adopts the hosted model catalog from the entitlement pricing', async () => {
+    const pricing = { defaultVisionModel: 'deepseek-flash', defaultImageModel: 'only-image', vision: [{ id: 'deepseek-flash' }], image: [{ id: 'only-image' }] };
+    vi.mocked(supabase.functions.invoke).mockResolvedValue({ data: { plan: 'free', balance: 1, pricing }, error: null } as any);
+    await fetchEntitlement();
+    expect(getHostedCatalog().image).toEqual(['only-image']);
   });
 
   it('returns the checkout url', async () => {

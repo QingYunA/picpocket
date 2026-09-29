@@ -9,6 +9,7 @@ import { VISION_PROVIDERS, getConfiguredVisionChannels, withVisionChannels } fro
 import { currentChannelModel } from '@/config/channelSelection';
 import { PICPOCKET_CHANNEL_ID, hostedVisionModel } from '@/config/hostedModels';
 import { Logo } from '@/components/Logo';
+import { useHostedCatalog } from '@/hooks/useHostedCatalog';
 import { PicPocketChannelPanel } from '../../components/picpocket-channel-panel';
 import { useI18n } from '@/i18n';
 import type { UserSettings, VisionChannel } from '@/types';
@@ -70,6 +71,7 @@ export const VisionModelPage: React.FC<VisionModelPageProps> = ({
     provider.id === channel.providerId && provider.baseUrl === channel.baseUrl.trim().replace(/\/+$/, '')
   );
   const selectedProvider = selectedChannel ? providerFor(selectedChannel) : undefined;
+  useHostedCatalog(); // 服务端目录更新后重新计算当前托管模型
   const picpocketModel = hostedVisionModel(settings.hostedVisionModel);
   const railItems: EntityListItem[] = [{
     id: PICPOCKET_CHANNEL_ID,

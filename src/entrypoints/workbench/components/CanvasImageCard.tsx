@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import type { GeneratedImage, FolderItem, ImageAspectRatio } from '@/types';
 import { useI18n } from '@/i18n';
+import { UpgradeCreditsButton } from '@/components/UpgradeCreditsButton';
 import type { CanvasTheme, CanvasNodeStatus, ResizeCorner } from '../types';
 import { calculateResize } from '../utils/canvasGeometry';
 
@@ -332,6 +333,7 @@ export const CanvasImageCard: React.FC<CanvasImageCardProps> = ({
                   </p>
                 )}
               </div>
+              <UpgradeCreditsButton message={error} />
               {onRetry && (
                 <button
                   type="button"

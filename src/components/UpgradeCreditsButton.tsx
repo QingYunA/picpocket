@@ -19,7 +19,7 @@ export const UpgradeCreditsButton: React.FC<UpgradeCreditsButtonProps> = ({ mess
       onClick={() => {
         void openOptionsPage({ route: '/account' });
       }}
-      className={`shrink-0 whitespace-nowrap rounded-md border border-current px-2 py-0.5 text-[11px] font-medium hover:bg-white/60 ${className}`}
+      className={`shrink-0 whitespace-nowrap rounded-md border border-current px-2 py-0.5 text-[11px] font-medium hover:bg-black/5 dark:hover:bg-white/10 ${className}`}
     >
       {t('billing.upgradeCta')}
     </button>

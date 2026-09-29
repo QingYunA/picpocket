@@ -35,6 +35,11 @@
     el.textContent = TEXT[el.getAttribute('data-i18n')];
   });
 
+  // 访问统计（Umami，无 Cookie）；页面 URL 里的 nonce 等查询参数不会被上报（data-exclude-search）
+  function track(name) {
+    if (window.umami && window.umami.track) window.umami.track(name);
+  }
+
   var statusEl = document.getElementById('status');
   function setStatus(message, kind) {
     statusEl.textContent = message;
@@ -44,10 +49,12 @@
   var nonce = params.get('nonce') || '';
   var extensionId = params.get('ext') || '';
   if (!/^[0-9a-f]{64}$/.test(nonce) || ALLOWED_EXTENSION_IDS.indexOf(extensionId) === -1) {
+    track('signin_invalid_link');
     setStatus(TEXT.invalid, 'error');
     return;
   }
   if (!window.chrome || !chrome.runtime || !chrome.runtime.sendMessage) {
+    track('signin_no_extension');
     setStatus(TEXT.noExtension, 'error');
     return;
   }
@@ -56,6 +63,7 @@
     setStatus(TEXT.sending);
     chrome.runtime.sendMessage(extensionId, { type: MESSAGE_TYPE, idToken: response.credential }, function (reply) {
       if (chrome.runtime.lastError || !reply) return setStatus(TEXT.noExtension, 'error');
+      track(reply.ok ? 'signin_google_success' : 'signin_google_failed');
       setStatus(reply.ok ? TEXT.success : TEXT.failed, reply.ok ? 'success' : 'error');
     });
   }
@@ -63,8 +71,9 @@
   var script = document.createElement('script');
   script.src = 'https://accounts.google.com/gsi/client';
   script.async = true;
-  script.onerror = function () { setStatus(TEXT.scriptFailed, 'error'); };
+  script.onerror = function () { track('signin_google_script_failed'); setStatus(TEXT.scriptFailed, 'error'); };
   script.onload = function () {
+    track('signin_page_ready');
     google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
       nonce: nonce,

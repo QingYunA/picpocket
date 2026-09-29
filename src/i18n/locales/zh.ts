@@ -177,6 +177,7 @@ export const zh = {
       insufficient: '积分不足：当前余额 {balance}，本次需要 {required}。可在设置的「账号与套餐」中升级套餐或购买积分包',
       rateLimited: '请求太频繁，请稍后再试',
       unsupportedModel: '该模型暂不支持使用积分托管，请换一个模型或使用自己的 API Key',
+      editUnsupported: '该模型暂不支持垫图（参考图），请换用 GPT Image 系列模型，或取消参考图后重试',
       unavailable: '托管服务暂不可用，请稍后再试或使用自己的 API Key',
       needCredentials: '使用 PicPocket 官方渠道需要先登录账号（每月赠送积分），或在设置中切换到自己的渠道',
       channelMissingKey: '「{name}」渠道还没填 API Key，请在设置中填写，或切换到 PicPocket 官方渠道',

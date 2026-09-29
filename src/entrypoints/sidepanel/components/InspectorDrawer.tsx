@@ -501,6 +501,18 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
           </div>
         )}
 
+        {/* 送到画布作为参考图：未反推与已反推都可用 */}
+        {typeof item.id === 'number' && (
+          <button
+            type="button"
+            onClick={() => openInfiniteCanvasPage({ assetId: item.id }).catch(console.warn)}
+            className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer active:scale-98"
+          >
+            <Frame className="h-3.5 w-3.5 text-violet-500" />
+            <span>{t('inspector.useAsCanvasReference')}</span>
+          </button>
+        )}
+
         {/* Missing API Key Alert */}
         {accessBlock && !prompt && (
           <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900">
@@ -564,16 +576,6 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
                   : t('inspector.configureKeyAndAnalyze')}
               </span>
             </button>
-            {typeof item.id === 'number' && (
-              <button
-                type="button"
-                onClick={() => openInfiniteCanvasPage({ assetId: item.id }).catch(console.warn)}
-                className="mt-2 w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-xs font-bold text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer active:scale-98"
-              >
-                <Frame className="h-3.5 w-3.5 text-violet-500" />
-                <span>{t('inspector.useAsCanvasReference')}</span>
-              </button>
-            )}
           </div>
         )}
 

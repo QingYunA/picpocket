@@ -20,7 +20,7 @@ export function picPocketModelSettingsRoute(capability: ModelCapability = "image
 }
 
 /** 画布只据渠道是否有 Key 判断可用；PicPocket 渠道的请求实际经由扩展的生图服务按账号计费，这里只是占位 */
-const PICPOCKET_MANAGED_KEY = "picpocket-managed";
+export const PICPOCKET_MANAGED_KEY = "picpocket-managed";
 
 const canvasImageChannelId = (channelId: string) => (channelId === "legacy-image" ? "picpocket-image" : `picpocket-image-${channelId}`);
 

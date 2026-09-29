@@ -32,6 +32,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { saveUserSettings } from '@/utils/storage';
 import { useI18n } from '@/i18n';
 import { ChannelModelPicker } from './ChannelModelPicker';
+import { CreditBalanceButton } from './CreditBalanceButton';
+import { visionChannelMode } from '@/config/channelMode';
+import { useHostedCredits } from '@/hooks/useHostedCredits';
+import { formatCreditCost, visionCreditCost } from '@/services/creditPricing';
 import { currentChannelModel } from '@/config/channelSelection';
 import { readFileAsDataUrl } from '@/utils/file';
 import { isAiGeneratedItem, isAgentCollabItem, withAnalyzedTag } from '@/utils/itemHelpers';
@@ -69,6 +73,9 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
   const canAnalyze = !accessBlock;
   const savedVisionModel = currentChannelModel(settings, 'vision').model;
   const [currentVisionModel, setCurrentVisionModel] = useState(savedVisionModel);
+  // 只有官方渠道按积分计费：显示余额与预计消耗，自带 Key 的渠道不显示
+  const { balance: creditBalance, pricing: creditPricing } = useHostedCredits(visionChannelMode(settings).kind === 'picpocket');
+  const visionCost = creditBalance === null ? null : visionCreditCost(creditPricing, currentVisionModel);
 
   useEffect(() => {
     setCurrentVisionModel(savedVisionModel);
@@ -436,6 +443,14 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
               </span>
             </button>
           </div>
+          {creditBalance !== null && (
+            <div className="flex items-center justify-end gap-2">
+              {visionCost && (
+                <span className="text-[10px] text-zinc-500">{t('billing.costEstimate', { cost: formatCreditCost(visionCost) })}</span>
+              )}
+              <CreditBalanceButton balance={creditBalance} insufficient={visionCost !== null && creditBalance < visionCost.min} />
+            </div>
+          )}
         </div>
 
         {/* Folder Attribution Banner */}

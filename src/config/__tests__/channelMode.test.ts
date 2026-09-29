@@ -3,7 +3,6 @@ import {
   PICPOCKET_CHANNEL_ID,
   imageChannelMode,
   migrateToPicpocketChannel,
-  usesPicpocketCredits,
   visionChannelMode,
 } from '../channelMode';
 import { withImageChannels } from '../imageChannels';
@@ -85,28 +84,5 @@ describe('migrateToPicpocketChannel', () => {
     const settings = withVisionChannels(base, [{ ...deepseek, apiKey: 'sk-ds' }], 'ds');
     const patch = migrateToPicpocketChannel(settings)!;
     expect(patch).toEqual({ picpocketChannelMigrated: true });
-  });
-});
-
-describe('usesPicpocketCredits', () => {
-  const ownVision = withVisionChannels(base, [{ ...deepseek, apiKey: 'sk-ds' }], 'ds');
-  const ownBoth = withImageChannels(ownVision, [openaiImage], 'oa');
-
-  it('is true on a fresh install, where both channels fall back to PicPocket', () => {
-    expect(usesPicpocketCredits(base)).toBe(true);
-  });
-
-  it('is true when either the vision or the image channel is PicPocket', () => {
-    expect(usesPicpocketCredits(withImageChannels(ownVision, [openaiImage], PICPOCKET_CHANNEL_ID))).toBe(true);
-    expect(usesPicpocketCredits(withVisionChannels(ownBoth, [{ ...deepseek, apiKey: 'sk-ds' }], PICPOCKET_CHANNEL_ID))).toBe(true);
-  });
-
-  it('is false when both channels are the user\'s own, so the balance is irrelevant', () => {
-    expect(usesPicpocketCredits(ownBoth)).toBe(false);
-  });
-
-  it('is false when a selected own channel is missing its key, since nothing is billed in credits', () => {
-    const missing = withVisionChannels(ownBoth, [deepseek], 'ds');
-    expect(usesPicpocketCredits(missing)).toBe(false);
   });
 });

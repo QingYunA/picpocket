@@ -17,6 +17,8 @@ import { CanvasNodeType, type CanvasGenerationMode, type CanvasNodeData } from "
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { CanvasNodeReferenceBar } from "./canvas-node-reference-bar";
 import { isPicPocketModelCapabilitySupported } from "@/integrations/picpocket/picpocket-config-model";
+import { formatCreditCost } from "@picpocket/services/creditPricing";
+import { CanvasCreditBalance, useCanvasCredits } from "./canvas-credits";
 
 export type CanvasNodeGenerationMode = CanvasGenerationMode;
 
@@ -44,6 +46,7 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
     const mode = modeOverride ?? defaultMode(node.type);
     const modeSupported = import.meta.env.VITE_PICPOCKET_EXTENSION !== "1" || isPicPocketModelCapabilitySupported(mode);
     const config = buildNodeConfig(globalConfig, node, mode);
+    const credits = useCanvasCredits(mode, config);
     const hasTextContent = node.type === CanvasNodeType.Text && Boolean(node.metadata?.content?.trim());
     const hasImageContent = node.type === CanvasNodeType.Image && Boolean(node.metadata?.content);
     const isEditingExistingContent = hasTextContent || hasImageContent;
@@ -131,6 +134,7 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                         </>
                     )}
                 </div>
+                {credits && <CanvasCreditBalance balance={credits.balance} insufficient={credits.cost !== null && credits.balance < credits.cost.min} />}
                 <Button
                     type="primary"
                     className="!h-10 !min-w-16 shrink-0 !rounded-full !px-3"
@@ -138,6 +142,7 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                     disabled={!isRunning && (!prompt.trim() || !modeSupported)}
                     onClick={() => (isRunning ? onStop(node.id) : submit())}
                     aria-label={t(isRunning ? "canvas.promptPanel.stopGeneration" : "canvas.promptPanel.generate")}
+                    title={!isRunning && credits?.cost ? t("canvas.credits.cost", { cost: formatCreditCost(credits.cost) }) : undefined}
                 >
                     <span className="flex items-center gap-1.5">
                         {isRunning ? (
@@ -147,7 +152,10 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                                 <span className="text-xs font-medium">{t("canvas.promptPanel.stop")}</span>
                             </>
                         ) : (
-                            <ArrowUp className="size-4" />
+                            <>
+                                <ArrowUp className="size-4" />
+                                {credits?.cost && <span className="text-xs font-medium tabular-nums">{formatCreditCost(credits.cost)}</span>}
+                            </>
                         )}
                     </span>
                 </Button>

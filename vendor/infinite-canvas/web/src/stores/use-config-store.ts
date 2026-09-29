@@ -6,6 +6,7 @@ import { nanoid } from "nanoid";
 import i18n from "@/i18n";
 import { openOptionsPage } from "@picpocket/utils/navigation";
 import { picPocketModelSettingsRoute } from "@/integrations/picpocket/picpocket-config-model";
+import { isModelChannelReady } from "@/integrations/picpocket/channel-ready";
 
 export type ApiCallFormat = "openai" | "gemini";
 export type ModelCapability = "image" | "video" | "text" | "audio";
@@ -201,8 +202,7 @@ export function resolveModelScript(config: AiConfig, value: string) {
 }
 
 function isAiConfigReady(config: AiConfig, model: string) {
-    const channel = resolveModelChannel(config, model);
-    return Boolean(model.trim() && channel.baseUrl.trim() && channel.apiKey.trim());
+    return isModelChannelReady(model, resolveModelChannel(config, model));
 }
 
 export const useConfigStore = create<ConfigStore>()(

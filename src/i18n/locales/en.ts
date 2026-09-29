@@ -129,6 +129,8 @@ export const en: Translations = {
     managedBy: 'Paid with {provider}',
     resubscribeLater: 'You can subscribe again after it ends',
     upgradeCta: 'Upgrade',
+    creditsManageTooltip: 'View plans and credit details',
+    costEstimate: 'about {cost} credits',
     cancel: 'Cancel renewal',
     resume: 'Resume renewal',
     cancelConfirmTitle: 'Cancel auto-renewal?',

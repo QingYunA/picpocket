@@ -40,11 +40,6 @@ export function imageChannelMode(settings: UserSettings, channelId?: string): Ch
   return resolveMode(getImageChannels(settings), channelId ?? settings.activeImageChannelId, hasKey);
 }
 
-/** 反推或生图任一渠道当前走 PicPocket 官方托管（按积分计费），此时界面才需要展示积分余额 */
-export function usesPicpocketCredits(settings: UserSettings): boolean {
-  return visionChannelMode(settings).kind === 'picpocket' || imageChannelMode(settings).kind === 'picpocket';
-}
-
 /**
  * 引入 PicPocket 渠道前，选中的渠道没填 Key 时会悄悄改走托管。
  * 升级后一次性把这类用户切到 PicPocket 渠道，保持他们原来的实际行为；返回需要写入的设置，已迁移过返回 null。

@@ -42,6 +42,8 @@ export default defineConfig({
     base: process.env.VITE_PICPOCKET_EXTENSION === "1" ? "./" : process.env.VITE_BASE || "/",
     plugins: [react(), localPluginsManifest()],
     resolve: {
+        // 画布会引用扩展 src 里的 React hook（@picpocket/hooks），必须与画布共用同一份 React，否则会出现两份 React 导致 hook 报错
+        dedupe: ["react", "react-dom"],
         alias: {
             ...(process.env.VITE_PICPOCKET_EXTENSION === "1"
                 ? {

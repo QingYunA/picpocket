@@ -18,5 +18,6 @@
   document.documentElement.lang = zh ? 'zh' : 'en';
   document.title = (cancelled ? TEXT.cancelTitle : TEXT.successTitle) + ' — PicPocket';
   document.getElementById('title').textContent = cancelled ? TEXT.cancelTitle : TEXT.successTitle;
+  if (window.umami && window.umami.track) window.umami.track(cancelled ? 'checkout_cancelled' : 'checkout_completed');
   document.getElementById('body').textContent = cancelled ? TEXT.cancelBody : TEXT.successBody;
 })();

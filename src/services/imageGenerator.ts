@@ -24,7 +24,7 @@ export function ratioToDimension(ratio: ImageAspectRatio): ImageDimension {
 
 import { sanitizeHttpHeaderToken, sanitizeHttpUrl } from '../utils/sanitize';
 import { getModelCapability } from '../config/modelCapabilities';
-import { hostedImageModel } from '../config/hostedModels';
+import { ensureHostedCatalogLoaded, hostedImageModel } from '../config/hostedModels';
 import { imageChannelMode } from '../config/channelMode';
 import { hostedCreditError, hostedHeaders, readCreditBalance, resolveChannelCredential } from './hostedAccount';
 import { getTranslation } from '../i18n';
@@ -160,6 +160,7 @@ async function runSingleGeneration(
   settings: UserSettings,
   signal: AbortSignal
 ): Promise<GeneratedImage[]> {
+  await ensureHostedCatalogLoaded();
   const mode = imageChannelMode(settings, params.channelId);
   const { credential } = await resolveChannelCredential(mode, settings, 'image-generation');
   const { apiKey, baseUrl, model: defaultModel, isProManaged } = resolveImageApiConfig(settings, params.channelId, Boolean(credential));

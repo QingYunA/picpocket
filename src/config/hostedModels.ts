@@ -40,7 +40,7 @@ export interface HostedCatalog {
   defaultImage: string;
 }
 
-const CATALOG_STORAGE_KEY = 'picpocket_hosted_catalog';
+export const HOSTED_CATALOG_STORAGE_KEY = 'picpocket_hosted_catalog';
 const FALLBACK_CATALOG: HostedCatalog = {
   vision: HOSTED_VISION_MODELS,
   image: HOSTED_IMAGE_MODELS,
@@ -49,6 +49,8 @@ const FALLBACK_CATALOG: HostedCatalog = {
 };
 
 let catalog: HostedCatalog = FALLBACK_CATALOG;
+/** 已由服务端目录（联网拉取）覆盖过；此后存储里较旧的缓存不能再盖掉它 */
+let appliedFromServer = false;
 const listeners = new Set<() => void>();
 
 export const getHostedCatalog = (): HostedCatalog => catalog;
@@ -82,7 +84,7 @@ export function applyHostedCatalog(pricing?: {
   vision: Array<{ id: string }>;
   image: Array<{ id: string }>;
 }): void {
-  if (!pricing?.vision || !pricing.image) return;
+  if (!Array.isArray(pricing?.vision) || !Array.isArray(pricing?.image)) return;
   const next = parseCatalog({
     vision: pricing.vision.map((item) => item.id),
     image: pricing.image.map((item) => item.id),
@@ -90,30 +92,36 @@ export function applyHostedCatalog(pricing?: {
     defaultImage: pricing.defaultImageModel,
   });
   if (!next) return;
+  appliedFromServer = true;
   setCatalog(next);
-  try {
-    void chrome.storage?.local?.set({ [CATALOG_STORAGE_KEY]: next });
-  } catch {
-    // 存储不可用时只在本次会话内生效
-  }
+  // 存储不可用或配额溢出时只在本次会话内生效
+  if (typeof chrome === 'undefined' || !chrome.storage?.local) return;
+  void Promise.resolve(chrome.storage.local.set({ [HOSTED_CATALOG_STORAGE_KEY]: next })).catch(() => undefined);
 }
+
+let catalogLoaded: Promise<void> = Promise.resolve();
 
 function watchStoredCatalog(): void {
   if (typeof chrome === 'undefined' || !chrome.storage?.local) return;
-  void chrome.storage.local.get(CATALOG_STORAGE_KEY).then(
+  catalogLoaded = chrome.storage.local.get(HOSTED_CATALOG_STORAGE_KEY).then(
     (data) => {
-      const stored = parseCatalog(data?.[CATALOG_STORAGE_KEY]);
-      if (stored) setCatalog(stored);
+      const stored = parseCatalog(data?.[HOSTED_CATALOG_STORAGE_KEY]);
+      if (stored && !appliedFromServer) setCatalog(stored);
     },
     () => undefined
   );
   chrome.storage.onChanged?.addListener((changes, area) => {
-    if (area !== 'local' || !changes[CATALOG_STORAGE_KEY]) return;
-    const stored = parseCatalog(changes[CATALOG_STORAGE_KEY].newValue);
+    if (area !== 'local' || !changes[HOSTED_CATALOG_STORAGE_KEY]) return;
+    const stored = parseCatalog(changes[HOSTED_CATALOG_STORAGE_KEY].newValue);
     if (stored) setCatalog(stored);
   });
 }
 watchStoredCatalog();
+
+/** Service Worker 冷启动后首次解析托管模型前先等缓存读完，避免新上线的模型被内置清单误判为不存在 */
+export function ensureHostedCatalogLoaded(): Promise<void> {
+  return catalogLoaded;
+}
 
 function pick(list: readonly string[], fallback: string, candidates: Array<string | undefined>): string {
   for (const candidate of candidates) {

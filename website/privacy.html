@@ -470,7 +470,7 @@
         </p>
 
         <ul class="meta">
-          <li><span class="dot"></span><span data-l="en">Last updated: <strong>September 28, 2026</strong></span><span data-l="zh">最近更新：<strong>2026 年 9 月 28 日</strong></span></li>
+          <li><span class="dot"></span><span data-l="en">Last updated: <strong>September 29, 2026</strong></span><span data-l="zh">最近更新：<strong>2026 年 9 月 29 日</strong></span></li>
           <li><span data-l="en">Applies to: <strong>PicPocket v1.0 for Chrome</strong></span><span data-l="zh">适用范围：<strong>PicPocket Chrome 扩展 v1.0</strong></span></li>
           <li><span data-l="en">Analytics: <strong>None</strong></span><span data-l="zh">统计分析：<strong>无</strong></span></li>
         </ul>
@@ -504,7 +504,7 @@
           <li><a href="#section-2"><span>02</span><span><span data-l="en">What's stored on your device</span><span data-l="zh">本地保存的数据</span></span></a></li>
           <li><a href="#section-3"><span>03</span><span><span data-l="en">When PicPocket goes online</span><span data-l="zh">扩展何时联网</span></span></a></li>
           <li><a href="#section-4"><span>04</span><span><span data-l="en">Account sign-in (optional)</span><span data-l="zh">账号登录（可选）</span></span></a></li>
-          <li><a href="#section-5"><span>05</span><span><span data-l="en">Hosted quota (redeem codes)</span><span data-l="zh">托管额度（兑换码）</span></span></a></li>
+          <li><a href="#section-5"><span>05</span><span><span data-l="en">Hosted quota, credits &amp; payments</span><span data-l="zh">托管额度、积分与付款</span></span></a></li>
           <li><a href="#section-6"><span>06</span><span><span data-l="en">Chrome permissions</span><span data-l="zh">Chrome 权限说明</span></span></a></li>
           <li><a href="#section-7"><span>07</span><span><span data-l="en">What we don't do</span><span data-l="zh">我们不做的事</span></span></a></li>
           <li><a href="#section-8"><span>08</span><span><span data-l="en">Your choices &amp; deletion</span><span data-l="zh">你的选择与删除</span></span></a></li>
@@ -612,6 +612,7 @@
             <li><strong><span data-l="en">Analyzing or generating with your own key</span><span data-l="zh">使用自己的 Key 反推或生图</span></strong>: <span data-l="en">the image (and any prompt text or reference image) is sent directly from your browser to the AI endpoint you configured, such as OpenAI, DeepSeek, SiliconFlow, StepFun or a custom OpenAI-compatible server. That provider handles it under its own privacy policy. PicPocket's servers are not involved.</span><span data-l="zh">图片（以及提示词文本或参考图）会从浏览器直接发往你配置的 AI 接口，例如 OpenAI、DeepSeek、硅基流动、阶跃星辰或自定义 OpenAI 兼容服务。该服务商按其自身的隐私政策处理这些内容，PicPocket 的服务器不参与其中。</span></li>
             <li><strong><span data-l="en">Signing in (optional)</span><span data-l="zh">登录账号（可选）</span></strong>: <span data-l="en">when you sign in or out, PicPocket talks to our authentication service (Supabase) and to Google or GitHub if you choose them. See Section 04.</span><span data-l="zh">登录或退出时，PicPocket 会连接我们的认证服务（Supabase），以及你选择的 Google 或 GitHub，详见第 04 节。</span></li>
             <li><strong><span data-l="en">Using hosted quota with a redeem code</span><span data-l="zh">使用兑换码托管额度</span></strong>: <span data-l="en">if you choose this instead of your own key, the request goes through PicPocket's server. See Section 05.</span><span data-l="zh">如果你选择使用兑换码而不是自己的 Key，请求会经过 PicPocket 的服务器，详见第 05 节。</span></li>
+            <li><strong><span data-l="en">Buying a plan or credit pack (optional)</span><span data-l="zh">购买会员或积分包（可选）</span></strong>: <span data-l="en">you are sent to the secure checkout page of our payment providers. See Section 05.</span><span data-l="zh">你会被带到我们的支付服务商提供的安全结账页面，详见第 05 节。</span></li>
             <li><strong><span data-l="en">Saving an image</span><span data-l="zh">收藏图片</span></strong>: <span data-l="en">PicPocket downloads the image from the website that hosts it, the same way your browser does when showing it.</span><span data-l="zh">PicPocket 会从图片所在的网站下载该图片，和浏览器显示图片时的方式相同。</span></li>
             <li><strong><span data-l="en">Syncing the prompt library</span><span data-l="zh">同步提示词库</span></strong>: <span data-l="en">when you click Sync, PicPocket downloads public prompt collections from GitHub and jsDelivr. Preview images in the library load from the public sites they are hosted on.</span><span data-l="zh">点击“同步词库”时，PicPocket 会从 GitHub 和 jsDelivr 下载公开的提示词合集。词库中的预览图从其所在的公开网站加载。</span></li>
             <li><strong><span data-l="en">Connecting an AI agent (optional)</span><span data-l="zh">连接 AI Agent（可选）</span></strong>: <span data-l="en">if you turn on agent collaboration, PicPocket talks to a bridge running on your own computer (<code class="code">127.0.0.1</code>). You choose whether an agent such as Cursor or Claude Code may read your library, save prompts or generate images. What you let an agent read may then be sent to that agent's own AI provider.</span><span data-l="zh">如果你开启 Agent 协作，PicPocket 只会连接运行在你本机（<code class="code">127.0.0.1</code>）上的桥接程序。Cursor、Claude Code 等 Agent 能否读取灵感库、保存提示词或生图，都由你授权。你允许 Agent 读取的内容，可能会被该 Agent 发送给它自己的 AI 服务商。</span></li>
@@ -622,8 +623,8 @@
           <div class="sec-num">SECTION 04</div>
           <h2><span data-l="en">Account sign-in (optional)</span><span data-l="zh">账号登录（可选）</span></h2>
           <p>
-            <span data-l="en">You can use PicPocket without an account. Signing in is optional and lets you use the same account across browsers and devices, and, once paid plans launch, link your plan and credits to it. Signing in does not upload your library: saved images, prompts and settings stay on your device.</span>
-            <span data-l="zh">不登录也可以正常使用 PicPocket。登录是可选的，用于在不同浏览器和设备上使用同一个账号，并在付费方案上线后把会员和积分绑定到账号。登录不会上传你的灵感库：收藏的图片、提示词和设置仍然只保存在你的设备上。</span>
+            <span data-l="en">You can use PicPocket without an account. Signing in is optional and lets you use the same account across browsers and devices, and link your plan and credits to it. Signing in does not upload your library: saved images, prompts and settings stay on your device.</span>
+            <span data-l="zh">不登录也可以正常使用 PicPocket。登录是可选的，用于在不同浏览器和设备上使用同一个账号，并把会员和积分绑定到账号。登录不会上传你的灵感库：收藏的图片、提示词和设置仍然只保存在你的设备上。</span>
           </p>
           <h3><span data-l="en">How you can sign in</span><span data-l="zh">登录方式</span></h3>
           <ul>
@@ -645,7 +646,7 @@
 
         <section id="section-5">
           <div class="sec-num">SECTION 05</div>
-          <h2><span data-l="en">Hosted quota (redeem codes)</span><span data-l="zh">托管额度（兑换码）</span></h2>
+          <h2><span data-l="en">Hosted quota, credits &amp; payments</span><span data-l="zh">托管额度、积分与付款</span></h2>
           <p>
             <span data-l="en">Some creators and beta testers get a redeem code that lets them analyze and generate images without their own API key. This is optional. If you only use your own key, this section doesn't apply to you.</span>
             <span data-l="zh">部分创作者和内测用户会获得兑换码，无需自己的 API Key 也能反推和生图。这是可选功能；如果你只使用自己的 Key，本节与你无关。</span>
@@ -656,6 +657,18 @@
             <li><span><span data-l="en">Each analysis or generation request is sent with your code to our server (a Supabase Edge Function). The server checks the code and deducts one use from your quota.</span><span data-l="zh">每次反推或生图请求都会带上兑换码发送到我们的服务器（Supabase Edge Function）。服务器核验兑换码，并扣除一次额度。</span></span></li>
             <li><span><span data-l="en">The server forwards the request, including the image and prompt text, to an upstream AI provider (currently SiliconFlow for image analysis and most generation, and xAI for Grok image models), and returns the result to you.</span><span data-l="zh">服务器将请求（包括图片和提示词文本）转发给上游 AI 服务商（目前反推和大部分生图使用硅基流动，Grok 生图模型使用 xAI），并把结果返回给你。</span></span></li>
           </ol>
+          <h3><span data-l="en">Credits and paid plans</span><span data-l="zh">积分与付费方案</span></h3>
+          <p>
+            <span data-l="en">If you are signed in, you can also use hosted models with credits from the monthly free allowance, a subscription plan (Plus, Pro or Max) or a one-time credit pack. Requests work exactly as described above, except that the server checks your account and deducts credits instead of a redeem-code use. Your images, prompts and results are still relayed in memory and not stored.</span>
+            <span data-l="zh">登录后，你还可以使用每月免费额度、订阅方案（Plus、Pro、Max）或一次性积分包中的积分来调用托管模型。请求流程与上文相同，只是服务器核验的是你的账号，并扣除积分而不是兑换码次数。你的图片、提示词和结果仍然只在内存中中转，不会保存。</span>
+          </p>
+          <h3><span data-l="en">Payments</span><span data-l="zh">付款</span></h3>
+          <ul>
+            <li><span data-l="en">Payments are processed by <strong>Waffo Pancake</strong> (which acts as the merchant of record for these orders) or by <strong>PayPal</strong>, whichever you choose at checkout. You enter your card or PayPal details only on their pages. PicPocket never sees or stores your card number.</span><span data-l="zh">付款由 <strong>Waffo Pancake</strong>（担任这些订单的商户主体，Merchant of Record）或 <strong>PayPal</strong> 处理，取决于你在结账时的选择。银行卡或 PayPal 信息只会填写在它们的页面上，PicPocket 不会看到也不会保存你的卡号。</span></li>
+            <li><span data-l="en">The payment provider sends us the result of your order: your account ID, the email address on the order, the plan or pack you bought, the amount, the billing period, and the provider's order or subscription ID. We use it only to grant and manage your plan and credits, handle cancellations and refunds, and keep accounting records.</span><span data-l="zh">支付服务商会把订单结果发给我们：你的账号 ID、订单上的邮箱、所购方案或积分包、金额、计费周期，以及服务商侧的订单或订阅 ID。我们仅用这些信息发放和管理会员与积分、处理取消和退款，并保存对账记录。</span></li>
+            <li><span data-l="en">We also keep a credit ledger tied to your account: when credits were granted or used, how many, and which hosted model was called. It does not contain your images, prompts or results.</span><span data-l="zh">我们还会保留与账号关联的积分流水：积分何时发放或使用、数量多少、调用了哪个托管模型。其中不包含你的图片、提示词或结果。</span></li>
+            <li><span data-l="en">Payment records may be kept for as long as needed for accounting, tax and dispute handling, even after you delete your account. The payment providers handle your payment data under their own privacy policies: <a href="https://www.waffo.com/privacy-policy" target="_blank" rel="noopener">Waffo</a> and <a href="https://www.paypal.com/webapps/mpp/ua/privacy-full" target="_blank" rel="noopener">PayPal</a>.</span><span data-l="zh">为满足对账、税务和争议处理的需要，付款记录可能在你注销账号后继续保留必要的时间。支付服务商按各自的隐私政策处理你的付款数据：<a href="https://www.waffo.com/privacy-policy" target="_blank" rel="noopener">Waffo</a>、<a href="https://www.paypal.com/webapps/mpp/ua/privacy-full" target="_blank" rel="noopener">PayPal</a>。</span></li>
+          </ul>
           <h3><span data-l="en">What we keep</span><span data-l="zh">我们保留什么</span></h3>
           <ul>
             <li><span data-l="en">We keep the redeem code, its remaining quota, its expiry date and when it was last used.</span><span data-l="zh">我们保留兑换码、剩余额度、有效期和最近使用时间。</span></li>
@@ -736,7 +749,7 @@
             <li><strong><span data-l="en">Export a backup</span><span data-l="zh">导出备份</span></strong>: <span data-l="en">download your library as a ZIP file whenever you like.</span><span data-l="zh">随时可以把灵感库导出为 ZIP 文件。</span></li>
             <li><strong><span data-l="en">Turn features off</span><span data-l="zh">关闭功能</span></strong>: <span data-l="en">disable the hover pill, and leave agent collaboration and hosted quota switched off if you don't want them.</span><span data-l="zh">可以关闭悬停胶囊；不需要时，也可以不开启 Agent 协作和托管额度。</span></li>
             <li><strong><span data-l="en">Uninstall</span><span data-l="zh">卸载</span></strong>: <span data-l="en">removing the extension makes Chrome delete everything PicPocket stored in your browser.</span><span data-l="zh">卸载扩展后，Chrome 会删除 PicPocket 在浏览器中保存的全部数据。</span></li>
-            <li><strong><span data-l="en">Your account</span><span data-l="zh">账号</span></strong>: <span data-l="en">sign out at any time from the account menu. To delete your account and its record, email us from the address you signed in with and we will delete it within 30 days.</span><span data-l="zh">可随时在账号菜单中退出登录。如需注销账号并删除账号记录，请用登录时使用的邮箱给我们发邮件，我们会在 30 天内删除。</span></li>
+            <li><strong><span data-l="en">Your account</span><span data-l="zh">账号</span></strong>: <span data-l="en">sign out at any time from the account menu. To delete your account and its record, email us from the address you signed in with and we will delete it within 30 days. Payment and accounting records may be kept for as long as the law or dispute handling requires.</span><span data-l="zh">可随时在账号菜单中退出登录。如需注销账号并删除账号记录，请用登录时使用的邮箱给我们发邮件，我们会在 30 天内删除；付款与对账记录会在法律或争议处理需要的期限内保留。</span></li>
             <li><strong><span data-l="en">Redeem-code records</span><span data-l="zh">兑换码记录</span></strong>: <span data-l="en">email us and we'll delete the record for your code. The code will stop working.</span><span data-l="zh">给我们发邮件，我们会删除你的兑换码记录，该兑换码随即失效。</span></li>
           </ul>
         </section>

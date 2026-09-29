@@ -8,6 +8,8 @@ import { defaultConfig, resolveModelForCapability, useConfigStore, useEffectiveC
 import { canvasThemes } from "@/lib/canvas-theme";
 import { useThemeStore } from "@/stores/use-theme-store";
 import { isPicPocketModelCapabilitySupported } from "@/integrations/picpocket/picpocket-config-model";
+import { formatCreditCost, isShortOnCredits } from "@picpocket/services/creditPricing";
+import { CanvasCreditBalance, useCanvasCredits } from "./canvas-credits";
 import { CanvasImageSettingsPopover } from "./canvas-image-settings-popover";
 import { CanvasAudioSettingsPopover, type CanvasAudioSettingKey } from "./canvas-audio-settings-popover";
 import { CanvasVideoSettingsPopover } from "./canvas-video-settings-popover";
@@ -33,6 +35,7 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
     const isPicPocketExtension = import.meta.env.VITE_PICPOCKET_EXTENSION === "1";
     const modeSupported = !isPicPocketExtension || isPicPocketModelCapabilitySupported(mode);
     const config = buildNodeConfig(globalConfig, node, mode);
+    const credits = useCanvasCredits(mode, config);
     const chipStyle = { background: theme.node.fill, borderColor: theme.node.stroke, color: theme.node.text };
     const hasAnyInput = Boolean(inputSummary.textCount || inputSummary.imageCount || inputSummary.videoCount || inputSummary.audioCount);
     const hasComposerContent = Boolean((node.metadata?.composerContent ?? node.metadata?.prompt ?? "").trim());
@@ -124,6 +127,13 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                 </div>
             )}
 
+            {modeSupported && credits ? (
+                <div className="mb-2 flex items-center justify-end gap-2" onMouseDown={(event) => event.stopPropagation()}>
+                    {credits.cost ? <span className="text-xs" style={{ color: theme.node.muted }}>{t("canvas.credits.cost", { cost: formatCreditCost(credits.cost) })}</span> : null}
+                    <CanvasCreditBalance balance={credits.balance} insufficient={isShortOnCredits(credits.balance, credits.cost)} />
+                </div>
+            ) : null}
+
             <Button
                 type="primary"
                 className="mt-auto !h-9 !w-full !cursor-pointer !rounded-lg"
@@ -142,7 +152,7 @@ export function CanvasConfigNodePanel({ node, isRunning, inputSummary, onConfigC
                     ) : (
                         <>
                             <Play className="size-4" />
-                            <span>{t("canvas.configNode.generate")}</span>
+                            <span>{t("canvas.configNode.generate")}{credits?.cost ? ` · ${t("canvas.credits.costShort", { cost: formatCreditCost(credits.cost) })}` : ""}</span>
                         </>
                     )}
                 </span>

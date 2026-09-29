@@ -72,6 +72,10 @@ import { formatSafeErrorMessage, readApiErrorMessage } from '@/utils/errorMessag
 import { UpgradeCreditsButton } from '@/components/UpgradeCreditsButton';
 import { useI18n } from '@/i18n';
 import { ChannelModelPicker } from './ChannelModelPicker';
+import { CreditBalanceButton } from './CreditBalanceButton';
+import { imageChannelMode } from '@/config/channelMode';
+import { useHostedCredits } from '@/hooks/useHostedCredits';
+import { formatCreditCost, imageCreditCost, isShortOnCredits, scaleCreditCost } from '@/services/creditPricing';
 import { currentChannelModel, selectChannelModel } from '@/config/channelSelection';
 import { ConfirmModal } from './ConfirmModal';
 import { ReferenceImagesTray } from './workbench/ReferenceImagesTray';
@@ -121,6 +125,8 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
   // 当前生图渠道与模型（含 PicPocket 官方渠道），在「模型」一行的选择器里切换并即时持久化
   const savedImageSelection = currentChannelModel(settings, 'image');
   const [currentModel, setCurrentModel] = useState(savedImageSelection.model);
+  // 只有官方渠道按积分计费：显示余额与本次消耗，自带 Key 的渠道不显示
+  const { balance: creditBalance, pricing: creditPricing } = useHostedCredits(imageChannelMode(settings).kind === 'picpocket');
   const modelCapability = useMemo(() => getModelCapability(currentModel), [currentModel]);
 
   const initialDraft = useRef<GeneratorDraftState>(getInitialGeneratorDraft()).current;
@@ -128,6 +134,9 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
   const [prompt, setPromptState] = useState(initialPrompt || initialDraft.prompt);
   const [aspectRatio, setAspectRatioState] = useState<ImageAspectRatio>(initialDraft.aspectRatio);
   const [count, setCountState] = useState(initialDraft.count || 1);
+  // 张数在设置里可调，每张是独立请求，总消耗按张数折算
+  const perImageCost = creditBalance === null ? null : imageCreditCost(creditPricing, currentModel);
+  const imageCost = perImageCost && scaleCreditCost(perImageCost, count);
   const [quality, setQuality] = useState<'auto' | 'standard' | 'hd'>('auto');
 
   // Multi-reference images tray and deduplication pool IDs
@@ -1017,6 +1026,9 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
               align="right"
               className="flex-1"
             />
+            {creditBalance !== null && (
+              <CreditBalanceButton balance={creditBalance} insufficient={isShortOnCredits(creditBalance, imageCost)} />
+            )}
           </div>
 
           {/* Sub-component: Multi-Reference Images Tray */}
@@ -1174,7 +1186,10 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
               ) : (
                 <>
                   <Sparkles className="h-4 w-4 text-amber-300" />
-                  <span>{t('generator.generateBtn')}</span>
+                  <span>
+                    {t('generator.generateBtn')}
+                    {imageCost && ` · ${formatCreditCost(imageCost)} ${t('billing.creditsUnit')}`}
+                  </span>
                 </>
               )}
             </button>

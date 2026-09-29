@@ -127,6 +127,8 @@ export const zh = {
     managedBy: '通过 {provider} 付款',
     resubscribeLater: '到期后可重新订阅',
     upgradeCta: '去升级',
+    creditsManageTooltip: '查看套餐与积分明细',
+    costEstimate: '预计 {cost} 积分',
     cancel: '取消续费',
     resume: '恢复续费',
     cancelConfirmTitle: '取消自动续费？',

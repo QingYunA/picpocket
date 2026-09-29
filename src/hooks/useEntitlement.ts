@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BillingError, fetchEntitlement, type BillingErrorCode, type Entitlement } from '@/services/accountBilling';
-import { CREDIT_BALANCE_KEY } from '@/services/hostedAccount';
+import { BillingError, fetchEntitlement, type BillingErrorCode, type Entitlement } from '../services/accountBilling';
+import { CREDIT_BALANCE_KEY } from '../services/hostedAccount';
 
 const CHECKOUT_POLL_INTERVAL_MS = 5_000;
 const CHECKOUT_POLL_DURATION_MS = 3 * 60_000;

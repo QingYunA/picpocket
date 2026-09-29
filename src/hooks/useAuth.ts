@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { supabase, AUTH_STORAGE_KEY } from '@/services/supabase';
-import { getCurrentUser, toAccountUser, type AccountUser } from '@/services/auth';
+import { supabase, AUTH_STORAGE_KEY } from '../services/supabase';
+import { getCurrentUser, toAccountUser, type AccountUser } from '../services/auth';
 
 /**
  * 当前登录账号。侧边栏、工作台、设置页各自持有 Supabase 客户端，

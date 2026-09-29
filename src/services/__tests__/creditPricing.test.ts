@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatCreditCost, imageCreditCost, scaleCreditCost, visionCreditCost, type CreditPricing } from '../creditPricing';
+import { formatCreditCost, imageCreditCost, isShortOnCredits, scaleCreditCost, visionCreditCost, type CreditPricing } from '../creditPricing';
 
 const pricing: CreditPricing = {
   defaultVisionModel: 'deepseek-flash',
@@ -63,5 +63,17 @@ describe('scaleCreditCost', () => {
     expect(scaleCreditCost({ min: 15, max: 15 }, -2)).toEqual({ min: 15, max: 15 });
     expect(scaleCreditCost({ min: 15, max: 15 }, Number.NaN)).toEqual({ min: 15, max: 15 });
     expect(scaleCreditCost({ min: 15, max: 15 }, 2.9)).toEqual({ min: 30, max: 30 });
+  });
+});
+
+describe('isShortOnCredits', () => {
+  it('is true only when the balance cannot cover even the cheapest outcome', () => {
+    expect(isShortOnCredits(2, { min: 15, max: 15 })).toBe(true);
+    expect(isShortOnCredits(20, { min: 20, max: 32 })).toBe(false);
+    expect(isShortOnCredits(19, { min: 20, max: 32 })).toBe(true);
+  });
+
+  it('is false while the cost is unknown', () => {
+    expect(isShortOnCredits(0, null)).toBe(false);
   });
 });

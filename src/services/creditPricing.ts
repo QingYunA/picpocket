@@ -31,3 +31,8 @@ export function scaleCreditCost(cost: CreditCost, count: number): CreditCost {
   const images = Math.max(1, Math.floor(Number.isFinite(count) ? count : 1));
   return { min: cost.min * images, max: cost.max * images };
 }
+
+/** 余额连最低消耗都付不起时为 true；价格未知时不提示 */
+export function isShortOnCredits(balance: number, cost: CreditCost | null): boolean {
+  return cost !== null && balance < cost.min;
+}

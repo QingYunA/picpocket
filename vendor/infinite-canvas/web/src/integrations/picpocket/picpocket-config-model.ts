@@ -22,7 +22,10 @@ export function picPocketModelSettingsRoute(capability: ModelCapability = "image
 /** 画布只据渠道是否有 Key 判断可用；PicPocket 渠道的请求实际经由扩展的生图服务按账号计费，这里只是占位 */
 export const PICPOCKET_MANAGED_KEY = "picpocket-managed";
 
-const canvasImageChannelId = (channelId: string) => (channelId === "legacy-image" ? "picpocket-image" : `picpocket-image-${channelId}`);
+/** 画布里反推（文本）用的渠道 ID */
+export const PICPOCKET_VISION_CHANNEL_ID = "picpocket-vision";
+
+export const canvasImageChannelId = (channelId: string) => (channelId === "legacy-image" ? "picpocket-image" : `picpocket-image-${channelId}`);
 
 export function buildPicPocketCanvasConfig(settings: UserSettings): Partial<AiConfig> {
     const currentImage = currentChannelModel(settings, "image");
@@ -49,7 +52,7 @@ export function buildPicPocketCanvasConfig(settings: UserSettings): Partial<AiCo
     const selectedImageModel = defaultImageChannel?.models.find((entry) => entry.name === currentImage.model)?.name || defaultImageChannel?.models[0]?.name || currentImage.model;
     const defaultImageValue = defaultImageChannel ? `${defaultImageChannel.id}::${selectedImageModel}` : "";
     const visionChannel: ModelChannel = {
-        id: "picpocket-vision",
+        id: PICPOCKET_VISION_CHANNEL_ID,
         name: "PicPocket Vision",
         baseUrl: settings.baseUrl || "https://api.openai.com/v1",
         apiKey: visionChannelMode(settings).kind === "picpocket" ? PICPOCKET_MANAGED_KEY : settings.apiKey,

@@ -35,7 +35,7 @@ import { ChannelModelPicker } from './ChannelModelPicker';
 import { CreditBalanceButton } from './CreditBalanceButton';
 import { visionChannelMode } from '@/config/channelMode';
 import { useHostedCredits } from '@/hooks/useHostedCredits';
-import { formatCreditCost, visionCreditCost } from '@/services/creditPricing';
+import { formatCreditCost, isShortOnCredits, visionCreditCost } from '@/services/creditPricing';
 import { currentChannelModel } from '@/config/channelSelection';
 import { readFileAsDataUrl } from '@/utils/file';
 import { isAiGeneratedItem, isAgentCollabItem, withAnalyzedTag } from '@/utils/itemHelpers';
@@ -448,7 +448,7 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
               {visionCost && (
                 <span className="text-[10px] text-zinc-500">{t('billing.costEstimate', { cost: formatCreditCost(visionCost) })}</span>
               )}
-              <CreditBalanceButton balance={creditBalance} insufficient={visionCost !== null && creditBalance < visionCost.min} />
+              <CreditBalanceButton balance={creditBalance} insufficient={isShortOnCredits(creditBalance, visionCost)} />
             </div>
           )}
         </div>

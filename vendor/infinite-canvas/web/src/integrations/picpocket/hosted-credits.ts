@@ -1,11 +1,11 @@
 import { PICPOCKET_CHANNEL_ID } from "@picpocket/config/hostedModels";
 
-import { PICPOCKET_MANAGED_KEY } from "./picpocket-config-model";
+import { PICPOCKET_MANAGED_KEY, PICPOCKET_VISION_CHANNEL_ID, canvasImageChannelId } from "./picpocket-config-model";
 
 export type HostedCanvasSelection = { kind: "image" | "vision"; model: string };
 
-const IMAGE_CHANNEL_ID = `picpocket-image-${PICPOCKET_CHANNEL_ID}`;
-const VISION_CHANNEL_ID = "picpocket-vision";
+const IMAGE_CHANNEL_ID = canvasImageChannelId(PICPOCKET_CHANNEL_ID);
+const VISION_CHANNEL_ID = PICPOCKET_VISION_CHANNEL_ID;
 
 /**
  * 画布节点当前选中的「渠道::模型」是否走 PicPocket 官方托管（按积分计费）。

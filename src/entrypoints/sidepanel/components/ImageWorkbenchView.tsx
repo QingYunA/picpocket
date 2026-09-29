@@ -75,7 +75,7 @@ import { ChannelModelPicker } from './ChannelModelPicker';
 import { CreditBalanceButton } from './CreditBalanceButton';
 import { imageChannelMode } from '@/config/channelMode';
 import { useHostedCredits } from '@/hooks/useHostedCredits';
-import { formatCreditCost, imageCreditCost, scaleCreditCost } from '@/services/creditPricing';
+import { formatCreditCost, imageCreditCost, isShortOnCredits, scaleCreditCost } from '@/services/creditPricing';
 import { currentChannelModel, selectChannelModel } from '@/config/channelSelection';
 import { ConfirmModal } from './ConfirmModal';
 import { ReferenceImagesTray } from './workbench/ReferenceImagesTray';
@@ -1027,7 +1027,7 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
               className="flex-1"
             />
             {creditBalance !== null && (
-              <CreditBalanceButton balance={creditBalance} insufficient={imageCost !== null && creditBalance < imageCost.min} />
+              <CreditBalanceButton balance={creditBalance} insufficient={isShortOnCredits(creditBalance, imageCost)} />
             )}
           </div>
 

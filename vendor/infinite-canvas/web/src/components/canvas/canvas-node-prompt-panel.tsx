@@ -17,7 +17,7 @@ import { CanvasNodeType, type CanvasGenerationMode, type CanvasNodeData } from "
 import type { CanvasResourceReference } from "@/lib/canvas/canvas-resource-references";
 import { CanvasNodeReferenceBar } from "./canvas-node-reference-bar";
 import { isPicPocketModelCapabilitySupported } from "@/integrations/picpocket/picpocket-config-model";
-import { formatCreditCost } from "@picpocket/services/creditPricing";
+import { formatCreditCost, isShortOnCredits } from "@picpocket/services/creditPricing";
 import { CanvasCreditBalance, useCanvasCredits } from "./canvas-credits";
 
 export type CanvasNodeGenerationMode = CanvasGenerationMode;
@@ -95,8 +95,8 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                 placeholder={t(`canvas.promptPanel.${mode === "image" && hasImageContent ? "editImage" : mode === "text" && hasTextContent ? "editText" : mode}`)}
             />
 
-            <div className="mt-2 flex min-w-0 items-center justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-2">
+            <div className="mt-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <Tooltip title={t("canvas.promptPanel.expandEditor")}>
                         <Button type="text" className="!h-8 !w-8 !min-w-8 shrink-0 !rounded-full !bg-transparent !p-0" style={{ color: theme.node.text }} icon={<Maximize2 className="size-3.5" />} onClick={openExpandedEditor} aria-label={t("canvas.promptPanel.expandEditor")} />
                     </Tooltip>
@@ -107,7 +107,7 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                         </span>
                     ) : mode === "image" ? (
                         <>
-                            <ModelPicker config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability="image" onMissingConfig={() => openConfigDialog(true, "channels", "image")} className="max-w-[190px]" />
+                            <ModelPicker config={config} value={config.model} onChange={(model) => onConfigChange(node.id, { model })} capability="image" onMissingConfig={() => openConfigDialog(true, "channels", "image")} className={credits ? "max-w-[150px]" : "max-w-[190px]"} />
                             <CanvasImageSettingsPopover
                                 config={config}
                                 placement="topLeft"
@@ -134,31 +134,33 @@ export function CanvasNodePromptPanel({ node, nodes, isRunning, onPromptChange, 
                         </>
                     )}
                 </div>
-                {credits && <CanvasCreditBalance balance={credits.balance} insufficient={credits.cost !== null && credits.balance < credits.cost.min} />}
-                <Button
-                    type="primary"
-                    className="!h-10 !min-w-16 shrink-0 !rounded-full !px-3"
-                    danger={isRunning}
-                    disabled={!isRunning && (!prompt.trim() || !modeSupported)}
-                    onClick={() => (isRunning ? onStop(node.id) : submit())}
-                    aria-label={t(isRunning ? "canvas.promptPanel.stopGeneration" : "canvas.promptPanel.generate")}
-                    title={!isRunning && credits?.cost ? t("canvas.credits.cost", { cost: formatCreditCost(credits.cost) }) : undefined}
-                >
-                    <span className="flex items-center gap-1.5">
-                        {isRunning ? (
-                            <>
-                                <LoaderCircle className="size-4 animate-spin" />
-                                <Square className="size-3.5 fill-current" />
-                                <span className="text-xs font-medium">{t("canvas.promptPanel.stop")}</span>
-                            </>
-                        ) : (
-                            <>
-                                <ArrowUp className="size-4" />
-                                {credits?.cost && <span className="text-xs font-medium tabular-nums">{formatCreditCost(credits.cost)}</span>}
-                            </>
-                        )}
-                    </span>
-                </Button>
+                <div className="ml-auto flex shrink-0 items-center gap-2">
+                    {credits && <CanvasCreditBalance balance={credits.balance} insufficient={isShortOnCredits(credits.balance, credits.cost)} />}
+                    <Button
+                        type="primary"
+                        className="!h-10 !min-w-16 shrink-0 !rounded-full !px-3"
+                        danger={isRunning}
+                        disabled={!isRunning && (!prompt.trim() || !modeSupported)}
+                        onClick={() => (isRunning ? onStop(node.id) : submit())}
+                        aria-label={t(isRunning ? "canvas.promptPanel.stopGeneration" : "canvas.promptPanel.generate")}
+                        title={!isRunning && credits?.cost ? t("canvas.credits.cost", { cost: formatCreditCost(credits.cost) }) : undefined}
+                    >
+                        <span className="flex items-center gap-1.5">
+                            {isRunning ? (
+                                <>
+                                    <LoaderCircle className="size-4 animate-spin" />
+                                    <Square className="size-3.5 fill-current" />
+                                    <span className="text-xs font-medium">{t("canvas.promptPanel.stop")}</span>
+                                </>
+                            ) : (
+                                <>
+                                    <ArrowUp className="size-4" />
+                                    {credits?.cost && <span className="whitespace-nowrap text-xs font-medium tabular-nums">{t("canvas.credits.costShort", { cost: formatCreditCost(credits.cost) })}</span>}
+                                </>
+                            )}
+                        </span>
+                    </Button>
+                </div>
             </div>
             <Modal title={t("canvas.promptPanel.editorTitle")} open={expanded} centered width={760} footer={null} onCancel={() => setExpanded(false)} destroyOnHidden>
                 <div data-canvas-no-zoom className="pt-2" onWheelCapture={(event) => event.stopPropagation()}>

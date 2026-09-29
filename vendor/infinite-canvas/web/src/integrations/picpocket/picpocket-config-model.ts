@@ -2,7 +2,7 @@ import type { UserSettings } from "@picpocket/types";
 import { enabledImageModels, getImageChannels } from "@picpocket/config/imageChannels";
 import { visionChannelMode } from "@picpocket/config/channelMode";
 import { currentChannelModel } from "@picpocket/config/channelSelection";
-import { HOSTED_IMAGE_MODELS, PICPOCKET_CHANNEL_ID } from "@picpocket/config/hostedModels";
+import { PICPOCKET_CHANNEL_ID, getHostedCatalog } from "@picpocket/config/hostedModels";
 
 import type { AiConfig, ModelCapability, ModelChannel } from "@/stores/use-config-store";
 
@@ -37,7 +37,7 @@ export function buildPicPocketCanvasConfig(settings: UserSettings): Partial<AiCo
         baseUrl: "",
         apiKey: PICPOCKET_MANAGED_KEY,
         apiFormat: "openai",
-        models: HOSTED_IMAGE_MODELS.map((name) => ({ name, capability: "image" as const })),
+        models: getHostedCatalog().image.map((name) => ({ name, capability: "image" as const })),
     };
     const ownChannels: ModelChannel[] = getImageChannels(settings).map((channel) => ({
         id: canvasImageChannelId(channel.id),

@@ -1,6 +1,6 @@
 import type { UserSettings } from '../types';
 import { imageChannelMode, visionChannelMode } from './channelMode';
-import { HOSTED_IMAGE_MODELS, HOSTED_VISION_MODELS, PICPOCKET_CHANNEL_ID, hostedImageModel, hostedVisionModel } from './hostedModels';
+import { PICPOCKET_CHANNEL_ID, getHostedCatalog, hostedImageModel, hostedVisionModel } from './hostedModels';
 import { enabledImageModels, getImageChannels, withImageChannels } from './imageChannels';
 import { getConfiguredVisionChannels, withVisionChannels } from './visionChannels';
 
@@ -38,7 +38,7 @@ export function channelModelGroups(settings: UserSettings, capability: ModelCapa
       models: channel.model.trim() ? [channel.model.trim()] : [],
       missingKey: !channel.apiKey.trim(),
     }));
-    return [picpocketGroup(HOSTED_VISION_MODELS), ...own];
+    return [picpocketGroup(getHostedCatalog().vision), ...own];
   }
   const own = getImageChannels(settings).map((channel) => ({
     channelId: channel.id,
@@ -47,7 +47,7 @@ export function channelModelGroups(settings: UserSettings, capability: ModelCapa
     models: enabledImageModels(channel),
     missingKey: !(channel.apiKey || settings.apiKey || '').trim(),
   }));
-  return [picpocketGroup(HOSTED_IMAGE_MODELS), ...own];
+  return [picpocketGroup(getHostedCatalog().image), ...own];
 }
 
 export function currentChannelModel(settings: UserSettings, capability: ModelCapability): ChannelModelSelection {

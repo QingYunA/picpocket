@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useEntitlement } from '@/hooks/useEntitlement';
 import { PLANS } from '@/services/accountBilling';
 import type { ModelCapability } from '@/config/channelSelection';
-import { HOSTED_IMAGE_MODELS, HOSTED_VISION_MODELS } from '@/config/hostedModels';
+import { useHostedCatalog } from '@/hooks/useHostedCatalog';
 import { useI18n } from '@/i18n';
 
 interface PicPocketChannelPanelProps {
@@ -32,7 +32,8 @@ export const PicPocketChannelPanel: React.FC<PicPocketChannelPanelProps> = ({
   const { t } = useI18n();
   const { user } = useAuth();
   const { entitlement } = useEntitlement(user?.id ?? null);
-  const models = capability === 'vision' ? HOSTED_VISION_MODELS : HOSTED_IMAGE_MODELS;
+  const hostedCatalog = useHostedCatalog();
+  const models = capability === 'vision' ? hostedCatalog.vision : hostedCatalog.image;
 
   return (
     <ConfigSection

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 账号、付款与退款 / Account, billing and refunds
+    url: https://www.picpocket.top/terms
+    about: 账号和付款问题请发邮件至 support@picpocket.top，不要在公开 issue 里贴订单信息。
+  - name: 安全漏洞 / Security vulnerability
+    url: https://github.com/QingYunA/picpocket/blob/main/SECURITY.md
+    about: 请按 SECURITY.md 私下报告，不要公开提交。

@@ -1,0 +1,38 @@
+name: Bug 反馈 / Bug report
+description: 功能异常、报错或界面问题
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: 发生了什么 / What happened
+      description: 期望的结果和实际的结果分别是什么
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤 / Steps to reproduce
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: PicPocket 版本 / Version
+      description: 在 chrome://extensions 中可以看到
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: 浏览器与系统 / Browser and OS
+  - type: dropdown
+    id: channel
+    attributes:
+      label: 使用的渠道 / Channel
+      options: [PicPocket 官方渠道（积分）, 自己的 API Key, 不涉及]
+  - type: textarea
+    id: logs
+    attributes:
+      label: 报错信息或截图 / Error message or screenshot
+      description: 请先隐去 API Key 等敏感信息

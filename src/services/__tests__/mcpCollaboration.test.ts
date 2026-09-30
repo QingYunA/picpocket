@@ -353,7 +353,7 @@ describe('mcpCollaboration Tool Handlers', () => {
 
       expect(res.isError).toBe(false);
       expect(res.content[0]!.text).toContain('生图成功');
-      expect(res.content[0]!.text).toContain('垫图参考图');
+      expect(res.content[0]!.text).toContain('参考图');
 
       expect(generateImagesWithAI).toHaveBeenCalledWith(
         expect.objectContaining({

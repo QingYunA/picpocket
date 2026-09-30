@@ -54,6 +54,8 @@ export interface Entitlement {
   } | null;
   monthlyCredits: number;
   balance: number;
+  /** 免费月额度没有发放时的原因；已领取或有订阅时为 null */
+  freeBlocked?: 'unverified_email' | 'disposable_email' | 'limit' | null;
   buckets: CreditBucket[];
   pricing: {
     defaultVisionModel: string;

@@ -722,7 +722,7 @@ export async function executeGenerateAndSaveAsset(
         {
           type: 'text',
           text: `【生图成功】: 成功生成图像并保存至本地图库！\n• 尺寸/比例: ${firstImage.width}×${firstImage.height} (${aspectRatio})\n• 耗时: ${durationMs}ms\n• Item ID: ${itemId}${
-            referenceNote ? `\n• 垫图参考图: ${referenceNote}` : ''
+            referenceNote ? `\n• 参考图: ${referenceNote}` : ''
           }\n• 目标文件夹: ${
             targetFolderId ? `ID ${targetFolderId}` : '未归档'
           }\n• 提示词: ${prompt}`,

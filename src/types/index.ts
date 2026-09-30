@@ -89,6 +89,8 @@ export interface UserSettings {
   language: Language;
   enableHoverBadge?: boolean;
   hoverBadgePromptDismissed?: boolean;
+  /** 已关闭新手引导卡片 */
+  gettingStartedDismissed?: boolean;
   contextMenuMode?: 'direct-analyze' | 'direct-collect' | 'dual-menu';
   // Image Generation Settings
   imageApiKey?: string;

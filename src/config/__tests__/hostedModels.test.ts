@@ -7,6 +7,7 @@ import {
   applyHostedCatalog,
   getHostedCatalog,
   hostedImageModel,
+  hostedImageSupportsEdit,
   hostedVisionModel,
 } from '../hostedModels';
 
@@ -78,5 +79,16 @@ describe('applyHostedCatalog (server-driven catalog)', () => {
     const before = getHostedCatalog();
     applyHostedCatalog(pricing([]));
     expect(getHostedCatalog()).toBe(before);
+  });
+});
+
+describe('hostedImageSupportsEdit', () => {
+  it('knows which hosted models cannot take reference images, and follows the server list', () => {
+    expect(hostedImageSupportsEdit('GPT-Image-2')).toBe(true);
+    applyHostedCatalog({ vision: [{ id: 'deepseek-flash' }], image: [{ id: 'a', supportsEdit: false }, { id: 'b', supportsEdit: true }] });
+    expect(hostedImageSupportsEdit('a')).toBe(false);
+    expect(hostedImageSupportsEdit('b')).toBe(true);
+    expect(hostedImageSupportsEdit('unknown-model')).toBe(true);
+    applyHostedCatalog({ vision: HOSTED_VISION_MODELS.map((id) => ({ id })), image: HOSTED_IMAGE_MODELS.map((id) => ({ id })) });
   });
 });

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Sparkles,
+  Info,
   Wand2,
   Image as ImageIcon,
   Check,
@@ -68,6 +69,8 @@ import {
 import { readFileAsDataUrl } from '@/utils/file';
 import { downloadBlobOrUrl } from '@/services/storageBackup';
 import { openInfiniteCanvasPage } from '@/utils/navigation';
+import { hostedImageSupportsEdit } from '@/config/hostedModels';
+import { useHostedCatalog } from '@/hooks/useHostedCatalog';
 import { formatSafeErrorMessage, readApiErrorMessage } from '@/utils/errorMessage';
 import { UpgradeCreditsButton } from '@/components/UpgradeCreditsButton';
 import { useI18n } from '@/i18n';
@@ -128,6 +131,7 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
   // 只有官方渠道按积分计费：显示余额与本次消耗，自带 Key 的渠道不显示
   const { balance: creditBalance, pricing: creditPricing } = useHostedCredits(imageChannelMode(settings).kind === 'picpocket');
   const modelCapability = useMemo(() => getModelCapability(currentModel), [currentModel]);
+  useHostedCatalog(); // 目录更新后重新判断模型是否支持垫图
 
   const initialDraft = useRef<GeneratorDraftState>(getInitialGeneratorDraft()).current;
 
@@ -179,6 +183,7 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
     updateDraft({ count: n });
   };
 
+  const referenceBlocked = imageChannelMode(settings).kind === 'picpocket' && referenceImages.length > 0 && !hostedImageSupportsEdit(currentModel);
   const setReferenceImages = async (
     imgs: string[] | ((prev: string[]) => string[]),
     knownAssetIds?: string[]
@@ -1164,12 +1169,19 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
             </div>
           )}
 
+          {referenceBlocked && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2 text-[11px] leading-snug text-amber-900">
+              <Info className="mt-px h-3.5 w-3.5 shrink-0 text-amber-600" />
+              <span>{t('generator.referenceUnsupported', { model: currentModel })}</span>
+            </div>
+          )}
+
           {/* Main Generate & Abort Button Group */}
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleGenerate}
-              disabled={isGenerating || !prompt.trim()}
+              disabled={isGenerating || !prompt.trim() || referenceBlocked}
               className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-xs font-bold text-white shadow-md transition-all ${
                 isGenerating
                   ? 'bg-zinc-800 cursor-default'

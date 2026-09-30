@@ -67,6 +67,11 @@ export const CurrentPlanCard: React.FC<CurrentPlanCardProps> = ({ entitlement, b
           <span className="font-mono text-2xl font-bold text-zinc-900">{entitlement.balance}</span>
           <span className="text-xs text-zinc-500">{t('billing.creditsUnit')}</span>
         </div>
+        {entitlement.freeBlocked && (
+          <p className="mt-3 border-t border-amber-200/70 pt-3 text-[11px] leading-relaxed text-amber-800">
+            {t(`billing.freeBlocked.${entitlement.freeBlocked}`)}
+          </p>
+        )}
         {entitlement.buckets.length > 0 && (
           <ul className="mt-3 space-y-1.5 border-t border-amber-200/70 pt-3">
             {entitlement.buckets.map((bucket) => (

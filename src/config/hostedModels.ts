@@ -36,6 +36,8 @@ export const DEFAULT_HOSTED_IMAGE_MODEL = 'gpt-image-2.5-sunburst';
 export interface HostedCatalog {
   vision: readonly string[];
   image: readonly string[];
+  /** 上游不支持参考图（垫图）的生图模型 */
+  imageNoEdit: readonly string[];
   defaultVision: string;
   defaultImage: string;
 }
@@ -44,6 +46,7 @@ export const HOSTED_CATALOG_STORAGE_KEY = 'picpocket_hosted_catalog';
 const FALLBACK_CATALOG: HostedCatalog = {
   vision: HOSTED_VISION_MODELS,
   image: HOSTED_IMAGE_MODELS,
+  imageNoEdit: ['grok-imagine-image-2.0', 'z-image-turbo', 'wan2.7-image'],
   defaultVision: DEFAULT_HOSTED_VISION_MODEL,
   defaultImage: DEFAULT_HOSTED_IMAGE_MODEL,
 };
@@ -74,7 +77,8 @@ function parseCatalog(value: unknown): HostedCatalog | null {
   if (!raw || !isList(raw.vision) || !isList(raw.image)) return null;
   const defaultVision = raw.defaultVision && raw.vision.includes(raw.defaultVision) ? raw.defaultVision : (raw.vision[0] as string);
   const defaultImage = raw.defaultImage && raw.image.includes(raw.defaultImage) ? raw.defaultImage : (raw.image[0] as string);
-  return { vision: raw.vision, image: raw.image, defaultVision, defaultImage };
+  const imageNoEdit = Array.isArray(raw.imageNoEdit) ? raw.imageNoEdit.filter((id): id is string => typeof id === 'string') : [];
+  return { vision: raw.vision, image: raw.image, imageNoEdit, defaultVision, defaultImage };
 }
 
 /** get-entitlement 返回的 pricing 就是服务端当前启用的托管目录；写入内存并缓存，后台与画布页面通过 storage 事件同步 */
@@ -82,12 +86,13 @@ export function applyHostedCatalog(pricing?: {
   defaultVisionModel?: string;
   defaultImageModel?: string;
   vision: Array<{ id: string }>;
-  image: Array<{ id: string }>;
+  image: Array<{ id: string; supportsEdit?: boolean }>;
 }): void {
   if (!Array.isArray(pricing?.vision) || !Array.isArray(pricing?.image)) return;
   const next = parseCatalog({
     vision: pricing.vision.map((item) => item.id),
     image: pricing.image.map((item) => item.id),
+    imageNoEdit: pricing.image.filter((item) => item.supportsEdit === false).map((item) => item.id),
     defaultVision: pricing.defaultVisionModel,
     defaultImage: pricing.defaultImageModel,
   });
@@ -129,6 +134,11 @@ function pick(list: readonly string[], fallback: string, candidates: Array<strin
     if (id && list.includes(id)) return id;
   }
   return fallback;
+}
+
+/** 该托管生图模型是否支持带参考图生成；未知模型按支持处理，交给服务端判定 */
+export function hostedImageSupportsEdit(model: string): boolean {
+  return !catalog.imageNoEdit.includes(model.trim().toLowerCase());
 }
 
 /** 按顺序取第一个在托管目录里的反推模型，都不在时用默认模型（自备 Key 的模型名不会被发往托管网关） */

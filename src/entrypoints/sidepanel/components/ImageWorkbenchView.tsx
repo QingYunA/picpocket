@@ -131,7 +131,7 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
   // 只有官方渠道按积分计费：显示余额与本次消耗，自带 Key 的渠道不显示
   const { balance: creditBalance, pricing: creditPricing } = useHostedCredits(imageChannelMode(settings).kind === 'picpocket');
   const modelCapability = useMemo(() => getModelCapability(currentModel), [currentModel]);
-  useHostedCatalog(); // 目录更新后重新判断模型是否支持垫图
+  useHostedCatalog(); // 目录更新后重新判断模型是否支持参考图
 
   const initialDraft = useRef<GeneratorDraftState>(getInitialGeneratorDraft()).current;
 

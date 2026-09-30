@@ -36,7 +36,7 @@ export const DEFAULT_HOSTED_IMAGE_MODEL = 'gpt-image-2.5-sunburst';
 export interface HostedCatalog {
   vision: readonly string[];
   image: readonly string[];
-  /** 上游不支持参考图（垫图）的生图模型 */
+  /** 上游不支持参考图的生图模型 */
   imageNoEdit: readonly string[];
   defaultVision: string;
   defaultImage: string;

@@ -97,7 +97,7 @@ describe('hosted credit responses', () => {
     expect(hostedCreditError(402, JSON.stringify({ code: 'insufficient_credits', balance: 3, required: 8 }))?.message).toMatch(/积分不足.*3.*8/);
     expect(hostedCreditError(429, JSON.stringify({ code: 'rate_limited' }))?.message).toMatch(/太频繁/);
     expect(hostedCreditError(400, JSON.stringify({ code: 'unsupported_model' }))?.message).toMatch(/模型/);
-    expect(hostedCreditError(400, JSON.stringify({ code: 'edit_unsupported' }))?.message).toMatch(/垫图/);
+    expect(hostedCreditError(400, JSON.stringify({ code: 'edit_unsupported' }))?.message).toMatch(/参考图/);
     expect(hostedCreditError(503, '{}')?.message).toMatch(/暂不可用/);
     expect(hostedCreditError(500, 'boom')).toBeNull();
   });

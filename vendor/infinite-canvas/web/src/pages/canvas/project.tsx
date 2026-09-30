@@ -2372,7 +2372,7 @@ function InfiniteCanvasPage() {
                     void insertAssistantImage(
                         {
                             id: `asset-${Date.now()}${suffix}`,
-                            prompt: full.prompt || full.title,
+                            prompt: full.prompt,
                             dataUrl: full.dataUrl,
                             picpocketAssetId: full.id,
                         },
@@ -3165,7 +3165,7 @@ function InfiniteCanvasPage() {
                       }
                     : undefined;
                 insertAssistantImage(
-                    { id: `asset-${Date.now()}`, prompt: payload.prompt || payload.title, dataUrl: payload.dataUrl, storageKey: payload.storageKey, picpocketAssetId: payload.picpocketAssetId },
+                    { id: `asset-${Date.now()}`, prompt: payload.prompt || "", dataUrl: payload.dataUrl, storageKey: payload.storageKey, picpocketAssetId: payload.picpocketAssetId },
                     targetPosition,
                 );
             }
@@ -3187,7 +3187,7 @@ function InfiniteCanvasPage() {
                     if (launch.asset || launch.referenceImage) {
                         return insertAssistantImage({
                             id: launch.asset ? `picpocket-${launch.asset.id}` : `picpocket-reference-${Date.now()}`,
-                            prompt: launch.prompt || launch.asset?.title || "",
+                            prompt: launch.prompt,
                             dataUrl: launch.asset?.dataUrl || launch.referenceImage!,
                             picpocketAssetId: launch.asset?.id,
                         });
@@ -3261,7 +3261,7 @@ function InfiniteCanvasPage() {
                 } else if (command.imageUrl) {
                     await insertAssistantImage({
                         id: command.commandId,
-                        prompt: command.prompt || command.title || "",
+                        prompt: command.prompt || "",
                         dataUrl: command.imageUrl,
                     });
                 } else {

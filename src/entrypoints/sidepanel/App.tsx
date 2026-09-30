@@ -48,6 +48,7 @@ import { BatchActionBar } from './components/BatchActionBar';
 import { ImageLightboxModal } from './components/ImageLightboxModal';
 import { ProSubscriptionModal } from './components/ProSubscriptionModal';
 import { AccountDialog } from './components/AccountDialog';
+import { GettingStartedCard } from './components/GettingStartedCard';
 import { AccountAvatar } from './components/AccountAvatar';
 import { useAuth } from '@/hooks/useAuth';
 import { isProActive } from '@/services/billing';
@@ -179,6 +180,9 @@ export default function App() {
 
   // Reactive IndexedDB query
   const items = useLiveQuery(() => db.items.orderBy('createdAt').reverse().toArray()) || [];
+  // 新手引导：保存并反推过一张图之前一直显示，可手动关闭
+  const hasAnalyzedItem = items.some((item) => item.status === 'analyzed');
+  const showGettingStarted = !settings.gettingStartedDismissed && !(items.length > 0 && hasAnalyzedItem);
 
   // MCP Service Lifecycle
   useEffect(() => {
@@ -221,6 +225,10 @@ export default function App() {
       hoverBadgePromptDismissed: true,
     });
     setSettings(updated);
+  };
+
+  const handleDismissGettingStarted = async () => {
+    setSettings(await saveUserSettings({ gettingStartedDismissed: true }));
   };
 
   const handleTriggerGenerate = (promptText: string, refImage?: string) => {
@@ -771,8 +779,18 @@ export default function App() {
 
               {/* Dual-Column Masonry Grid */}
               <div className="flex-1 overflow-y-auto px-3 py-3">
+                {showGettingStarted && (
+                  <GettingStartedCard
+                    hasItems={items.length > 0}
+                    hasAnalyzed={hasAnalyzedItem}
+                    signedIn={Boolean(accountUser)}
+                    onGoGenerator={() => handleSetActiveTab('generator')}
+                    onSignIn={() => setIsAccountOpen(true)}
+                    onDismiss={handleDismissGettingStarted}
+                  />
+                )}
                 {filteredItems.length === 0 ? (
-                  <div className="flex h-full flex-col items-center justify-center gap-3 text-center px-4">
+                  <div className={`flex ${showGettingStarted ? 'py-6' : 'h-full'} flex-col items-center justify-center gap-3 text-center px-4`}>
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-400">
                       <Folder className="h-6 w-6 text-zinc-300" />
                     </div>

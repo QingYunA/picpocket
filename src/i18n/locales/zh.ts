@@ -410,6 +410,8 @@ export const zh = {
     analysisCancelled: '反推任务已终止',
     originalBadge: '原图',
     savedInFolder: '归属文件夹',
+    changeFolder: '更换',
+    useAsCanvasReference: '在画布中作为参考图',
     sourcePage: '来源页面',
     sourceOrigin: '原图出处：',
     openSourcePage: '在新标签页打开原图出处',

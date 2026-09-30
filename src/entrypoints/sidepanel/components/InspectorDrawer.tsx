@@ -17,6 +17,7 @@ import {
   XCircle,
   Folder,
   Settings,
+  Frame,
 } from 'lucide-react';
 import type { InspirationItem, PromptResult, UserSettings } from '@/types';
 import { db } from '@/db';
@@ -30,6 +31,7 @@ import { channelAccessBlock } from '@/services/billing';
 import { UpgradeCreditsButton } from '@/components/UpgradeCreditsButton';
 import { useAuth } from '@/hooks/useAuth';
 import { saveUserSettings } from '@/utils/storage';
+import { openInfiniteCanvasPage } from '@/utils/navigation';
 import { useI18n } from '@/i18n';
 import { ChannelModelPicker } from './ChannelModelPicker';
 import { CreditBalanceButton } from './CreditBalanceButton';
@@ -48,6 +50,8 @@ interface InspectorDrawerProps {
   onOpenSettings: () => void;
   onGeneratePrompt?: (prompt: string, referenceImageDataUrl?: string) => void;
   onOpenLightbox?: () => void;
+  /** 打开「移动到文件夹」选择器 */
+  onMoveToFolder?: () => void;
 }
 
 export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
@@ -58,6 +62,7 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
   onOpenSettings,
   onGeneratePrompt,
   onOpenLightbox,
+  onMoveToFolder,
 }) => {
   const { t } = useI18n();
   const { user: accountUser } = useAuth();
@@ -462,6 +467,15 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
               {currentFolder?.name || t('webCapsule.uncategorized')}
             </span>
           </div>
+          {onMoveToFolder && (
+            <button
+              type="button"
+              onClick={onMoveToFolder}
+              className="rounded bg-white px-2 py-0.5 text-[11px] font-medium text-zinc-700 hover:text-zinc-950 border border-zinc-200 hover:bg-zinc-100 transition-colors shrink-0 shadow-2xs cursor-pointer whitespace-nowrap"
+            >
+              {t('inspector.changeFolder')}
+            </button>
+          )}
         </div>
 
         {/* Source Web Page URL Banner */}
@@ -485,6 +499,18 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
               <span>{t('inspector.sourcePage')}</span>
             </a>
           </div>
+        )}
+
+        {/* 送到画布作为参考图：未反推与已反推都可用 */}
+        {typeof item.id === 'number' && (
+          <button
+            type="button"
+            onClick={() => openInfiniteCanvasPage({ assetId: item.id }).catch(console.warn)}
+            className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer active:scale-98"
+          >
+            <Frame className="h-3.5 w-3.5 text-violet-500" />
+            <span>{t('inspector.useAsCanvasReference')}</span>
+          </button>
         )}
 
         {/* Missing API Key Alert */}

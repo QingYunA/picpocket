@@ -412,6 +412,8 @@ export const en: Translations = {
     analysisCancelled: 'Analysis task cancelled',
     originalBadge: 'Original',
     savedInFolder: 'Folder',
+    changeFolder: 'Change',
+    useAsCanvasReference: 'Use as reference on canvas',
     sourcePage: 'Source Page',
     sourceOrigin: 'Source Origin: ',
     openSourcePage: 'Open Source Web Page',

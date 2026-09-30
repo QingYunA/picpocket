@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import { requestEdit, requestGeneration, requestImageQuestion } from "@/services/api/image";
 import { requestAudioGeneration, storeGeneratedAudio } from "@/services/api/audio";
 import { createVideoGenerationTask, isVideoTaskFailed, storeGeneratedVideo, waitForVideoGenerationTask } from "@/services/api/video";
-import { defaultConfig, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
+import { defaultConfig, useCanvasGenerationDefaults, useConfigStore, useEffectiveConfig } from "@/stores/use-config-store";
 import { ensureImagePreview, getImageBlob, uploadImage } from "@/services/image-storage";
 import { uploadMediaFile, type UploadedFile } from "@/services/file-storage";
 import { nanoid } from "nanoid";
@@ -476,6 +476,7 @@ function InfiniteCanvasPage() {
             setBackgroundMode(project.backgroundMode);
             setShowImageInfo(project.showImageInfo || false);
             setViewport(project.viewport);
+            useCanvasGenerationDefaults.getState().setDefaults(project.generationDefaults ?? null);
             historyRef.current = { past: [], future: [] };
             if (historyCommitTimerRef.current) {
                 clearTimeout(historyCommitTimerRef.current);
@@ -1812,9 +1813,20 @@ function InfiniteCanvasPage() {
         setNodes((prev) => prev.map((node) => (node.id === nodeId ? { ...node, metadata: { ...node.metadata, prompt } } : node)));
     }, []);
 
+    // 离开画布时清掉，避免把这个画布的设置带到别处
+    useEffect(() => () => useCanvasGenerationDefaults.getState().setDefaults(null), []);
+
     const handleConfigNodeChange = useCallback((nodeId: string, patch: Partial<CanvasNodeData["metadata"]>) => {
         setNodes((prev) => prev.map((node) => (node.id === nodeId ? applyNodeConfigPatch(node, patch) : node)));
-    }, []);
+        // 改了尺寸比例或张数：记到画布上，之后新建的节点和这个画布重新打开都沿用
+        const size = typeof patch?.size === "string" && patch.size ? patch.size : undefined;
+        const count = typeof patch?.count === "number" && patch.count >= 1 ? patch.count : undefined;
+        if (size || count) {
+            const next = { ...useCanvasGenerationDefaults.getState().defaults, ...(size ? { size } : {}), ...(count ? { count } : {}) };
+            useCanvasGenerationDefaults.getState().setDefaults(next);
+            updateProject(projectId, { generationDefaults: next });
+        }
+    }, [projectId, updateProject]);
 
     const downloadNodeImage = useCallback((node: CanvasNodeData) => {
         if ((node.type !== CanvasNodeType.Image && node.type !== CanvasNodeType.Video && node.type !== CanvasNodeType.Audio) || !node.metadata?.content) return;
@@ -2372,7 +2384,7 @@ function InfiniteCanvasPage() {
                     void insertAssistantImage(
                         {
                             id: `asset-${Date.now()}${suffix}`,
-                            prompt: full.prompt || full.title,
+                            prompt: full.prompt,
                             dataUrl: full.dataUrl,
                             picpocketAssetId: full.id,
                         },
@@ -3165,7 +3177,7 @@ function InfiniteCanvasPage() {
                       }
                     : undefined;
                 insertAssistantImage(
-                    { id: `asset-${Date.now()}`, prompt: payload.prompt || payload.title, dataUrl: payload.dataUrl, storageKey: payload.storageKey, picpocketAssetId: payload.picpocketAssetId },
+                    { id: `asset-${Date.now()}`, prompt: payload.prompt || "", dataUrl: payload.dataUrl, storageKey: payload.storageKey, picpocketAssetId: payload.picpocketAssetId },
                     targetPosition,
                 );
             }
@@ -3187,7 +3199,7 @@ function InfiniteCanvasPage() {
                     if (launch.asset || launch.referenceImage) {
                         return insertAssistantImage({
                             id: launch.asset ? `picpocket-${launch.asset.id}` : `picpocket-reference-${Date.now()}`,
-                            prompt: launch.prompt || launch.asset?.title || "",
+                            prompt: launch.prompt,
                             dataUrl: launch.asset?.dataUrl || launch.referenceImage!,
                             picpocketAssetId: launch.asset?.id,
                         });
@@ -3261,7 +3273,7 @@ function InfiniteCanvasPage() {
                 } else if (command.imageUrl) {
                     await insertAssistantImage({
                         id: command.commandId,
-                        prompt: command.prompt || command.title || "",
+                        prompt: command.prompt || "",
                         dataUrl: command.imageUrl,
                     });
                 } else {

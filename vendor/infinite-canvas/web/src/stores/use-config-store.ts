@@ -121,7 +121,7 @@ export const defaultConfig: AiConfig = {
     size: "1:1",
     background: "",
     count: "1",
-    canvasImageCount: "3",
+    canvasImageCount: "1",
     proxyEnabled: false,
     proxyUrl: DEFAULT_LOCAL_PROXY_URL,
 };
@@ -279,7 +279,7 @@ export const useConfigStore = create<ConfigStore>()(
                         videoGenerateAudio: config.videoGenerateAudio || "true",
                         videoWatermark: config.videoWatermark || "false",
                         videoMode: config.videoMode === "reference" ? "reference" : "frames",
-                        canvasImageCount: config.canvasImageCount || "3",
+                        canvasImageCount: config.canvasImageCount || "1",
                         proxyEnabled: Boolean(config.proxyEnabled),
                         proxyUrl: config.proxyUrl || DEFAULT_LOCAL_PROXY_URL,
                     },
@@ -289,9 +289,26 @@ export const useConfigStore = create<ConfigStore>()(
     ),
 );
 
+/** 当前打开的画布自己的生图设置（尺寸比例与张数）；有值时覆盖全局默认，随画布保存 */
+export type CanvasGenerationDefaults = { size?: string; count?: number };
+
+export const useCanvasGenerationDefaults = create<{ defaults: CanvasGenerationDefaults | null; setDefaults: (defaults: CanvasGenerationDefaults | null) => void }>((set) => ({
+    defaults: null,
+    setDefaults: (defaults) => set({ defaults }),
+}));
+
 export function useEffectiveConfig() {
     const config = useConfigStore((state) => state.config);
-    return useMemo(() => ({ ...config, channelMode: "local" as const }), [config]);
+    const canvasDefaults = useCanvasGenerationDefaults((state) => state.defaults);
+    return useMemo(
+        () => ({
+            ...config,
+            channelMode: "local" as const,
+            ...(canvasDefaults?.size ? { size: canvasDefaults.size } : {}),
+            ...(canvasDefaults?.count ? { canvasImageCount: String(canvasDefaults.count) } : {}),
+        }),
+        [config, canvasDefaults],
+    );
 }
 
 /** Normalize a mixed list of raw model names or model objects into deduped ChannelModel entries. */

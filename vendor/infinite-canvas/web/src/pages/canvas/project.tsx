@@ -3186,18 +3186,26 @@ function InfiniteCanvasPage() {
         [insertAssistantImage, insertAssistantText, message, screenToCanvas, size.height, size.width, t],
     );
 
+    // 接力素材一经读取就已从存储里移除，所以处理期间不能因为依赖变化（缩放、平移会让 insertAssistantImage 换引用）而丢弃结果：
+    // 回调通过 ref 取最新函数，副作用只在画布加载完成时订阅一次，仅在页面卸载后才放弃
+    const handoffRef = useRef({ insertAssistantImage, getCanvasCenter, message, t });
+    handoffRef.current = { insertAssistantImage, getCanvasCenter, message, t };
     useEffect(() => {
         if (!projectLoaded) return;
         let cancelled = false;
         let consuming = false;
+        let pending = false;
         const consume = () => {
-            if (consuming) return;
+            if (consuming) {
+                pending = true; // 处理期间又来了新的接力，处理完再取一次
+                return;
+            }
             consuming = true;
             void consumePocketCanvasHandoff()
                 .then((launch) => {
                     if (!launch || cancelled) return;
                     if (launch.asset || launch.referenceImage) {
-                        return insertAssistantImage({
+                        return handoffRef.current.insertAssistantImage({
                             id: launch.asset ? `picpocket-${launch.asset.id}` : `picpocket-reference-${Date.now()}`,
                             prompt: launch.prompt,
                             dataUrl: launch.asset?.dataUrl || launch.referenceImage!,
@@ -3205,7 +3213,7 @@ function InfiniteCanvasPage() {
                         });
                     }
                     if (launch.prompt) {
-                        const node = createCanvasNode(CanvasNodeType.Image, getCanvasCenter(), {
+                        const node = createCanvasNode(CanvasNodeType.Image, handoffRef.current.getCanvasCenter(), {
                             prompt: launch.prompt,
                             composerContent: launch.prompt,
                             status: "idle",
@@ -3218,10 +3226,14 @@ function InfiniteCanvasPage() {
                 })
                 .catch((error) => {
                     console.error("[PicPocket] Failed to open pocket asset on canvas", error);
-                    message.error(t("canvas.importFailed"));
+                    handoffRef.current.message.error(handoffRef.current.t("canvas.importFailed"));
                 })
                 .finally(() => {
                     consuming = false;
+                    if (pending && !cancelled) {
+                        pending = false;
+                        consume();
+                    }
                 });
         };
         consume();
@@ -3230,7 +3242,7 @@ function InfiniteCanvasPage() {
             cancelled = true;
             unsubscribe();
         };
-    }, [getCanvasCenter, insertAssistantImage, message, projectLoaded, t]);
+    }, [projectLoaded]);
 
     useEffect(() => {
         if (import.meta.env.VITE_PICPOCKET_EXTENSION !== "1" || !projectLoaded || !chrome.storage?.local) return;

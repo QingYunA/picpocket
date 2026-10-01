@@ -66,7 +66,9 @@ export default function CanvasPage() {
     useEffect(() => {
         if (!hydrated || autoOpenRef.current || (mode !== "new" && mode !== "recent")) return;
         autoOpenRef.current = true;
-        enterProject(mode === "new" ? createProject(t("canvas.defaultTitle", { count: projects.length + 1 })) : projects[0]?.id || createProject(t("canvas.defaultTitle", { count: projects.length + 1 })));
+        // 「最近」指最近打开 / 编辑过的画布（打开画布时会刷新 updatedAt），不是最近新建的那个
+        const mostRecentId = [...projects].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0]?.id;
+        enterProject(mode === "new" ? createProject(t("canvas.defaultTitle", { count: projects.length + 1 })) : mostRecentId || createProject(t("canvas.defaultTitle", { count: projects.length + 1 })));
     }, [createProject, hydrated, mode, projects, t]);
 
     if (hydrated && (mode === "new" || mode === "recent")) return <main className="flex h-full items-center justify-center bg-background text-sm text-stone-500">{t("canvas.opening")}</main>;

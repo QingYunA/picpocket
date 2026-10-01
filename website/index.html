@@ -620,7 +620,6 @@
       .tour-grid { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 16px; padding: 4px 4px 12px; margin: 0 -4px; }
       .tour-item { flex: 0 0 min(72vw, 280px); scroll-snap-align: start; }
     }
-    @media (prefers-reduced-motion: reduce) { .tour-frame video { display: none; } }
 
     .section { padding: 112px 0 0; }
     .section-head { max-width: 680px; margin-bottom: 56px; }
@@ -1337,6 +1336,8 @@
               video.poster = video.getAttribute('data-poster-' + lang());
               if (!visible) return;
               if (video.getAttribute('src') !== src) video.setAttribute('src', src);
+              // 系统开启「减少动态效果」时不自动播放：显示封面并给出播放控件
+              if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) { video.controls = true; return; }
               var play = video.play(); if (play && play.catch) play.catch(function () {});
             }
             video.poster = video.getAttribute('data-poster-' + lang());

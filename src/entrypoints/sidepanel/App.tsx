@@ -512,13 +512,13 @@ export default function App() {
                       {tab.icon}
                       <span
                         className={`text-[11px] font-medium whitespace-nowrap ${
-                          isActive ? 'inline' : 'hidden min-[340px]:inline'
+                          isActive ? 'inline' : 'hidden min-[480px]:inline'
                         }`}
                       >
                         {tab.label}
                       </span>
                       {tab.badge !== undefined && tab.badge > 0 && (
-                        <span className="rounded-full bg-zinc-200/80 px-1 py-0.2 text-[9px] font-mono font-semibold text-zinc-600">
+                        <span className={`rounded-full bg-zinc-200/80 px-1 py-0.2 text-[9px] font-mono font-semibold text-zinc-600 ${isActive ? '' : 'hidden min-[480px]:inline'}`}>
                           {tab.badge}
                         </span>
                       )}

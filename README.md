@@ -6,7 +6,7 @@
 
 **网页灵感图片随身口袋、AI 视觉反推生图与 GitHub 开源提示词库工作台。**
 
-常驻 Chrome 侧边栏，像 Pocket 一样随手收纳视觉资产，一键拆解为四维提示词并从开源词库重构生图。
+常驻 Chrome 侧边栏，像 Pocket 一样随手收纳视觉资产，一键反推成完整提示词并从开源词库重构生图。
 
 [![Manifest V3](https://img.shields.io/badge/Chrome-Manifest%20V3-blue?style=flat-square)](https://developer.chrome.com/docs/extensions/mv3/intro/)
 [![Built with WXT](https://img.shields.io/badge/Built%20with-WXT-black?style=flat-square)](https://wxt.dev/)
@@ -24,7 +24,7 @@
 > 截图保存到桌面 ➔ 打开网页版大模型对话框 ➔ 上传图片 ➔ 敲字让 AI 描述 ➔ 得到一段啰嗦的文字 ➔ 自己再手动挑词改词。
 
 **PicPocket 把整套动作直接做进了 Chrome 侧边栏的随身口袋：**
-在网页上看到灵感，鼠标点一下或者框选局部，侧栏即可在 0.3 秒内把图片拆解为主体、风格、光影、构图四个维度的分词胶囊。点击单项秒复制，直接贴进 Midjourney、Flux 或 Stable Diffusion。更内置 GitHub 开源精选提示词库，随时反推、随时生图。
+在网页上看到灵感，鼠标点一下或者框选局部，侧栏即可把图片反推成一段完整的提示词。一键复制，直接贴进 Midjourney、Flux 或 Stable Diffusion。更内置 GitHub 开源精选提示词库，随时反推、随时生图。
 
 ---
 
@@ -33,8 +33,8 @@
 - **交互式框选截屏:** 像 CleanShot 一样按住鼠标随意框选，黑白高反差选框，支持双击或回车一键采集。Retina 屏幕自动按设备物理像素比无损裁剪。
 - **网页图片悬浮采集:** 鼠标悬停在网页任意大图上，右上角自动出现纯白采集胶囊，点击秒存本地图库。
 - **双列常驻瀑布流:** 遵循 Notion / Apple 极简纯净亮色设计规范。后台自动生成 400px WebP 缩略图，千张素材滚屏恒定 60fps。
-- **四维结构化提示词:** 多模态视觉模型直连，自动提取 **主体 (Subject)**、**风格 (Style)**、**光影 (Lighting)**、**构图 (Composition)** 与 **Master Prompt**。
-- **单项即点即拷:** 每个提示词短语都是一个独立胶囊，点击即刻拷贝进剪贴板。
+- **完整提示词反推:** 多模态视觉模型直连，把图片反推成一段涵盖主体、风格、光影、构图的自然语言 **Master Prompt**，一键复制或带原图送去生图。
+- **一键复制:** 完整提示词一点即拷贝进剪贴板，也可以按需修改后再复制。
 - **本地优先与隐私 (BYOK):** 自带 API Key（支持 DeepSeek 等 OpenAI 兼容接口），Key 与素材全部保存在浏览器本地 IndexedDB，不经过任何中转服务器。
 
 ---

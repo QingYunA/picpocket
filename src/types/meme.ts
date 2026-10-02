@@ -23,6 +23,8 @@ export interface MemeItem {
   category?: string;
   tags: string[];
   isFavorite?: boolean;
+  /** 在来源索引中的位置，用于按热度/原始顺序展示 */
+  order?: number;
   /** 已存入图库时对应的 InspirationItem id，避免重复入库 */
   savedItemId?: number;
   createdAt: number;

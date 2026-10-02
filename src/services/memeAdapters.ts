@@ -37,7 +37,7 @@ export function normalizeMemegen(data: unknown, source: MemeSource): MemeItem[] 
   const now = Date.now();
   const seen = new Set<string>();
   const items: MemeItem[] = [];
-  for (const entry of data) {
+  for (const [order, entry] of data.entries()) {
     const record = (entry ?? {}) as Record<string, unknown>;
     const key = text(record.id);
     const name = text(record.name);
@@ -50,6 +50,7 @@ export function normalizeMemegen(data: unknown, source: MemeSource): MemeItem[] 
       name,
       url,
       tags: textList(record.keywords),
+      order,
       createdAt: now,
     });
   }
@@ -63,7 +64,7 @@ export function normalizeCustomIndex(data: unknown, source: MemeSource): MemeIte
   const now = Date.now();
   const seen = new Set<string>();
   const items: MemeItem[] = [];
-  for (const entry of list) {
+  for (const [order, entry] of list.entries()) {
     const record = (entry ?? {}) as Record<string, unknown>;
     const url = httpUrl(text(record.url), source.url);
     if (!url || seen.has(url)) continue;
@@ -76,6 +77,7 @@ export function normalizeCustomIndex(data: unknown, source: MemeSource): MemeIte
       url,
       category: category || undefined,
       tags: Array.from(new Set([...(category ? [category] : []), ...textList(record.tags)])),
+      order,
       createdAt: now,
     });
   }

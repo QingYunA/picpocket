@@ -5,6 +5,15 @@ import { MAX_MEME_INDEX_BYTES, normalizeMemeIndex } from './memeAdapters';
 
 export const DEFAULT_MEME_SOURCES: MemeSource[] = [
   {
+    id: 'imgflip-classics',
+    name: 'Imgflip 经典模板',
+    kind: 'custom',
+    url: 'https://www.picpocket.top/data/memes-imgflip.json',
+    homepage: 'https://imgflip.com/memetemplates',
+    enabled: true,
+    builtIn: true,
+  },
+  {
     id: 'memegen',
     name: 'Meme 模板 memegen',
     kind: 'memegen',

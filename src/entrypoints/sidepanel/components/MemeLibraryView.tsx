@@ -164,7 +164,7 @@ export const MemeLibraryView: React.FC = () => {
       if (activeSource !== ALL_SOURCES && m.sourceId !== activeSource) return false;
       if (favoritesOnly && !m.isFavorite) return false;
       return matchesMemeQuery(m, query);
-    });
+    }).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   }, [memes, sources, activeSource, favoritesOnly, query]);
 
   const filtered = useMemo(

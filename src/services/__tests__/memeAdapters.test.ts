@@ -54,6 +54,16 @@ describe('normalizeCustomIndex', () => {
   });
 });
 
+describe('index order', () => {
+  it('records each entry position so popular-first indexes keep their ranking', () => {
+    const items = normalizeCustomIndex(
+      [{ url: 'https://a.com/1.png' }, { url: 'ftp://bad' }, { url: 'https://a.com/3.png' }],
+      source({})
+    );
+    expect(items.map((i) => i.order)).toEqual([0, 2]);
+  });
+});
+
 describe('matchesMemeQuery', () => {
   const item = { id: '1', sourceId: 's', name: '扭起来', url: 'u', category: '滑稽大佬', tags: ['滑稽大佬'], createdAt: 0 };
   it('matches name, category and tags; all terms must hit', () => {

@@ -9,6 +9,7 @@ import {
   AlertCircle,
   X,
   Wand2,
+  Smile,
   FolderInput,
   Check,
   Bot,
@@ -40,6 +41,7 @@ import { InspectorDrawer } from './components/InspectorDrawer';
 import { openInfiniteCanvasPage, openOptionsPage } from '@/utils/navigation';
 import { CollaborationDrawer } from './components/CollaborationDrawer';
 import { PromptLibraryView } from './components/PromptLibraryView';
+import { MemeLibraryView } from './components/MemeLibraryView';
 import { ImageWorkbenchView } from './components/ImageWorkbenchView';
 import { FolderNav } from './components/FolderNav';
 import { ConfirmModal } from './components/ConfirmModal';
@@ -492,6 +494,11 @@ export default function App() {
                     icon: <Sparkles className="h-3.5 w-3.5 text-sky-500 shrink-0" />,
                   },
                   {
+                    id: 'memes' as const,
+                    label: t('nav.memes'),
+                    icon: <Smile className="h-3.5 w-3.5 text-emerald-500 shrink-0" />,
+                  },
+                  {
                     id: 'generator' as const,
                     label: t('nav.generator'),
                     icon: <Wand2 className="h-3.5 w-3.5 text-violet-500 shrink-0" />,
@@ -503,10 +510,10 @@ export default function App() {
                       key={tab.id}
                       onClick={() => handleSetActiveTab(tab.id)}
                       title={tab.badge !== undefined ? `${tab.label} (${tab.badge})` : tab.label}
-                      className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1 px-1.5 text-xs font-medium transition-all cursor-pointer whitespace-nowrap min-w-0 shrink-0 ${
+                      className={`flex items-center justify-center gap-1.5 rounded-md py-1 px-1.5 text-xs font-medium transition-all cursor-pointer whitespace-nowrap min-w-0 shrink-0 ${
                         isActive
-                          ? 'bg-white text-zinc-900 shadow-2xs font-semibold'
-                          : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/40'
+                          ? 'flex-[2] bg-white text-zinc-900 shadow-2xs font-semibold'
+                          : 'flex-1 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/40'
                       }`}
                     >
                       {tab.icon}
@@ -537,7 +544,7 @@ export default function App() {
                 title={t('workbench.openCanvasTooltip')}
               >
                 <LayoutDashboard className="h-3.5 w-3.5 text-indigo-600 transition-transform group-hover:scale-110" />
-                <span className="hidden min-[420px]:inline text-[11px] font-semibold">{t('workbench.canvasTab')}</span>
+                <span className="hidden min-[480px]:inline text-[11px] font-semibold">{t('workbench.canvasTab')}</span>
               </button>
 
               {/* License Key / Quota Status Icon Button */}
@@ -606,6 +613,8 @@ export default function App() {
 
           {activeTab === 'prompts' ? (
             <PromptLibraryView onGeneratePrompt={handleTriggerGenerate} />
+          ) : activeTab === 'memes' ? (
+            <MemeLibraryView />
           ) : activeTab === 'generator' ? (
             <ImageWorkbenchView
               settings={settings}

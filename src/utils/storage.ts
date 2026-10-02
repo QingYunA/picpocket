@@ -130,9 +130,9 @@ export function onLanguageChange(callback: (newLang: Language) => void): () => v
   return () => {};
 }
 
-export type SidepanelTab = 'gallery' | 'prompts' | 'generator';
+export type SidepanelTab = 'gallery' | 'prompts' | 'memes' | 'generator';
 
-export const VALID_TABS: SidepanelTab[] = ['gallery', 'prompts', 'generator'];
+export const VALID_TABS: SidepanelTab[] = ['gallery', 'prompts', 'memes', 'generator'];
 
 export function resetInMemoryStorageForTesting(): void {
   inMemoryStorage = null;

@@ -14,6 +14,7 @@ export const ASSET_SOURCE_URLS = {
 export const CAPTURE_TAGS = {
   WEB_CAPTURE: '网页采集',
   ANALYZED: '已反推',
+  MEME: '表情包',
 } as const;
 
 /**

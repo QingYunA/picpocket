@@ -7,6 +7,8 @@ import type {
   GeneratedImage,
   FolderItem,
   GenerationBatchTask,
+  MemeItem,
+  MemeSource,
 } from '../types';
 
 export class InspirationDatabase extends Dexie {
@@ -17,6 +19,8 @@ export class InspirationDatabase extends Dexie {
   folders!: Table<FolderItem, number>;
   generationTasks!: Table<GenerationBatchTask, string>;
   referenceAssets!: Table<{ id: string; dataUrl: string; createdAt: number }, string>;
+  memes!: Table<MemeItem, string>;
+  memeSources!: Table<MemeSource, string>;
 
   constructor() {
     super('PromptSnapInspirationDB');
@@ -53,6 +57,17 @@ export class InspirationDatabase extends Dexie {
       folders: '++id, name, parentId, order, createdAt',
       generationTasks: '&id, createdAt, status, model',
       referenceAssets: '&id, createdAt',
+    });
+    this.version(6).stores({
+      items: '++id, createdAt, status, *tags, folderId',
+      prompts: '++id, itemId, model, createdAt',
+      promptSources: '&id, enabled, lastSuccessAt',
+      promptItems: '&id, sourceId, title, *tags, category, isFavorite, createdAt',
+      folders: '++id, name, parentId, order, createdAt',
+      generationTasks: '&id, createdAt, status, model',
+      referenceAssets: '&id, createdAt',
+      memes: '&id, sourceId, category, *tags, isFavorite',
+      memeSources: '&id, enabled',
     });
   }
 }

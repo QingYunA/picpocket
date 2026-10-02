@@ -206,7 +206,9 @@ export default defineBackground(() => {
         message.src,
         message.sourceUrl || sender.tab?.url || '',
         message.pageTitle || sender.tab?.title || '',
-        autoAnalyze
+        autoAnalyze,
+        undefined,
+        Array.isArray(message.tags) ? message.tags.filter((tag: unknown): tag is string => typeof tag === 'string').slice(0, 8).map((tag: string) => tag.slice(0, 40)) : undefined
       )
         .then((item) => {
           sendResponse({ success: true, item });
@@ -656,7 +658,8 @@ async function captureAndSaveImage(
   sourceUrl: string,
   pageTitle: string,
   autoAnalyze = false,
-  tabId?: number
+  tabId?: number,
+  tags?: string[]
 ) {
   let blob: Blob;
   if (src.startsWith('data:')) {
@@ -697,7 +700,7 @@ async function captureAndSaveImage(
     aspectRatio,
     createdAt: Date.now(),
     // 「已反推」标签在反推真正成功后才追加，避免失败/未启动时标签失真
-    tags: [CAPTURE_TAGS.WEB_CAPTURE],
+    tags: tags && tags.length > 0 ? tags : [CAPTURE_TAGS.WEB_CAPTURE],
     status: autoAnalyze ? 'analyzing' : 'pending',
     folderId: targetFolderId,
   })) as number;

@@ -161,6 +161,7 @@ export type FolderFilter = number | null | 'all' | 'uncategorized';
 
 
 export * from './prompt';
+export * from './meme';
 export * from './imageGeneration';
 
 export interface CaptureImageMessage {

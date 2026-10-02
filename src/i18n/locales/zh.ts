@@ -397,7 +397,8 @@ export const zh = {
     addSource: '添加',
     invalidUrl: '请填写有效的 https 地址',
     indexFormat: '索引格式：[{ "name": "", "url": "", "tags": [], "category": "" }]',
-    copyrightNote: '图片版权归原作者所有，仅在你的本机加载与保存，请遵守各来源的使用条款。',
+    copyrightNote: '部分模板图片来自 Imgflip（imgflip.com），其余来自 memegen 与你添加的来源。图片版权归原作者所有，仅在你的本机加载与保存，请遵守各来源的使用条款。',
+    sourceHome: '访问来源主页',
     imageFailed: '图片加载失败',
   },
   categories: {

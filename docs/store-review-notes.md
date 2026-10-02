@@ -10,7 +10,8 @@ PicPocket works without an account. To test the core features:
 2. Analysis and image generation need an AI endpoint. Two ways to try them:
    - Sign in from Settings → Account (Google, GitHub or an emailed one-time code). Signed-in accounts get 30 free hosted credits every month, which is enough to try image analysis and one or two generations on the "PicPocket" channel.
    - Or add your own OpenAI-compatible endpoint and API key under Settings → Models.
-3. Paid plans and credit packs are optional. Checkout happens on Waffo Pancake or PayPal pages; the extension never handles card details.
+3. The Memes tab downloads a public meme index (api.memegen.link and picpocket.top) when you press Sync. Meme images load directly from the sites that host them (mainly imgflip.com, with a link back to it in the source list); PicPocket does not host or redistribute them, and saving one copies it to the user's own local library.
+4. Paid plans and credit packs are optional. Checkout happens on Waffo Pancake or PayPal pages; the extension never handles card details.
 
 Permissions and remote code: see https://www.picpocket.top/privacy. The extension bundles all of its code (`scripts/check-remote-code.ts` fails the build if remote code is referenced). Network calls only happen for the actions described in the privacy policy.
 

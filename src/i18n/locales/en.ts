@@ -399,7 +399,8 @@ export const en: Translations = {
     addSource: 'Add',
     invalidUrl: 'Enter a valid https URL',
     indexFormat: 'Index format: [{ "name": "", "url": "", "tags": [], "category": "" }]',
-    copyrightNote: 'Images belong to their original authors. They are loaded and saved on your device only; follow each source\'s terms.',
+    copyrightNote: 'Many templates come from Imgflip (imgflip.com); the rest come from memegen and the sources you add. Images belong to their original authors. They are loaded and saved on your device only; follow each source\'s terms.',
+    sourceHome: 'Open source site',
     imageFailed: 'Image failed to load',
   },
   categories: {

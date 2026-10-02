@@ -39,6 +39,14 @@ interface Feedback {
   isError?: boolean;
 }
 
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^(www|i)\./, '');
+  } catch {
+    return '';
+  }
+}
+
 const MemeCard: React.FC<{
   meme: MemeItem;
   busy: boolean;
@@ -49,6 +57,7 @@ const MemeCard: React.FC<{
   const { t } = useI18n();
   const [failed, setFailed] = useState(false);
   const saved = typeof meme.savedItemId === 'number';
+  const origin = hostOf(meme.url);
 
   return (
     <div className="group relative overflow-hidden rounded-lg border border-zinc-200 bg-white">
@@ -69,8 +78,9 @@ const MemeCard: React.FC<{
           />
         )}
       </div>
-      <div className="truncate px-2 py-1 text-[11px] text-zinc-600" title={meme.name}>
-        {meme.name}
+      <div className="px-2 py-1" title={origin ? `${meme.name} · ${origin}` : meme.name}>
+        <div className="truncate text-[11px] text-zinc-600">{meme.name}</div>
+        {origin && <div className="truncate text-[9px] text-zinc-400">{origin}</div>}
       </div>
 
       <button
@@ -83,7 +93,7 @@ const MemeCard: React.FC<{
         <Heart className={`h-3.5 w-3.5 ${meme.isFavorite ? 'fill-current' : ''}`} />
       </button>
 
-      <div className="absolute inset-x-0 bottom-7 flex justify-center gap-1 px-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+      <div className="absolute inset-x-0 bottom-10 flex justify-center gap-1 px-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
         <button
           onClick={() => onSave(meme)}
           disabled={busy}
@@ -159,12 +169,24 @@ export const MemeLibraryView: React.FC = () => {
   // 分类 pills 基于「未选分类」的结果，选中一个分类后仍能切到其他分类
   const candidates = useMemo(() => {
     const enabled = new Set(sources.filter((s) => s.enabled).map((s) => s.id));
-    return memes.filter((m) => {
-      if (!enabled.has(m.sourceId)) return false;
-      if (activeSource !== ALL_SOURCES && m.sourceId !== activeSource) return false;
-      if (favoritesOnly && !m.isFavorite) return false;
-      return matchesMemeQuery(m, query);
-    }).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const matched = memes
+      .filter((m) => {
+        if (!enabled.has(m.sourceId)) return false;
+        if (activeSource !== ALL_SOURCES && m.sourceId !== activeSource) return false;
+        if (favoritesOnly && !m.isFavorite) return false;
+        return matchesMemeQuery(m, query);
+      })
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    if (activeSource !== ALL_SOURCES) return matched;
+    // 「全部来源」下，不同来源的同名模板只显示排名最靠前的一个
+    const seen = new Set<string>();
+    return matched.filter((m) => {
+      const key = m.name.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '');
+      if (!key) return true;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }, [memes, sources, activeSource, favoritesOnly, query]);
 
   const filtered = useMemo(
@@ -312,7 +334,15 @@ export const MemeLibraryView: React.FC = () => {
             <div key={s.id} className="rounded-md border border-zinc-200 bg-white px-2 py-1.5">
               <div className="flex items-center gap-2">
                 <input type="checkbox" checked={s.enabled} onChange={(e) => guard(() => setMemeSourceEnabled(s.id, e.target.checked))} aria-label={t('memes.enabled')} className="cursor-pointer" />
-                <span className="min-w-0 flex-1 truncate text-xs font-medium">{s.name}</span>
+                <a
+                  href={s.homepage}
+                  target="_blank"
+                  rel="noreferrer"
+                  title={t('memes.sourceHome')}
+                  className="min-w-0 flex-1 truncate text-xs font-medium text-zinc-900 hover:text-indigo-600 hover:underline"
+                >
+                  {s.name}
+                </a>
                 <span className="shrink-0 text-[10px] text-zinc-400">{s.lastSuccessAt ? t('memes.sourceCount', { count: s.count ?? 0 }) : t('memes.neverSynced')}</span>
                 {!s.builtIn && (
                   <button onClick={() => guard(() => removeMemeSource(s.id))} title={t('memes.remove')} className="shrink-0 cursor-pointer text-zinc-400 hover:text-red-500">

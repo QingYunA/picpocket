@@ -630,16 +630,6 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
                       <span>{isPresetEditorOpen ? t('inspector.collapseRule') : t('inspector.editRule')}</span>
                       <ChevronDown className={`h-3 w-3 transition-transform ${isPresetEditorOpen ? 'rotate-180' : ''}`} />
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => runAnalysis()}
-                      disabled={isAnalyzing}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-sky-50 text-sky-700 hover:bg-sky-100 hover:text-sky-900 border border-sky-200 font-semibold cursor-pointer active:scale-95 transition-all text-[11px] disabled:opacity-50"
-                      title={t('inspector.reanalyze')}
-                    >
-                      <RotateCw className={`h-3 w-3 ${isAnalyzing ? 'animate-spin' : ''}`} />
-                      <span>{t('inspector.reanalyze')}</span>
-                    </button>
                   </div>
                 </div>
 

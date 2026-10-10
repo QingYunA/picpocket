@@ -5,6 +5,7 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { WebSocketServer, WebSocket } from 'ws';
+import { isAllowedBridgeOrigin } from './origin';
 
 function resolvePort(): number {
   const args = process.argv.slice(2);
@@ -78,22 +79,13 @@ const EXPECTED_EXTENSION_ID =
 
 wss.on('connection', (ws, req) => {
   const origin = req.headers.origin || '';
-  const isExtension = origin.startsWith('chrome-extension://');
-  const isLocalDev = origin.includes('localhost') || origin.includes('127.0.0.1');
 
   // Security guard: Must have valid origin (Extension or local dev)
-  if (!origin || (!isExtension && !isLocalDev)) {
+  if (!isAllowedBridgeOrigin(origin, EXPECTED_EXTENSION_ID)) {
     console.error(`[PicPocket MCP Bridge] Rejected connection from unauthorized origin: ${origin || '(empty)'}`);
     ws.close(4003, 'Unauthorized origin');
     return;
   }
-
-  if (EXPECTED_EXTENSION_ID && isExtension && origin !== `chrome-extension://${EXPECTED_EXTENSION_ID}`) {
-    console.error(`[PicPocket MCP Bridge] Rejected connection: Extension ID mismatch (${origin})`);
-    ws.close(4003, 'Extension ID mismatch');
-    return;
-  }
-
 
   let isAuthenticated = false;
 
@@ -139,6 +131,20 @@ wss.on('connection', (ws, req) => {
     if (activeExtensionSocket === ws) {
       activeExtensionSocket = null;
       console.error('[PicPocket MCP Bridge] Chrome extension disconnected');
+      // 扩展已断开，进行中的调用不可能再收到结果：立即告知 Agent，而不是干等到 15~75 秒超时
+      for (const [callId, pending] of pendingCalls) {
+        clearTimeout(pending.timer);
+        pendingCalls.delete(callId);
+        pending.resolve({
+          isError: true,
+          content: [
+            {
+              type: 'text',
+              text: '【连接中断 / Disconnected】: PicPocket 插件在处理该调用期间断开了连接（可能关闭了侧边栏）。请让用户重新打开侧边栏后重试。',
+            },
+          ],
+        });
+      }
     }
   });
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { ConfigLayout } from '../../components/config-layout';
 import { ConfigSection } from '../../components/config-section';
 import { ConfigItem } from '../../components/config-item';
+import { ToggleSwitch } from '../../components/toggle-switch';
 import { EntityEditorLayout, type EntityListItem } from '../../components/entity-editor-layout';
 import { BrandIcon } from '@/entrypoints/sidepanel/components/BrandIcon';
 import { ImageChannelModels } from './ImageChannelModels';
@@ -409,15 +410,11 @@ export const ImageModelPage: React.FC<ImageModelPageProps> = ({
           description={t('settings.autoSaveGalleryDesc')}
           icon={<Bookmark className="h-4 w-4" />}
         >
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={settings.autoSaveGeneratedToGallery ?? false}
-              onChange={(e) => handleAutoSaveGalleryToggle(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-10 h-5 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-zinc-900" />
-          </label>
+          <ToggleSwitch
+            checked={settings.autoSaveGeneratedToGallery ?? false}
+            onChange={handleAutoSaveGalleryToggle}
+            label={t('settings.autoSaveGalleryTitle')}
+          />
         </ConfigItem>
         <ConfigItem
           title={t('options.models.aspectRatioTitle')}

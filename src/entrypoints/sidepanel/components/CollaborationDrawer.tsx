@@ -57,7 +57,7 @@ export const CollaborationDrawer: React.FC<CollaborationDrawerProps> = ({
   const permissions = mcpConfig.permissions;
 
   const [portInput, setPortInput] = useState<string>(String(mcpConfig.port || 18088));
-  const [portSaveMsg, setPortSaveMsg] = useState<string>('');
+  const [portSaveMsg, setPortSaveMsg] = useState<{ text: string; isError: boolean } | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -96,16 +96,16 @@ export const CollaborationDrawer: React.FC<CollaborationDrawerProps> = ({
   const handleSavePort = async () => {
     const parsed = parseInt(portInput, 10);
     if (isNaN(parsed) || parsed < 1024 || parsed > 65535) {
-      setPortSaveMsg(t('mcp.portInvalid'));
-      setTimeout(() => setPortSaveMsg(''), 3000);
+      setPortSaveMsg({ text: t('mcp.portInvalid'), isError: true });
+      setTimeout(() => setPortSaveMsg(null), 3000);
       return;
     }
     const latest = (await getUserSettings()).mcpSettings || DEFAULT_MCP_SETTINGS;
     const saved = await saveUserSettings({ mcpSettings: { ...latest, port: parsed } });
     onUpdateSettings(saved);
     await mcpManager.restart();
-    setPortSaveMsg(t('mcp.portSaved'));
-    setTimeout(() => setPortSaveMsg(''), 2500);
+    setPortSaveMsg({ text: t('mcp.portSaved'), isError: false });
+    setTimeout(() => setPortSaveMsg(null), 2500);
   };
 
   const currentPrompt = buildTargetedPrompt(selectedTarget, mcpConfig);
@@ -343,8 +343,13 @@ export const CollaborationDrawer: React.FC<CollaborationDrawerProps> = ({
                 {t('mcp.portSettingTitle')}
               </span>
               {portSaveMsg && (
-                <span className="text-[10px] font-medium text-emerald-600 animate-in fade-in duration-150">
-                  {portSaveMsg}
+                <span
+                  role={portSaveMsg.isError ? 'alert' : 'status'}
+                  className={`text-[10px] font-medium animate-in fade-in duration-150 ${
+                    portSaveMsg.isError ? 'text-red-600' : 'text-emerald-600'
+                  }`}
+                >
+                  {portSaveMsg.text}
                 </span>
               )}
             </div>
@@ -355,6 +360,10 @@ export const CollaborationDrawer: React.FC<CollaborationDrawerProps> = ({
                 max="65535"
                 value={portInput}
                 onChange={(e) => setPortInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSavePort();
+                }}
+                aria-label={t('mcp.portSettingTitle')}
                 className="flex-1 rounded-lg border border-zinc-300 px-2.5 py-1 text-xs font-mono text-zinc-800 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 placeholder="18088"
               />

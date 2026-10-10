@@ -63,7 +63,7 @@ export const StoragePage: React.FC = () => {
       setTimeout(() => setActionSuccessMsg(null), 4000);
     } catch (err) {
       console.error('Failed to export ZIP backup:', err);
-      setActionErrorMsg(String(err));
+      setActionErrorMsg(err instanceof Error ? err.message : String(err));
     } finally {
       setIsExportingZip(false);
     }
@@ -79,7 +79,7 @@ export const StoragePage: React.FC = () => {
       setTimeout(() => setActionSuccessMsg(null), 4000);
     } catch (err) {
       console.error('Failed to export JSON backup:', err);
-      setActionErrorMsg(String(err));
+      setActionErrorMsg(err instanceof Error ? err.message : String(err));
     } finally {
       setIsExportingJson(false);
     }
@@ -196,14 +196,14 @@ export const StoragePage: React.FC = () => {
         icon={<Archive className="h-4 w-4 text-sky-600" />}
         actions={
           actionSuccessMsg ? (
-            <span className="text-xs font-semibold text-emerald-600 flex items-center gap-1.5">
-              <CheckCircle2 className="h-4 w-4" />
-              <span>{actionSuccessMsg}</span>
+            <span role="status" className="flex max-w-md items-center gap-1.5 text-xs font-semibold text-emerald-600">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              <span className="break-words">{actionSuccessMsg}</span>
             </span>
           ) : actionErrorMsg ? (
-            <span className="text-xs font-semibold text-red-600 flex items-center gap-1.5">
-              <AlertCircle className="h-4 w-4" />
-              <span>{actionErrorMsg}</span>
+            <span role="alert" className="flex max-w-md items-center gap-1.5 text-xs font-semibold text-red-600">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span className="break-words">{actionErrorMsg}</span>
             </span>
           ) : null
         }

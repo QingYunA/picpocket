@@ -8,6 +8,7 @@
 
 常驻 Chrome 侧边栏，像 Pocket 一样随手收纳视觉资产，一键反推成完整提示词并从开源词库重构生图。
 
+[![Chrome Web Store](https://img.shields.io/chrome-web-store/v/bncoffcoihlpfbicajogmpcdckcfpnfa?style=flat-square&logo=googlechrome&logoColor=white&label=Chrome%20Web%20Store)](https://chromewebstore.google.com/detail/picpocket-image-to-prompt/bncoffcoihlpfbicajogmpcdckcfpnfa)
 [![Manifest V3](https://img.shields.io/badge/Chrome-Manifest%20V3-blue?style=flat-square)](https://developer.chrome.com/docs/extensions/mv3/intro/)
 [![Built with WXT](https://img.shields.io/badge/Built%20with-WXT-black?style=flat-square)](https://wxt.dev/)
 [![React 19](https://img.shields.io/badge/React-19-61dafb?style=flat-square)](https://react.dev/)
@@ -40,9 +41,15 @@
 
 ---
 
-## 本地安装与使用
+## 安装与使用
 
-### 1. 编译构建
+### 从 Chrome 应用商店安装（推荐）
+
+打开 [PicPocket 商店页面](https://chromewebstore.google.com/detail/picpocket-image-to-prompt/bncoffcoihlpfbicajogmpcdckcfpnfa)，点击 **「添加至 Chrome」**，之后由 Chrome 自动更新。
+
+### 从源码构建
+
+#### 1. 编译构建
 ```bash
 # 安装依赖
 bun install
@@ -52,13 +59,13 @@ bun run build
 ```
 编译产物会生成到 `dist/chrome-mv3` 目录。
 
-### 2. 加载到 Chrome
+#### 2. 加载到 Chrome
 1. 打开 Chrome 浏览器，访问 `chrome://extensions/`；
 2. 开启右上角的 **「开发者模式」** 开关；
 3. 点击左上角 **「加载已解压的扩展程序」**；
 4. 选择本项目中的 `dist/chrome-mv3` 文件夹。
 
-### 3. 配置与体验
+### 配置与体验
 1. 点击浏览器工具栏的 **PicPocket** 图标固定并打开侧边栏；
 2. 点击侧边栏右上角设置图标 ⚙️，填入你的 DeepSeek API Key（仅保存在本地存储）；
 3. 浏览任意网页，通过右上角悬浮胶囊或顶部 `[截图采集]` 开始收录灵感。

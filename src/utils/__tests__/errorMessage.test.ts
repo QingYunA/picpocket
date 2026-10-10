@@ -44,6 +44,14 @@ body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "S
     expect(result.length).toBeLessThanOrEqual(100);
   });
 
+  it('状态码关键词只按独立数字匹配，模型名或请求 ID 中的数字片段不会被误判', () => {
+    expect(formatSafeErrorMessage('Unknown model gpt-4135 for this channel')).toBe(
+      'Unknown model gpt-4135 for this channel'
+    );
+    expect(formatSafeErrorMessage('<html><body>Request req_15240 failed</body></html>')).not.toMatch(/Cloudflare 524/);
+    expect(formatSafeErrorMessage('HTTP 413: payload too large')).toMatch(/413/);
+  });
+
   it('100% 拦截并清洗 Nginx 413 HTML 错误页，转换为参考图体积人话提示', () => {
     const nginx413Html = `<html>
 <head><title>413 Request Entity Too Large</title></head>

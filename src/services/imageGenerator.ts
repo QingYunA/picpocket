@@ -100,10 +100,14 @@ export async function parseImageResponsePayload(
   return results;
 }
 
-export async function convertImageUrlToDataUrl(url: string): Promise<string> {
+/**
+ * 把图片链接下载为 DataURL；失败时保留原链接（界面仍可直接显示）。
+ * 传入 signal 后，用户取消或整体超时会同步中断下载，避免挂起的图片服务拖住整个生成任务。
+ */
+export async function convertImageUrlToDataUrl(url: string, signal?: AbortSignal): Promise<string> {
   if (url.startsWith('data:')) return url;
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, { signal });
     if (!res.ok) throw new Error(`Image URL responded ${res.status}`);
     const blob = await res.blob();
     // 仅拦截明显的错误页载荷；部分 CDN 对正常图片返回 application/octet-stream，需放行
@@ -130,6 +134,7 @@ export async function convertImageUrlToDataUrl(url: string): Promise<string> {
     const mimeType = blob.type || 'image/png';
     return `data:${mimeType};base64,${base64}`;
   } catch (err) {
+    if (signal?.aborted) throw err;
     console.warn('[imageGenerator] Failed to fetch image URL into DataURL, returning raw url:', err);
     return url;
   }
@@ -332,7 +337,7 @@ async function sendGenerationRequest(
   for (let i = 0; i < rawUrls.length; i++) {
     const raw = rawUrls[i];
     if (!raw) continue;
-    const dataUrl = raw.startsWith('data:') ? raw : await convertImageUrlToDataUrl(raw);
+    const dataUrl = raw.startsWith('data:') ? raw : await convertImageUrlToDataUrl(raw, signal);
     images.push({
       id: `${now}_${i}_${Math.random().toString(36).slice(2, 7)}`,
       dataUrl,

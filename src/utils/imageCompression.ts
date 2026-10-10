@@ -2,10 +2,10 @@
  * AI 参考图「高保真温和预处理」模块
  *
  * 设计原则：
- * 1. 绝对避免过度压缩：默认 90% 超高画质，杜绝宏块噪点与边缘伪影破坏扩散模型视觉先验；
- * 2. 贴合主流模型黄金分辨率：最长边上限设定为 1536px（与 FLUX.1、SDXL、Midjourney 原生尺寸上限对齐）；
- * 3. 安全区无损直通：小于 1.2MB 且尺寸在 1536 内的原图 100% 保留原始数据，零转码；
- * 4. 极罕见超限兜底：对复杂噪点大图，若输出仍超过 1.5MB 则自动执行 1280px 与 0.85 画质二级安全降级；
+ * 1. 绝对避免过度压缩：默认 85% 高画质（AI_REF_TARGET_QUALITY），杜绝宏块噪点与边缘伪影破坏扩散模型视觉先验；
+ * 2. 贴合主流模型黄金分辨率：最长边上限 1280px（AI_REF_MAX_DIMENSION）；
+ * 3. 安全区无损直通：小于 600KB 且尺寸在 1280px 内的原图 100% 保留原始数据，零转码；
+ * 4. 极罕见超限兜底：对复杂噪点大图，若输出仍超过 750KB 则自动执行 1024px 与 0.75 画质二级安全降级；
  * 5. 跨环境执行：支持 Chrome MV3 后台 Service Worker (OffscreenCanvas / createImageBitmap)
  *    与前台 DOM (Canvas / Image) 双环境，纯内存流转，零外部依赖。
  */
@@ -216,6 +216,7 @@ export async function prepareReferenceImageForAi(
 
   const source = await getImageSource(dataUrl);
   if (!source || source.width <= 0 || source.height <= 0) {
+    source?.close?.();
     return dataUrl;
   }
 
@@ -223,7 +224,7 @@ export async function prepareReferenceImageForAi(
     const naturalWidth = source.width;
     const naturalHeight = source.height;
 
-    // 1. 免处理安全区判定：体积适中且宽高在 1536 范围内，100% 原始原图直通
+    // 1. 免处理安全区判定：体积适中且宽高在上限范围内，100% 原始原图直通
     const byteSize = getDataUrlByteLength(dataUrl);
     const isSizeSafe = byteSize <= AI_REF_SAFE_BYTES;
     const isDimensionSafe = naturalWidth <= maxDim && naturalHeight <= maxDim;
@@ -239,11 +240,11 @@ export async function prepareReferenceImageForAi(
       maxDim
     );
 
-    // 3. 执行第一次高保真导出 (90% Quality)
+    // 3. 执行第一次高保真导出（AI_REF_TARGET_QUALITY）
     let result = await renderToDataUrl(source, targetWidth, targetHeight, quality);
     if (!result) return dataUrl;
 
-    // 4. 极罕见超限兜底：对极复杂噪点图，若依然超过 1.5MB，执行 1280px + 0.85 质量二级安全降级
+    // 4. 极罕见超限兜底：对极复杂噪点图，若依然超过 AI_REF_HARD_LIMIT_BYTES，执行 1024px + 0.75 质量二级安全降级
     if (getDataUrlByteLength(result) > AI_REF_HARD_LIMIT_BYTES) {
       const fallbackDims = calculateDownsampledDimensions(
         naturalWidth,
@@ -297,6 +298,7 @@ export async function prepareVisionImageForAi(
   const dataUrl = await blobToDataUrl(blob);
   const source = await getImageSource(dataUrl);
   if (!source || source.width <= 0 || source.height <= 0) {
+    source?.close?.();
     return dataUrl;
   }
 

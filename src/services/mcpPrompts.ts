@@ -1,4 +1,5 @@
 import type { McpSettings } from '@/types';
+import { DEFAULT_MCP_SETTINGS } from '@/utils/storage';
 
 export type McpClientTarget = 'auto' | 'cursor' | 'claude' | 'antigravity' | 'windsurf' | 'zed';
 
@@ -31,7 +32,7 @@ const ANTI_DRIFT_NOTICE = `### 🛑 CRITICAL ANTI-DRIFT INSTRUCTIONS (STRICT GUA
  */
 export function buildTargetedPrompt(target: McpClientTarget, mcpConfig: McpSettings): string {
   const port = mcpConfig.port || 18088;
-  const token = mcpConfig.authToken || 'picpocket-local-token';
+  const token = mcpConfig.authToken || DEFAULT_MCP_SETTINGS.authToken;
 
   if (target === 'cursor') {
     return `${ANTI_DRIFT_NOTICE}

@@ -48,10 +48,10 @@ export function readApiErrorMessage(value: unknown): string {
           .trim();
 
         // 统一通过单一真理源提取状态特征
-        if (/524/i.test(value)) return STATUS_ERROR_MESSAGES[524]!;
-        if (/504/i.test(value) || /gateway timeout/i.test(value)) return STATUS_ERROR_MESSAGES[504]!;
-        if (/413/i.test(value) || /too large/i.test(value)) return STATUS_ERROR_MESSAGES[413]!;
-        if (/502/i.test(value) || /bad gateway/i.test(value)) return STATUS_ERROR_MESSAGES[502]!;
+        if (/\b524\b/.test(value)) return STATUS_ERROR_MESSAGES[524]!;
+        if (/\b504\b/.test(value) || /gateway timeout/i.test(value)) return STATUS_ERROR_MESSAGES[504]!;
+        if (/\b413\b/.test(value) || /too large/i.test(value)) return STATUS_ERROR_MESSAGES[413]!;
+        if (/\b502\b/.test(value) || /bad gateway/i.test(value)) return STATUS_ERROR_MESSAGES[502]!;
         if (/timeout/i.test(value)) return STATUS_ERROR_MESSAGES[524]!;
 
         const preview = plainText ? `${plainText.slice(0, 80)}...` : '网关返回了异常页面';
@@ -120,9 +120,9 @@ export function formatSafeErrorMessage(rawError: unknown, status?: number): stri
   }
 
   // 3. 特殊关键词直译人话（容错）
-  if (/timeout/i.test(msg) || /timed? ?out/i.test(msg) || /524/i.test(msg)) {
+  if (/timeout/i.test(msg) || /timed? ?out/i.test(msg) || /\b524\b/.test(msg)) {
     msg = STATUS_ERROR_MESSAGES[524]!;
-  } else if (/413/i.test(msg) || /too large/i.test(msg)) {
+  } else if (/\b413\b/.test(msg) || /too large/i.test(msg)) {
     msg = STATUS_ERROR_MESSAGES[413]!;
   }
 

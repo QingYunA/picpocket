@@ -68,7 +68,8 @@ export function refreshMemeSource(source: MemeSource): Promise<MemeSourceRefresh
       return { sourceId: source.id, sourceName: source.name, count: items.length, success: true, lastError: '' };
     } catch (err) {
       const lastError = err instanceof Error ? err.message : String(err);
-      await db.memeSources.update(source.id, { lastError });
+      // 写入失败原因本身出错（如来源已被删除、库被清空）时不能让刷新结果变成未处理的拒绝
+      await db.memeSources.update(source.id, { lastError }).catch(() => {});
       return { sourceId: source.id, sourceName: source.name, count: 0, success: false, lastError };
     } finally {
       loading.delete(source.id);

@@ -24,6 +24,7 @@ export default defineContentScript({
     });
 
     let activeBadge: HTMLElement | null = null;
+    let activeBadgeSource: HTMLElement | null = null;
     let hoveredElement: HTMLElement | null = null;
     let hideTimer: any = null;
     let isHoverBadgeEnabled = true;
@@ -51,14 +52,28 @@ export default defineContentScript({
         activeBadge.remove();
         activeBadge = null;
       }
+      activeBadgeSource = null;
     }
 
+    let activeToast: HTMLElement | null = null;
+
     function showToast(text: string, variant: 'success' | 'error' = 'success') {
+      // 连续触发时只保留最新一条，避免多条提示叠在同一位置
+      activeToast?.remove();
+
+      // 同徽标：挂进 Shadow DOM 并重置宿主可继承样式，避免宿主页面的全局样式污染提示条
+      const host = document.createElement('div');
+      host.id = 'picpocket-toast-host';
+      host.style.setProperty('all', 'initial');
+      const shadow = host.attachShadow({ mode: 'open' });
+
       const toast = document.createElement('div');
       toast.style.position = 'fixed';
       toast.style.zIndex = '2147483647';
       toast.style.top = '20px';
       toast.style.right = '20px';
+      toast.style.maxWidth = 'calc(100vw - 40px)';
+      toast.style.boxSizing = 'border-box';
       toast.style.display = 'flex';
       toast.style.alignItems = 'center';
       toast.style.gap = '8px';
@@ -67,6 +82,7 @@ export default defineContentScript({
       toast.style.padding = '8px 14px';
       toast.style.borderRadius = '8px';
       toast.style.fontSize = '12px';
+      toast.style.lineHeight = '1.5';
       toast.style.fontWeight = '500';
       toast.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       toast.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.16)';
@@ -81,11 +97,17 @@ export default defineContentScript({
       label.textContent = text;
       toast.appendChild(label);
 
-      document.body.appendChild(toast);
+      shadow.appendChild(toast);
+      // 挂在 <html> 下：body 带 transform / filter 的页面会让 position: fixed 相对 body 定位而错位
+      document.documentElement.appendChild(host);
+      activeToast = host;
       setTimeout(() => {
         toast.style.opacity = '0';
         toast.style.transform = 'translateY(-6px)';
-        setTimeout(() => toast.remove(), 250);
+        setTimeout(() => {
+          host.remove();
+          if (activeToast === host) activeToast = null;
+        }, 250);
       }, 2000);
     }
 
@@ -101,7 +123,8 @@ export default defineContentScript({
       badge.style.position = 'fixed';
       badge.style.zIndex = '2147483645';
       badge.style.top = `${Math.max(10, rect.top + 8)}px`;
-      badge.style.right = `${Math.max(10, window.innerWidth - rect.right + 8)}px`;
+      // fixed 定位相对于不含滚动条的视口，用 clientWidth 而不是 innerWidth，否则有滚动条的页面里徽标会左偏一个滚动条宽度
+      badge.style.right = `${Math.max(10, document.documentElement.clientWidth - rect.right + 8)}px`;
       badge.style.display = 'flex';
       badge.style.alignItems = 'center';
       badge.style.backgroundColor = '#FFFFFF';
@@ -224,7 +247,7 @@ export default defineContentScript({
           `;
           handleCaptureFeedback(saveResp, false);
         } else {
-          showToast(getTranslation(currentLang, 'content.saveFailedToast'), 'error');
+          showCaptureFailure(saveResp);
         }
 
         setTimeout(removeBadge, 800);
@@ -246,7 +269,7 @@ export default defineContentScript({
           `;
           handleCaptureFeedback(analyzeResp, true);
         } else {
-          showToast(getTranslation(currentLang, 'content.saveFailedToast'), 'error');
+          showCaptureFailure(analyzeResp);
         }
 
         setTimeout(removeBadge, 800);
@@ -262,12 +285,22 @@ export default defineContentScript({
       // 重置宿主可继承样式（font、line-height、letter-spacing 等会穿透 shadow 边界）
       host.style.setProperty('all', 'initial');
       host.attachShadow({ mode: 'open' }).appendChild(badge);
-      document.body.appendChild(host);
+      document.documentElement.appendChild(host);
       activeBadge = host;
+      activeBadgeSource = target;
+    }
+
+    /** 扩展被更新/重载后，页面里遗留的内容脚本无法再与后台通信，需要刷新页面 */
+    const CONTEXT_INVALIDATED = 'EXTENSION_CONTEXT_INVALIDATED';
+
+    function showCaptureFailure(resp: CaptureResponse | null) {
+      const key = resp?.error === CONTEXT_INVALIDATED ? 'content.extensionUpdatedToast' : 'content.saveFailedToast';
+      showToast(getTranslation(currentLang, key), 'error');
     }
 
     /** 以后台真实落库结果为准反馈，避免防盗链等失败被乐观提示掩盖；通信异常时返回 null */
     async function requestCapture(src: string, autoAnalyze: boolean): Promise<CaptureResponse | null> {
+      if (!chrome.runtime?.id) return { success: false, error: CONTEXT_INVALIDATED };
       try {
         const resp = await chrome.runtime.sendMessage({
           action: 'CAPTURE_IMAGE',
@@ -278,12 +311,21 @@ export default defineContentScript({
         });
         return (resp as CaptureResponse | undefined) ?? null;
       } catch (err) {
+        if (String(err).includes('Extension context invalidated')) {
+          return { success: false, error: CONTEXT_INVALIDATED };
+        }
         console.warn('Failed to send capture message:', err);
         return null;
       }
     }
 
-    function extractImageSource(target: HTMLElement): { src: string; element: HTMLElement } | null {
+    /** 指针是否落在元素的可视矩形内（允许 1px 误差） */
+    function pointerInside(el: Element, x: number, y: number): boolean {
+      const r = el.getBoundingClientRect();
+      return x >= r.left - 1 && x <= r.right + 1 && y >= r.top - 1 && y <= r.bottom + 1;
+    }
+
+    function extractImageSource(target: HTMLElement, x: number, y: number): { src: string; element: HTMLElement } | null {
       // 1. Direct <img>
       if (target.tagName === 'IMG') {
         const src = (target as HTMLImageElement).currentSrc || (target as HTMLImageElement).src;
@@ -293,8 +335,9 @@ export default defineContentScript({
       }
 
       // 2. Direct child <img> (e.g. inside an <a> or wrapper div)
+      // 子图必须正好在指针下：否则悬停在 body / 大容器空白处时，会对容器里的第一张图弹出徽标
       const childImg = target.querySelector('img');
-      if (childImg) {
+      if (childImg && pointerInside(childImg, x, y)) {
         const src = childImg.currentSrc || childImg.src;
         if (src && (src.startsWith('http') || src.startsWith('data:'))) {
           return { src, element: childImg };
@@ -305,7 +348,7 @@ export default defineContentScript({
       const parent = target.closest('figure, picture, a, div[role="img"], [data-testid], div');
       if (parent && parent !== document.body) {
         const nestedImg = parent.querySelector('img');
-        if (nestedImg) {
+        if (nestedImg && pointerInside(nestedImg, x, y)) {
           const src = nestedImg.currentSrc || nestedImg.src;
           if (src && (src.startsWith('http') || src.startsWith('data:'))) {
             return { src, element: nestedImg };
@@ -314,12 +357,12 @@ export default defineContentScript({
       }
 
       // 4. Background-image
+      // 可能是多层背景（url(a), linear-gradient(...)），只取第一个 url(...)
       const bg = window.getComputedStyle(target).backgroundImage;
-      if (bg && bg !== 'none' && bg.startsWith('url(')) {
-        const src = bg.slice(4, -1).replace(/["']/g, '');
-        if (src && (src.startsWith('http') || src.startsWith('data:'))) {
-          return { src, element: target };
-        }
+      const bgUrl = bg && bg !== 'none' ? bg.match(/url\(\s*(?:"([^"]*)"|'([^']*)'|([^)]*?))\s*\)/) : null;
+      const src = bgUrl ? (bgUrl[1] ?? bgUrl[2] ?? bgUrl[3] ?? '') : '';
+      if (src && (src.startsWith('http') || src.startsWith('data:'))) {
+        return { src, element: target };
       }
 
       return null;
@@ -332,10 +375,12 @@ export default defineContentScript({
         const target = e.target as HTMLElement;
         if (!target) return;
 
-        const imgInfo = extractImageSource(target);
+        const imgInfo = extractImageSource(target, e.clientX, e.clientY);
         if (imgInfo) {
           hoveredElement = target;
           clearTimeout(hideTimer);
+          // 在同一张图上移动鼠标会不断触发 mouseover：已有徽标时不重建，避免闪烁并丢失点击中的忙碌状态
+          if (activeBadge && activeBadgeSource === imgInfo.element) return;
           createBadge(imgInfo.element, imgInfo.src);
         }
       },
@@ -370,6 +415,8 @@ export default defineContentScript({
 
       const host = document.createElement('div');
       host.id = 'picpocket-quick-filing-host';
+      // 先重置宿主可继承样式（字号、行高、字间距等会穿透 shadow 边界），再设定定位
+      host.style.setProperty('all', 'initial');
       host.style.position = 'fixed';
       host.style.zIndex = '2147483647';
       host.style.bottom = '24px';
@@ -500,6 +547,7 @@ export default defineContentScript({
           bottom: 38px;
           right: 0;
           min-width: 180px;
+          max-width: min(280px, calc(100vw - 48px));
           max-height: 220px;
           overflow-y: auto;
           background: #18181b;
@@ -576,11 +624,15 @@ export default defineContentScript({
         <span class="saved-label">${savedText}</span>
         <button class="folder-btn" id="folder-trigger" title="${getTranslation(currentLang, 'webCapsule.changeFolder')}">
           ${inlineIcon('folder', 11)}
-          <span class="folder-btn-text" id="folder-label">${initialFolderName}</span>
+          <span class="folder-btn-text" id="folder-label"></span>
           ${inlineIcon('chevronDown', 9)}
         </button>
         <button class="close-btn" id="close-btn" title="${getTranslation(currentLang, 'common.close')}">${inlineIcon('x', 11)}</button>
       `;
+
+      // 文件夹名是用户输入（也可能来自导入的备份），必须以文本节点写入，不能拼进 innerHTML
+      const initialLabel = capsule.querySelector('#folder-label');
+      if (initialLabel) initialLabel.textContent = initialFolderName;
 
       const dropdown = document.createElement('div');
       dropdown.className = 'dropdown';
@@ -590,18 +642,22 @@ export default defineContentScript({
         const isActive = (item.id === currentFolderId) || (item.id === null && !currentFolderId);
         btn.className = `dropdown-item${isActive ? ' active' : ''}`;
         btn.style.paddingLeft = `${item.depth * 12 + 8}px`;
-        btn.innerHTML = `
-          ${inlineIcon(item.id == null ? 'inbox' : 'folder', 12)}
-          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.name}</span>
-        `;
+        btn.innerHTML = inlineIcon(item.id == null ? 'inbox' : 'folder', 12);
+        const nameEl = document.createElement('span');
+        nameEl.style.cssText = 'overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+        nameEl.textContent = item.name;
+        btn.title = item.name;
+        btn.appendChild(nameEl);
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
-          // Update item folder in background
-          chrome.runtime.sendMessage({
-            action: 'UPDATE_ITEM_FOLDER',
-            itemId,
-            folderId: item.id,
-          });
+          // Update item folder in background；扩展刚更新时旧页面的上下文已失效，消息发送可能同步抛错
+          try {
+            chrome.runtime
+              .sendMessage({ action: 'UPDATE_ITEM_FOLDER', itemId, folderId: item.id })
+              .catch(() => {});
+          } catch {
+            // 忽略：下次保存时会提示刷新页面
+          }
 
           const label = shadow.getElementById('folder-label');
           if (label) {
@@ -619,7 +675,7 @@ export default defineContentScript({
       wrapper.appendChild(dropdown);
       wrapper.appendChild(capsule);
       shadow.appendChild(wrapper);
-      document.body.appendChild(host);
+      document.documentElement.appendChild(host);
 
       requestAnimationFrame(() => {
         wrapper.classList.add('show');
@@ -712,6 +768,11 @@ export default defineContentScript({
           message.currentFolderName,
           Boolean(message.isAnalyzing)
         );
+        sendResponse({ success: true });
+        return true;
+      }
+      if (message.action === 'SHOW_CAPTURE_FAILED') {
+        showToast(getTranslation(currentLang, 'content.saveFailedToast'), 'error');
         sendResponse({ success: true });
         return true;
       }

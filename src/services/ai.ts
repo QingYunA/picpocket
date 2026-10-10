@@ -7,6 +7,7 @@ import { ensureHostedCatalogLoaded, hostedVisionModel } from '../config/hostedMo
 import { visionChannelMode } from '../config/channelMode';
 import { getTranslation } from '../i18n';
 import { ANALYSIS_REQUEST_TIMEOUT_MS, withRequestTimeout } from '../utils/requestTimeout';
+import { formatSafeErrorMessage } from '../utils/errorMessage';
 
 export interface StructuredPromptOutput {
   subject: string[];
@@ -615,25 +616,6 @@ export function formatStructuredPromptList(options: {
   return blocks.join('\n\n');
 }
 
-export function blobToBase64(blob: Blob): Promise<string> {
-  if (typeof FileReader === 'undefined') {
-    return blob.arrayBuffer().then((buf) => {
-      const b64 = Buffer.from(buf).toString('base64');
-      const mime = blob.type || 'image/png';
-      return `data:${mime};base64,${b64}`;
-    });
-  }
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const result = reader.result as string;
-      resolve(result);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
 export type ChatCompletionMessage = {
   role: 'system' | 'user' | 'assistant';
   content: unknown;
@@ -650,6 +632,21 @@ export async function completeChatWithAI(
   settings: UserSettings,
   targetModel?: string,
   signal?: AbortSignal
+): Promise<string> {
+  // 画布文本生成由 Service Worker 保活心跳托管：上游挂起时必须有超时兜底，否则会永远占住保活
+  return withRequestTimeout(
+    signal,
+    ANALYSIS_REQUEST_TIMEOUT_MS,
+    `文本生成请求超时（超过 ${Math.round(ANALYSIS_REQUEST_TIMEOUT_MS / 1000)} 秒未响应），请稍后重试或更换模型`,
+    (requestSignal) => runChatCompletion(messages, settings, targetModel, requestSignal)
+  );
+}
+
+async function runChatCompletion(
+  messages: ChatCompletionMessage[],
+  settings: UserSettings,
+  targetModel: string | undefined,
+  signal: AbortSignal
 ): Promise<string> {
   await ensureHostedCatalogLoaded();
   const access = await resolveChannelCredential(visionChannelMode(settings), settings, 'vision');
@@ -679,7 +676,8 @@ export async function completeChatWithAI(
     const detail = await response.text().catch(() => '');
     const creditError = credential?.kind === 'account' ? hostedCreditError(response.status, detail, settings.language) : null;
     if (creditError) throw creditError;
-    throw new Error(`API 请求失败 (${response.status}): ${detail || response.statusText}`);
+    // 网关错误页常是整页 HTML，统一清洗后再展示
+    throw new Error(`API 请求失败 (${response.status}): ${formatSafeErrorMessage(detail || response.statusText, response.status)}`);
   }
   if (credential?.kind === 'account') await readCreditBalance(response.headers);
   const data = await response.json();
@@ -808,7 +806,8 @@ async function sendAnalysisRequest(
     let parsedMessage = '';
     try {
       const errObj = JSON.parse(errText);
-      parsedMessage = errObj.error?.message || errObj.msg || errObj.error || '';
+      const candidate = errObj.error?.message || errObj.msg || errObj.error;
+      parsedMessage = typeof candidate === 'string' ? candidate : '';
     } catch {}
 
     if (response.status === 401 || response.status === 403) {
@@ -816,7 +815,9 @@ async function sendAnalysisRequest(
         throw new Error(parsedMessage || '官方算力托管额度已用尽或激活码已失效，请在设置中续费或切换为自备 Key');
       }
     }
-    throw new Error(`API 请求失败 (${response.status}): ${parsedMessage || errText || response.statusText}`);
+    throw new Error(
+      `API 请求失败 (${response.status}): ${parsedMessage || formatSafeErrorMessage(errText || response.statusText, response.status)}`
+    );
   }
 
   if (useAccountCredits) await readCreditBalance(response.headers);

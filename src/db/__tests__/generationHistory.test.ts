@@ -7,6 +7,7 @@ import {
   updateGenerationTask,
   deleteGenerationTask,
   clearGenerationTasks,
+  cancelGenerationTaskIfRunning,
 } from '../index';
 import type { GenerationBatchTask } from '@/types';
 
@@ -156,5 +157,18 @@ describe('Generation History Dexie Persistence', () => {
     await clearGenerationTasks();
     const afterClear = await getGenerationTasks();
     expect(afterClear.length).toBe(0);
+  });
+  it('取消只作用于仍在生成中的任务，不会把已完成的任务覆盖为 cancelled', async () => {
+    const base = { prompt: 'p', aspectRatio: '1:1' as const, model: 'm', images: [], createdAt: 1 };
+    await addGenerationTask({ ...base, id: 'running', status: 'generating' });
+    await addGenerationTask({ ...base, id: 'done', status: 'success' });
+
+    expect(await cancelGenerationTaskIfRunning('running', '用户已中断生成')).toBe(true);
+    expect(await cancelGenerationTaskIfRunning('done', '用户已中断生成')).toBe(false);
+    expect(await cancelGenerationTaskIfRunning('missing', 'x')).toBe(false);
+
+    expect((await db.generationTasks.get('running'))?.status).toBe('cancelled');
+    expect((await db.generationTasks.get('running'))?.error).toBe('用户已中断生成');
+    expect((await db.generationTasks.get('done'))?.status).toBe('success');
   });
 });

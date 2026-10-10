@@ -143,6 +143,22 @@ describe('mcpCollaboration Tool Handlers', () => {
 
 
   describe('save_asset', () => {
+    it('imageUrl 无法下载时明确报错，而不是保存一张空白素材', async () => {
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = vi.fn().mockRejectedValue(new Error('network down')) as any;
+      try {
+        const res = await executeSaveAsset(
+          { imageUrl: 'https://cdn.example.com/gone.png', prompt: 'p' },
+          { read: true, write: true, generate: true }
+        );
+        expect(res.isError).toBe(true);
+        expect(res.content[0]!.text).toContain('图片获取失败');
+        expect(await db.items.count()).toBe(0);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    });
+
     it('saves external dataUrl and assigns to specified folder', async () => {
       const permissions = { read: true, write: true, generate: true };
       const fakeDataUrl =
@@ -453,6 +469,60 @@ describe('mcpCollaboration Tool Handlers', () => {
       mcpManager.stop();
       expect(mcpManager.getState()).toBe('disconnected');
       unsub();
+    });
+
+    it('restart 后旧连接的关闭事件不会清掉新连接，也不会排队出第三个连接', async () => {
+      vi.useFakeTimers();
+      const originalWebSocket = (globalThis as any).WebSocket;
+      class FakeWebSocket {
+        static CONNECTING = 0;
+        static OPEN = 1;
+        static CLOSING = 2;
+        static CLOSED = 3;
+        static instances: FakeWebSocket[] = [];
+        readyState = FakeWebSocket.CONNECTING;
+        onopen: (() => void) | null = null;
+        onmessage: ((event: { data: string }) => void) | null = null;
+        onerror: (() => void) | null = null;
+        onclose: (() => void) | null = null;
+        sent: string[] = [];
+        constructor(public url: string) {
+          FakeWebSocket.instances.push(this);
+        }
+        send(data: string) {
+          this.sent.push(data);
+        }
+        close() {
+          this.readyState = FakeWebSocket.CLOSED;
+          // 浏览器的 close 事件是异步派发的
+          setTimeout(() => this.onclose?.(), 0);
+        }
+        open() {
+          this.readyState = FakeWebSocket.OPEN;
+          this.onopen?.();
+          this.onmessage?.({ data: JSON.stringify({ type: 'registered', success: true }) });
+        }
+      }
+      (globalThis as any).WebSocket = FakeWebSocket;
+      try {
+        await mcpManager.start();
+        expect(FakeWebSocket.instances).toHaveLength(1);
+        FakeWebSocket.instances[0]!.open();
+        expect(mcpManager.getState()).toBe('connected');
+
+        await mcpManager.restart();
+        expect(FakeWebSocket.instances).toHaveLength(2);
+        FakeWebSocket.instances[1]!.open();
+
+        // 旧连接的异步 close 事件 + 重连定时器窗口
+        await vi.advanceTimersByTimeAsync(10_000);
+        expect(FakeWebSocket.instances).toHaveLength(2);
+        expect(mcpManager.getState()).toBe('connected');
+      } finally {
+        mcpManager.stop();
+        (globalThis as any).WebSocket = originalWebSocket;
+        vi.useRealTimers();
+      }
     });
 
     it('manages log subscription and clear logs', () => {

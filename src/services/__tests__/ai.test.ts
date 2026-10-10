@@ -508,3 +508,50 @@ describe('vision channel without a key', () => {
     }
   });
 });
+
+describe('completeChatWithAI 超时与错误清洗', () => {
+  const settings: UserSettings = {
+    apiKey: 'sk-test-vision-key',
+    baseUrl: 'https://api.openai.com/v1',
+    model: 'vision-model',
+    autoAnalyzeOnCapture: false,
+    language: 'zh',
+  };
+
+  it('上游挂起时以可读超时错误收敛，避免永久占住 Service Worker 保活', async () => {
+    vi.useFakeTimers();
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn((_url: string, init: RequestInit) =>
+      new Promise((_resolve, reject) => {
+        init.signal?.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })));
+      })
+    ) as any;
+    try {
+      const pending = completeChatWithAI([{ role: 'user', content: 'hi' }], settings);
+      const assertion = expect(pending).rejects.toThrow(/超时/);
+      await vi.advanceTimersByTimeAsync(ANALYSIS_REQUEST_TIMEOUT_MS + 10);
+      await assertion;
+    } finally {
+      globalThis.fetch = originalFetch;
+      vi.useRealTimers();
+    }
+  });
+
+  it('网关返回整页 HTML 时不把源码透传给界面', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 502,
+      statusText: 'Bad Gateway',
+      headers: new Headers(),
+      text: async () => '<html><head><title>502</title></head><body><h1>Bad Gateway</h1></body></html>',
+    }) as any;
+    try {
+      const error = await completeChatWithAI([{ role: 'user', content: 'hi' }], settings).catch((e: Error) => e);
+      expect((error as Error).message).toContain('502');
+      expect((error as Error).message).not.toContain('<html>');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});

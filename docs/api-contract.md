@@ -91,7 +91,7 @@ X-Remaining-Quota:        <本次请求类型对应的剩余次数>
 
 ## 规划中（尚未上线）
 
-账号登录（Google / GitHub / 邮箱）与订阅支付（Waffo Pancake、PayPal）上线后，将在此补充：
+账号登录（Google / 邮箱）与订阅支付（Waffo Pancake、PayPal）上线后，将在此补充：
 
 - 以登录令牌（Supabase Auth JWT）替代 `x-license-key` 作为 `ai-proxy` 的身份凭证，旧的兑换码请求头在过渡期内继续兼容；
 - `create-checkout`：创建支付会话，返回付款页地址；

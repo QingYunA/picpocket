@@ -16,7 +16,7 @@ import {
   Search,
 } from 'lucide-react';
 import { db, createFolder, renameFolder, deleteFolder, batchMoveItemsToFolder } from '@/db';
-import type { FolderItem, FolderFilter } from '@/types';
+import type { FolderItem, FolderFilter, InspirationItem } from '@/types';
 import { useI18n } from '@/i18n';
 import { ConfirmModal } from './ConfirmModal';
 import { parseDraggedItemIds } from './folderDrag';
@@ -26,6 +26,8 @@ export interface FolderTreeNode extends FolderItem {
 }
 
 interface FolderNavProps {
+  /** 全部素材（仅用于统计各文件夹数量，由父级的 liveQuery 提供，避免重复读取整张素材表） */
+  items: Pick<InspirationItem, 'folderId'>[];
   selectedFolderId: FolderFilter;
   onSelectFolder: (id: FolderFilter) => void;
   isOpen: boolean;
@@ -186,6 +188,7 @@ const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
             <button
               onClick={(e) => {
                 e.stopPropagation();
+                renameCancelledRef.current = false;
                 setEditingFolderId(node.id!);
                 setEditName(node.name);
               }}
@@ -280,6 +283,7 @@ const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
 };
 
 export const FolderNav: React.FC<FolderNavProps> = ({
+  items,
   selectedFolderId,
   onSelectFolder,
   isOpen,
@@ -293,7 +297,6 @@ export const FolderNav: React.FC<FolderNavProps> = ({
   const { t } = useI18n();
 
   const folders = useLiveQuery(() => db.folders.orderBy('order').toArray()) || [];
-  const items = useLiveQuery(() => db.items.toArray()) || [];
 
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<number>>(new Set());
   const [isCreatingRoot, setIsCreatingRoot] = useState(false);

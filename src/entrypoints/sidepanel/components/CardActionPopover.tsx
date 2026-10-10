@@ -8,7 +8,7 @@ import {
   X,
 } from 'lucide-react';
 import { db } from '@/db';
-import type { FolderItem } from '@/types';
+import type { FolderItem, InspirationItem } from '@/types';
 import { useI18n } from '@/i18n';
 
 interface FolderTreeNode extends FolderItem {
@@ -16,6 +16,8 @@ interface FolderTreeNode extends FolderItem {
 }
 
 interface CardActionPopoverProps {
+  /** 全部素材（仅用于统计各文件夹数量，由父级的 liveQuery 提供） */
+  items: Pick<InspirationItem, 'folderId'>[];
   /** 素材当前所在文件夹；null 表示未归档，不传（批量移动）则不标记「当前位置」 */
   currentFolderId?: number | null;
   onSelectFolder: (folderId: number | null) => void;
@@ -24,6 +26,7 @@ interface CardActionPopoverProps {
 }
 
 export const CardActionPopover: React.FC<CardActionPopoverProps> = ({
+  items,
   currentFolderId,
   onSelectFolder,
   onClose,
@@ -34,7 +37,6 @@ export const CardActionPopover: React.FC<CardActionPopoverProps> = ({
   const popoverRef = useRef<HTMLDivElement>(null);
 
   const folders = useLiveQuery(() => db.folders.orderBy('order').toArray()) || [];
-  const items = useLiveQuery(() => db.items.toArray()) || [];
 
   // Count items per folder
   const { uncategorizedCount, folderCounts } = useMemo(() => {

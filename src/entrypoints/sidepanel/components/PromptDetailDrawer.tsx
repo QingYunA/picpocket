@@ -119,7 +119,7 @@ export const PromptDetailDrawer: React.FC<PromptDetailDrawerProps> = ({ item, on
 
             {/* Multiple Reference Images Thumbnails */}
             {allImages.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+              <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
                 {allImages.map((img, idx) => (
                   <button
                     key={idx}

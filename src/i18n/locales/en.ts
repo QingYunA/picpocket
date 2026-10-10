@@ -7,7 +7,7 @@ export const en: Translations = {
     save: 'Save Settings',
     saved: 'Saved',
     delete: 'Delete',
-    deleteConfirm: 'Are you sure you want to delete this image asset?',
+    deleteConfirm: 'Are you sure you want to delete this image asset? This action cannot be undone.',
     copy: 'Copy',
     copied: 'Copied',
     back: 'Back',

@@ -5,7 +5,7 @@ export const zh = {
     save: '保存配置',
     saved: '已保存',
     delete: '删除',
-    deleteConfirm: '确定删除该图片素材吗？',
+    deleteConfirm: '确定删除该图片素材吗？此操作无法撤销。',
     copy: '复制',
     copied: '已复制',
     back: '返回',

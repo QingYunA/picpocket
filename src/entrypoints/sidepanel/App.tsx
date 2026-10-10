@@ -74,7 +74,12 @@ function formatTag(tagKey: string | undefined, t: (path: TranslationKey) => stri
 }
 
 export default function App() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+
+  // index.html 写死 zh-CN，切换到英文时同步 lang，保证屏幕阅读器与字体回退正确
+  useEffect(() => {
+    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
+  }, [language]);
 
   const [selectedItem, setSelectedItem] = useState<InspirationItem | null>(null);
   const [activeTab, setActiveTabState] = useState<SidepanelTab>(() => getInitialActiveTab());
@@ -625,6 +630,7 @@ export default function App() {
             <>
               {/* Pocket Multi-Level Folders Nav Component with Capture button */}
               <FolderNav
+                items={items}
                 selectedFolderId={selectedFolderId}
                 onSelectFolder={handleSelectFolder}
                 isOpen={isFolderNavOpen}
@@ -885,6 +891,7 @@ export default function App() {
         >
           <div onClick={(e) => e.stopPropagation()}>
             <CardActionPopover
+              items={items}
               currentFolderId={movingItem.folderId ?? null}
               onSelectFolder={async (targetFolderId) => {
                 if (movingItem.id) {
@@ -908,6 +915,7 @@ export default function App() {
         >
           <div onClick={(e) => e.stopPropagation()}>
             <CardActionPopover
+              items={items}
               title={t('batch.batchMove')}
               onSelectFolder={async (targetFolderId) => {
                 if (visibleSelectedIds.length > 0) {

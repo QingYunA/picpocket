@@ -246,17 +246,18 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
   useEffect(() => {
     activeTaskIdRef.current = activeTaskId;
   }, [activeTaskId]);
-  const [elapsedSec, setElapsedSecState] = useState(0);
-  const elapsedSecRef = useRef(0);
-  const setElapsedSec = (valOrFn: number | ((prev: number) => number)) => {
-    setElapsedSecState((prev) => {
-      const next = typeof valOrFn === 'function' ? valOrFn(prev) : valOrFn;
-      elapsedSecRef.current = next;
-      return next;
-    });
-  };
+  const [elapsedSec, setElapsedSec] = useState(0);
+  // 当前生图的起始时间戳：耗时一律由它推导，侧边栏重开或计时器被节流都不会漂移
+  const generationStartRef = useRef<number | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
+  const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 同一时刻只保留一个提示计时器，避免旧计时器提前清掉新提示
+  const flashFeedback = (msg: string, ms = 3000) => {
+    setFeedbackMsg(msg);
+    if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    feedbackTimerRef.current = setTimeout(() => setFeedbackMsg(null), ms);
+  };
 
   // Live query persisted tasks from Dexie IndexedDB
   const historyTasks =
@@ -272,6 +273,14 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
     if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
     copyTimeoutRef.current = setTimeout(() => setCopiedId(null), 2000);
   };
+
+  useEffect(
+    () => () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+      if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+    },
+    []
+  );
 
   // Domain UI confirmation modals state
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
@@ -311,6 +320,10 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
 
   const resizeStartY = useRef(0);
   const resizeStartHeight = useRef(88);
+  const stopResizeRef = useRef<(() => void) | null>(null);
+
+  // 拖拽中途卸载（如切换 Tab）时摘掉 window 监听，避免泄漏
+  useEffect(() => () => stopResizeRef.current?.(), []);
 
   const handleResizeStart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -324,19 +337,26 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
       setPromptHeight(nextHeight);
     };
 
+    const removeListeners = () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      stopResizeRef.current = null;
+    };
+
     const handleMouseUp = (upEvent: MouseEvent) => {
       const deltaY = upEvent.clientY - resizeStartY.current;
       const finalHeight = Math.max(80, Math.min(320, resizeStartHeight.current + deltaY));
       setPromptHeight(finalHeight);
       try {
         localStorage.setItem('picpocket_prompt_height', String(finalHeight));
-        saveUserSettings({ ...settings, workbenchPromptHeight: finalHeight });
       } catch {}
+      // 只写这一个字段：saveUserSettings 会与最新设置合并，避免用闭包里的旧 settings 覆盖渠道等改动
+      saveUserSettings({ workbenchPromptHeight: finalHeight }).catch(() => {});
       setIsResizingPrompt(false);
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      removeListeners();
     };
 
+    stopResizeRef.current = removeListeners;
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
   };
@@ -360,8 +380,9 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
       const res = await analyzeImageWithAI(blob, settings);
       if (res.masterPrompt) {
         setPrompt(res.masterPrompt);
-        setFeedbackMsg(t('generator.reverseRefSuccess'));
-        setTimeout(() => setFeedbackMsg(null), 3000);
+        flashFeedback(t('generator.reverseRefSuccess'));
+      } else {
+        setErrorMsg(t('inspector.analyzeFailed'));
       }
     } catch (err: any) {
       setErrorMsg(err?.message || t('inspector.analyzeFailed'));
@@ -369,8 +390,6 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
       setIsReversingRef(false);
     }
   };
-
-  const timerRef = useRef<any>(null);
 
   // Sync settings when external changes happen
   useEffect(() => {
@@ -461,6 +480,7 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
         // 若任务在有效执行时间窗口内（5分钟内），坚决保持转圈动画与秒表连续递增
         if (!task || task.status === 'generating') {
           if (elapsedSecNow < 300) {
+            generationStartRef.current = active.startTime || Date.now();
             setActiveTaskId(active.taskId);
             setIsGenerating(true);
             setElapsedSec(elapsedSecNow);
@@ -525,11 +545,11 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
           setIsGenerating(false);
           setActiveTaskId(null);
           if (msg.status === 'success') {
-            setFeedbackMsg(t('generator.timeElapsed', { sec: elapsedSecRef.current }));
-            setTimeout(() => setFeedbackMsg(null), 3000);
+            const startedAt = generationStartRef.current;
+            const sec = startedAt ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000)) : 0;
+            flashFeedback(t('generator.timeElapsed', { sec }));
           } else if (msg.status === 'cancelled') {
-            setFeedbackMsg(t('generator.generationAborted'));
-            setTimeout(() => setFeedbackMsg(null), 2500);
+            flashFeedback(t('generator.generationAborted'), 2500);
           } else if (msg.status === 'failed') {
             setErrorMsg(msg.error || t('generator.failed'));
           }
@@ -588,18 +608,16 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
     });
   }, []);
 
-  // Timer while generating
+  // 生成中的耗时：每秒按起始时间戳重新推导，不累加
   useEffect(() => {
-    if (isGenerating) {
-      timerRef.current = setInterval(() => {
-        setElapsedSec((prev) => prev + 1);
-      }, 1000);
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current);
-    }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+    if (!isGenerating) return;
+    const tick = () => {
+      const startedAt = generationStartRef.current ?? Date.now();
+      setElapsedSec(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
     };
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
   }, [isGenerating]);
 
   // 复用历史任务时沿用它的模型：只在当前渠道内切换，不改变渠道
@@ -655,8 +673,7 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
   const handleUseAsReference = (image: GeneratedImage) => {
     setReferenceImages((prev) => [image.dataUrl, ...prev.filter((url) => url !== image.dataUrl)]);
     setSendAsRef(true);
-    setFeedbackMsg(t('generator.referenceAdded'));
-    setTimeout(() => setFeedbackMsg(null), 2000);
+    flashFeedback(t('generator.referenceAdded'), 2000);
   };
 
   // 前台降级生图的中断与所有权管理（SW 不可达时才会使用）
@@ -682,8 +699,7 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
     }
     setIsGenerating(false);
     setActiveTaskId(null);
-    setFeedbackMsg(t('generator.generationAborted'));
-    setTimeout(() => setFeedbackMsg(null), 2500);
+    flashFeedback(t('generator.generationAborted'), 2500);
   };
 
   const runLocalGenerateFallback = async (
@@ -701,8 +717,7 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
         signal: controller.signal,
       });
       if (!result) return;
-      setFeedbackMsg(t('generator.timeElapsed', { sec: Math.round(result.latencyMs / 1000) }));
-      setTimeout(() => setFeedbackMsg(null), 3000);
+      flashFeedback(t('generator.timeElapsed', { sec: Math.round(result.latencyMs / 1000) }));
     } catch (err: any) {
       setErrorMsg(getErrorMessage(err) || t('generator.failed'));
       await updateGenerationTask(taskId, {
@@ -729,13 +744,14 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
       return;
     }
 
+    const startTime = Date.now();
+    generationStartRef.current = startTime;
     setErrorMsg(null);
     setIsGenerating(true);
     setElapsedSec(0);
 
-    const taskId = `task_${Date.now()}`;
+    const taskId = `task_${startTime}`;
     setActiveTaskId(taskId);
-    const startTime = Date.now();
 
     // 立即持久化活跃任务状态，保障侧边栏闪退/瞬间收起时仍能断点续连
     setActiveGeneration({
@@ -815,7 +831,8 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
   };
 
   const handleGenerate = async () => {
-    if (!prompt.trim()) return;
+    // 与「生成」按钮的禁用条件保持一致：⌘/Ctrl+Enter 不能绕过它们
+    if (!prompt.trim() || isGenerating || referenceBlocked) return;
     await startGeneration(
       {
         prompt,
@@ -855,27 +872,41 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
     }
   };
 
+  // 存入图库/词库没有去重：已存入或正在存入的图片不再重复写入
+  const savingKeysRef = useRef(new Set<string>());
+  const markSaved = async (taskId: string, imageId: string, flag: 'savedToGallery' | 'savedToPrompts') => {
+    // 从库里取最新的任务再回写，避免连续存多张图时用过期快照互相覆盖已存标记
+    const latest = await db.generationTasks.get(taskId);
+    if (!latest) return;
+    const images = latest.images.map((img) => (img.id === imageId ? { ...img, [flag]: true } : img));
+    await updateGenerationTask(taskId, { images });
+  };
+
   const handleSaveToGallery = async (image: GeneratedImage, task: GenerationBatchTask) => {
+    const key = `gallery:${task.id}:${image.id}`;
+    if (image.savedToGallery || savingKeysRef.current.has(key)) return;
+    savingKeysRef.current.add(key);
     try {
       await saveGeneratedImageToGallery(image, task.prompt);
-      const updatedImages = task.images.map((img) =>
-        img.id === image.id ? { ...img, savedToGallery: true } : img
-      );
-      await updateGenerationTask(task.id, { images: updatedImages });
+      await markSaved(task.id, image.id, 'savedToGallery');
     } catch (err: any) {
       setErrorMsg(`${t('generator.saveGalleryFailed')}${getErrorMessage(err)}`);
+    } finally {
+      savingKeysRef.current.delete(key);
     }
   };
 
   const handleSaveToPrompts = async (image: GeneratedImage, task: GenerationBatchTask) => {
+    const key = `prompts:${task.id}:${image.id}`;
+    if (image.savedToPrompts || savingKeysRef.current.has(key)) return;
+    savingKeysRef.current.add(key);
     try {
       await saveGeneratedImageToPromptLibrary(image);
-      const updatedImages = task.images.map((img) =>
-        img.id === image.id ? { ...img, savedToPrompts: true } : img
-      );
-      await updateGenerationTask(task.id, { images: updatedImages });
+      await markSaved(task.id, image.id, 'savedToPrompts');
     } catch (err: any) {
       setErrorMsg(`${t('generator.savePromptFailed')}${getErrorMessage(err)}`);
+    } finally {
+      savingKeysRef.current.delete(key);
     }
   };
 
@@ -894,14 +925,18 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
         await navigator.clipboard.write([
           new ClipboardItem({ [blob.type || 'image/png']: blob }),
         ]);
-        triggerCopied(image.id);
       } else {
         await navigator.clipboard.writeText(image.dataUrl);
-        triggerCopied(image.id);
       }
-    } catch {
-      await navigator.clipboard.writeText(image.dataUrl);
       triggerCopied(image.id);
+    } catch {
+      // 剪贴板拒绝写入图片时降级为文本；仍失败则明确提示，而不是静默无反应
+      try {
+        await navigator.clipboard.writeText(image.dataUrl);
+        triggerCopied(image.id);
+      } catch (err) {
+        setErrorMsg(`${t('generator.copyImageFailed')}${getErrorMessage(err)}`);
+      }
     }
   };
 
@@ -966,6 +1001,7 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
                 type="button"
                 onClick={handleDismissBanner}
                 className="text-zinc-400 hover:text-zinc-600 p-0.5 cursor-pointer"
+                aria-label={t('common.close')}
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -1455,6 +1491,7 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
         <div
           role="dialog"
           aria-modal="true"
+          aria-label={t('generator.zenModeTitle')}
           className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
           onClick={(e) => {
             if (e.target === e.currentTarget) setIsZenModeOpen(false);
@@ -1479,6 +1516,7 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
                 type="button"
                 onClick={() => setIsZenModeOpen(false)}
                 className="p-1 rounded-md text-zinc-400 hover:text-zinc-600 hover:bg-zinc-200/50 transition-colors cursor-pointer"
+                aria-label={t('common.close')}
               >
                 <X className="h-4 w-4" />
               </button>

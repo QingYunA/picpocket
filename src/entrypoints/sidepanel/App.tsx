@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
-  Camera,
   Settings,
   Sparkles,
   Trash2,
@@ -13,7 +12,6 @@ import {
   FolderInput,
   Check,
   Bot,
-  Maximize2,
   KeyRound,
   UserRound,
   LayoutDashboard,
@@ -76,7 +74,12 @@ function formatTag(tagKey: string | undefined, t: (path: TranslationKey) => stri
 }
 
 export default function App() {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+
+  // index.html 写死 zh-CN，切换到英文时同步 lang，保证屏幕阅读器与字体回退正确
+  useEffect(() => {
+    document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
+  }, [language]);
 
   const [selectedItem, setSelectedItem] = useState<InspirationItem | null>(null);
   const [activeTab, setActiveTabState] = useState<SidepanelTab>(() => getInitialActiveTab());
@@ -141,9 +144,6 @@ export default function App() {
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const { user: accountUser } = useAuth();
 
-  // In-context filing pill state (when collecting into a specific folder)
-  const [pendingCollectedIds, setPendingCollectedIds] = useState<number[]>([]);
-  const [filingSuccessMsg, setFilingSuccessMsg] = useState<string | null>(null);
   const [microSavedTip, setMicroSavedTip] = useState<string | null>(null);
 
   // Batch selection mode state
@@ -169,6 +169,7 @@ export default function App() {
   const [isCollaborationOpen, setIsCollaborationOpen] = useState(false);
   const [mcpState, setMcpState] = useState<McpConnectionState>('disconnected');
   const [toastTip, setToastTip] = useState<string | null>(null);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [settings, setSettings] = useState<UserSettings>({
     apiKey: '',
     baseUrl: 'https://api.deepseek.com/v1',
@@ -180,11 +181,14 @@ export default function App() {
     contextMenuMode: 'direct-analyze',
   });
 
-  // Reactive IndexedDB query
-  const items = useLiveQuery(() => db.items.orderBy('createdAt').reverse().toArray()) || [];
-  // 新手引导：保存并反推过一张图之前一直显示，可手动关闭
+  // Reactive IndexedDB query（undefined 表示首次读取尚未完成，此时不应闪现空态/引导）
+  const liveItems = useLiveQuery(() => db.items.orderBy('createdAt').reverse().toArray());
+  const isItemsLoading = liveItems === undefined;
+  const items = useMemo(() => liveItems ?? [], [liveItems]);
+  // 新手引导：保存并反推过一张图之前一直显示，可手动关闭；设置与素材都读完后才判断，避免已关闭过的用户每次打开都闪一下
   const hasAnalyzedItem = items.some((item) => item.status === 'analyzed');
-  const showGettingStarted = !settings.gettingStartedDismissed && !(items.length > 0 && hasAnalyzedItem);
+  const showGettingStarted =
+    settingsLoaded && !isItemsLoading && !settings.gettingStartedDismissed && !(items.length > 0 && hasAnalyzedItem);
 
   // MCP Service Lifecycle
   useEffect(() => {
@@ -197,9 +201,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    getUserSettings().then((s) => {
-      setSettings(s);
-    });
+    getUserSettings()
+      .then((s) => {
+        setSettings(s);
+      })
+      .catch((err) => console.warn('Failed to load user settings:', err))
+      .finally(() => setSettingsLoaded(true));
 
     if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
       const handleStorageChange = (
@@ -274,10 +281,6 @@ export default function App() {
         });
       }
 
-      if (msg.action === 'ITEM_FOLDER_UPDATED' && msg.itemId) {
-        setPendingCollectedIds((prev) => prev.filter((id) => id !== msg.itemId));
-      }
-
       if (
         msg.action === 'ANALYSIS_COMPLETED' ||
         msg.action === 'ANALYSIS_FAILED' ||
@@ -293,7 +296,7 @@ export default function App() {
     };
     chrome.runtime.onMessage.addListener(listener);
     return () => chrome.runtime.onMessage.removeListener(listener);
-  }, [selectedFolderId, selectedItem?.id, t]);
+  }, [selectedItem?.id, t]);
 
   // 挂载时自愈：核对数据库中所有 analyzing 状态的 item，清理悬挂任务
   useEffect(() => {
@@ -324,8 +327,6 @@ export default function App() {
 
   const handleSelectFolder = async (fId: FolderFilter) => {
     setSelectedFolderId(fId);
-    setPendingCollectedIds([]);
-    setFilingSuccessMsg(null);
     if (typeof fId === 'number') {
       await setActiveFolder({ id: fId });
     } else if (fId === 'uncategorized') {
@@ -333,24 +334,6 @@ export default function App() {
     } else {
       await setActiveFolder({ id: null });
     }
-  };
-
-  const handleMovePendingToCurrentFolder = async () => {
-    if (typeof selectedFolderId !== 'number' || pendingCollectedIds.length === 0) return;
-    try {
-      await batchMoveItemsToFolder(pendingCollectedIds, selectedFolderId);
-      setFilingSuccessMsg(t('pill.movedSuccess'));
-      setTimeout(() => {
-        setPendingCollectedIds([]);
-        setFilingSuccessMsg(null);
-      }, 1600);
-    } catch (err) {
-      console.error('Failed to move items to folder:', err);
-    }
-  };
-
-  const handleViewPendingInAll = () => {
-    handleSelectFolder('all');
   };
 
   const handleToggleSelect = (id: number) => {
@@ -379,9 +362,9 @@ export default function App() {
   };
 
   const handleConfirmBatchDelete = async () => {
-    if (selectedIds.size === 0) return;
+    if (visibleSelectedIds.length === 0) return;
     try {
-      await batchDeleteItems(Array.from(selectedIds));
+      await batchDeleteItems(visibleSelectedIds);
       handleExitBatchMode();
     } catch (err) {
       console.error('Failed to batch delete:', err);
@@ -399,40 +382,62 @@ export default function App() {
 
   const getDisplayTagName = (tagKey: string) => formatTag(tagKey, t);
 
-  // Filter items by folder, active tag & search term
-  const filteredItems = useMemo(() => {
-    return items.filter((item) => {
-      // 1. Folder match
-      if (selectedFolderId === 'uncategorized') {
-        if (item.folderId != null) return false;
-      } else if (selectedFolderId !== 'all') {
-        if (item.folderId !== selectedFolderId) return false;
-      }
+  // 收起搜索框时一并清空关键词，否则列表会被看不见的关键词悄悄过滤
+  const handleToggleSearch = () => {
+    if (showSearch) setSearchQuery('');
+    setShowSearch(!showSearch);
+  };
 
-      // 2. Category tag match
-      const matchesCategory =
-        activeCategory === ALL_CATEGORY_KEY || item.tags?.includes(activeCategory);
-
-      // 3. Search query match
-      const matchesSearch =
-        !searchQuery ||
-        (item.pageTitle && item.pageTitle.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (item.tags && item.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())));
-
-      return matchesCategory && matchesSearch;
-    });
-  }, [items, selectedFolderId, activeCategory, searchQuery]);
+  // 当前文件夹内的素材：筛选标签的计数以此为准，避免与下方列表条数对不上
+  const folderItems = useMemo(() => {
+    if (selectedFolderId === 'all') return items;
+    return items.filter((item) =>
+      selectedFolderId === 'uncategorized' ? item.folderId == null : item.folderId === selectedFolderId
+    );
+  }, [items, selectedFolderId]);
 
   // Dynamic tags with counts
   const categories = useMemo(() => {
-    const counts: Record<string, number> = { [ALL_CATEGORY_KEY]: items.length };
-    items.forEach((item) => {
+    const counts: Record<string, number> = { [ALL_CATEGORY_KEY]: folderItems.length };
+    folderItems.forEach((item) => {
       item.tags?.forEach((tag) => {
         counts[tag] = (counts[tag] || 0) + 1;
       });
     });
     return Object.entries(counts);
-  }, [items]);
+  }, [folderItems]);
+
+  // 已选标签在当前文件夹里不存在时（切换文件夹、标签下的素材被清空）回落到「全部」，避免列表为空却看不到生效的筛选
+  const effectiveCategory = categories.some(([tag]) => tag === activeCategory) ? activeCategory : ALL_CATEGORY_KEY;
+
+  // Filter items by active tag & search term
+  const filteredItems = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return folderItems.filter((item) => {
+      const matchesCategory = effectiveCategory === ALL_CATEGORY_KEY || item.tags?.includes(effectiveCategory);
+      const matchesSearch =
+        !query ||
+        (item.pageTitle && item.pageTitle.toLowerCase().includes(query)) ||
+        (item.tags && item.tags.some((tag) => tag.toLowerCase().includes(query)));
+      return matchesCategory && matchesSearch;
+    });
+  }, [folderItems, effectiveCategory, searchQuery]);
+
+  // 批量操作只作用于当前列表里看得到的已选项，切换筛选后不会误伤被隐藏的素材
+  const visibleSelectedIds = useMemo(
+    () => filteredItems.flatMap((item) => (item.id != null && selectedIds.has(item.id) ? [item.id] : [])),
+    [filteredItems, selectedIds]
+  );
+
+  // 进入详情再返回时恢复图库滚动位置（图库列表会随详情页卸载）
+  const galleryScrollRef = useRef<HTMLDivElement>(null);
+  const galleryScrollTopRef = useRef(0);
+  const isGalleryVisible = !selectedItem && activeTab === 'gallery';
+  useLayoutEffect(() => {
+    if (isGalleryVisible && galleryScrollRef.current) {
+      galleryScrollRef.current.scrollTop = galleryScrollTopRef.current;
+    }
+  }, [isGalleryVisible]);
 
   const [itemToDelete, setItemToDelete] = useState<number | null>(null);
 
@@ -445,8 +450,7 @@ export default function App() {
   const handleConfirmDeleteItem = async () => {
     if (!itemToDelete) return;
     try {
-      await db.items.delete(itemToDelete);
-      await db.prompts.where('itemId').equals(itemToDelete).delete();
+      await batchDeleteItems([itemToDelete]);
       if (selectedItem?.id === itemToDelete) {
         setSelectedItem(null);
       }
@@ -458,10 +462,10 @@ export default function App() {
   };
 
   return (
-    <div className="flex h-screen w-full flex-col bg-white overflow-hidden text-zinc-900">
-      {/* If an item is selected, show InspectorDrawer */}
+    <div className="relative flex h-screen w-full flex-col bg-white overflow-hidden text-zinc-900">
+      {/* If an item is selected, show InspectorDrawer（等设置读完再挂载：抽屉的反推规则、模型等初始状态取自设置，冷启动时用默认值会用错规则） */}
       {selectedItem ? (
-        <InspectorDrawer
+        settingsLoaded && <InspectorDrawer
           item={selectedItem}
           settings={settings}
           autoStartAnalysis={launchAnalysisItemId === selectedItem.id}
@@ -510,10 +514,10 @@ export default function App() {
                       key={tab.id}
                       onClick={() => handleSetActiveTab(tab.id)}
                       title={tab.badge !== undefined ? `${tab.label} (${tab.badge})` : tab.label}
-                      className={`flex items-center justify-center gap-1.5 rounded-md py-1 px-1.5 text-xs font-medium transition-all cursor-pointer whitespace-nowrap min-w-0 shrink-0 ${
+                      className={`flex items-center justify-center gap-1.5 rounded-md py-1 px-1.5 text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
                         isActive
-                          ? 'flex-[2] bg-white text-zinc-900 shadow-2xs font-semibold'
-                          : 'flex-1 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/40'
+                          ? 'shrink-0 bg-white text-zinc-900 shadow-2xs font-semibold'
+                          : 'min-w-0 flex-1 overflow-hidden text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200/40'
                       }`}
                     >
                       {tab.icon}
@@ -626,6 +630,7 @@ export default function App() {
             <>
               {/* Pocket Multi-Level Folders Nav Component with Capture button */}
               <FolderNav
+                items={items}
                 selectedFolderId={selectedFolderId}
                 onSelectFolder={handleSelectFolder}
                 isOpen={isFolderNavOpen}
@@ -640,45 +645,8 @@ export default function App() {
                   }
                 }}
                 showSearch={showSearch}
-                onToggleSearch={() => setShowSearch(!showSearch)}
+                onToggleSearch={handleToggleSearch}
               />
-
-              {/* In-Context Ingestion Filing Pill (when in specific folder) */}
-              {typeof selectedFolderId === 'number' && (pendingCollectedIds.length > 0 || filingSuccessMsg) && (
-                <div className="mx-3 mt-2 flex items-center justify-between gap-2 rounded-lg border border-sky-200 bg-sky-50/95 px-3 py-1.5 text-xs text-sky-950 shadow-xs animate-in fade-in slide-in-from-top-1">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <Sparkles className="h-3.5 w-3.5 text-sky-600 shrink-0" />
-                    <span className="truncate font-medium text-[11px]">
-                      {filingSuccessMsg || t('pill.newCollected', { count: pendingCollectedIds.length })}
-                    </span>
-                  </div>
-                  {!filingSuccessMsg ? (
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={handleMovePendingToCurrentFolder}
-                        className="rounded-md bg-zinc-900 px-2 py-0.5 text-[11px] font-semibold text-white hover:bg-zinc-800 transition-colors cursor-pointer shadow-2xs"
-                      >
-                        {t('pill.moveToCurrent')}
-                      </button>
-                      <button
-                        onClick={handleViewPendingInAll}
-                        className="rounded-md border border-zinc-200 bg-white px-2 py-0.5 text-[11px] font-medium text-zinc-700 hover:bg-zinc-100 transition-colors cursor-pointer"
-                      >
-                        {t('pill.view')}
-                      </button>
-                      <button
-                        onClick={() => setPendingCollectedIds([])}
-                        className="text-zinc-400 hover:text-zinc-700 p-0.5 cursor-pointer ml-0.5"
-                        aria-label={t('common.close')}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ) : (
-                    <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                  )}
-                </div>
-              )}
 
               {/* Micro Saved Feedback Pill for All / Uncategorized */}
               {microSavedTip && (
@@ -706,7 +674,7 @@ export default function App() {
               )}
 
               {/* Onboarding Banner for Hover Badge */}
-              {!settings.hoverBadgePromptDismissed && (
+              {settingsLoaded && !settings.hoverBadgePromptDismissed && (
                 <div className="border-b border-zinc-200/80 bg-zinc-50/80 p-3.5 animate-in fade-in slide-in-from-top-1 duration-200">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2">
@@ -754,6 +722,9 @@ export default function App() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder={t('header.searchPlaceholder')}
                     className="w-full rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-xs text-zinc-900 focus:border-zinc-900 focus:outline-none"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') handleToggleSearch();
+                    }}
                     autoFocus
                   />
                 </div>
@@ -763,7 +734,7 @@ export default function App() {
               <div className="relative border-b border-zinc-100 bg-white">
                 <div className="flex shrink-0 gap-1.5 overflow-x-auto px-4 py-2.5 no-scrollbar">
                   {categories.map(([tag, count]) => {
-                    const isActive = activeCategory === tag;
+                    const isActive = effectiveCategory === tag;
                     return (
                       <button
                         key={tag}
@@ -787,7 +758,13 @@ export default function App() {
               </div>
 
               {/* Dual-Column Masonry Grid */}
-              <div className="flex-1 overflow-y-auto px-3 py-3">
+              <div
+                ref={galleryScrollRef}
+                onScroll={(e) => {
+                  galleryScrollTopRef.current = e.currentTarget.scrollTop;
+                }}
+                className={`flex-1 overflow-y-auto px-3 py-3 ${isBatchMode ? 'pb-16' : ''}`}
+              >
                 {showGettingStarted && (
                   <GettingStartedCard
                     hasItems={items.length > 0}
@@ -798,15 +775,17 @@ export default function App() {
                     onDismiss={handleDismissGettingStarted}
                   />
                 )}
-                {filteredItems.length === 0 ? (
+                {isItemsLoading ? null : filteredItems.length === 0 ? (
                   <div className={`flex ${showGettingStarted ? 'py-6' : 'h-full'} flex-col items-center justify-center gap-3 text-center px-4`}>
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-400">
                       <Folder className="h-6 w-6 text-zinc-300" />
                     </div>
                     <div className="space-y-1">
-                      <p className="text-sm font-semibold text-zinc-700">{t('gallery.emptyTitle')}</p>
+                      <p className="text-sm font-semibold text-zinc-700">
+                        {items.length === 0 ? t('gallery.emptyTitle') : t('gallery.noMatchTitle')}
+                      </p>
                       <p className="text-xs text-zinc-400">
-                        {t('gallery.emptyDesc')}
+                        {items.length === 0 ? t('gallery.emptyDesc') : t('gallery.noMatchDesc')}
                       </p>
                     </div>
                   </div>
@@ -820,7 +799,6 @@ export default function App() {
                           setSelectedItem(item);
                           setLaunchAnalysisItemId(null);
                         }}
-                        onOpenLightbox={() => setLightboxItem(item)}
                         onDelete={(e) => handleDeleteItem(e, item.id)}
                         onDragStartNotify={() => setIsFolderNavOpen(true)}
                         isBatchMode={isBatchMode}
@@ -832,7 +810,7 @@ export default function App() {
                             openInfiniteCanvasPage({ assetId: item.id }).catch(console.warn);
                           }
                         }}
-                        allSelectedIds={Array.from(selectedIds)}
+                        allSelectedIds={visibleSelectedIds}
                       />
                     ))}
                   </div>
@@ -842,7 +820,7 @@ export default function App() {
               {/* Floating Batch Action Bar */}
               {isBatchMode && (
                 <BatchActionBar
-                  selectedCount={selectedIds.size}
+                  selectedCount={visibleSelectedIds.length}
                   totalCount={filteredItems.length}
                   onSelectAll={handleSelectAll}
                   onDeselectAll={handleDeselectAll}
@@ -897,7 +875,7 @@ export default function App() {
       <ConfirmModal
         isOpen={isBatchDeleteModalOpen}
         title={t('batch.deleteConfirmTitle')}
-        description={t('batch.deleteConfirmDesc', { count: selectedIds.size })}
+        description={t('batch.deleteConfirmDesc', { count: visibleSelectedIds.length })}
         confirmText={t('batch.batchDelete')}
         cancelText={t('common.cancel')}
         isDestructive={true}
@@ -913,7 +891,8 @@ export default function App() {
         >
           <div onClick={(e) => e.stopPropagation()}>
             <CardActionPopover
-              currentFolderId={movingItem.folderId}
+              items={items}
+              currentFolderId={movingItem.folderId ?? null}
               onSelectFolder={async (targetFolderId) => {
                 if (movingItem.id) {
                   await moveItemToFolder(movingItem.id, targetFolderId);
@@ -936,10 +915,11 @@ export default function App() {
         >
           <div onClick={(e) => e.stopPropagation()}>
             <CardActionPopover
+              items={items}
               title={t('batch.batchMove')}
               onSelectFolder={async (targetFolderId) => {
-                if (selectedIds.size > 0) {
-                  await batchMoveItemsToFolder(Array.from(selectedIds), targetFolderId);
+                if (visibleSelectedIds.length > 0) {
+                  await batchMoveItemsToFolder(visibleSelectedIds, targetFolderId);
                 }
                 handleExitBatchMode();
               }}
@@ -1014,7 +994,6 @@ function setCustomDragGhost(e: React.DragEvent, label: string, thumbUrl?: string
 function CardItem({
   item,
   onClick,
-  onOpenLightbox,
   onDelete,
   onDragStartNotify,
   isBatchMode,
@@ -1026,7 +1005,6 @@ function CardItem({
 }: {
   item: InspirationItem;
   onClick: () => void;
-  onOpenLightbox?: () => void;
   onDelete: (e: React.MouseEvent) => void;
   onDragStartNotify?: () => void;
   isBatchMode: boolean;
@@ -1051,15 +1029,6 @@ function CardItem({
 
   const handleCardClick = () => {
     if (isBatchMode) {
-      onToggleSelect(item.id!);
-    } else {
-      onClick();
-    }
-  };
-
-  const handleImageClick = (e: React.MouseEvent) => {
-    if (isBatchMode) {
-      e.stopPropagation();
       onToggleSelect(item.id!);
     } else {
       onClick();
@@ -1101,10 +1070,7 @@ function CardItem({
       }`}
     >
       {/* Image Thumbnail */}
-      <div
-        onClick={handleImageClick}
-        className="relative aspect-4/3 w-full overflow-hidden bg-zinc-100"
-      >
+      <div className="relative aspect-4/3 w-full overflow-hidden bg-zinc-100">
         {thumbUrl && (
           <img
             src={thumbUrl}
@@ -1120,6 +1086,9 @@ function CardItem({
 
         {/* Selection Checkbox (Top Left) */}
         <div
+          role="checkbox"
+          aria-checked={isSelected}
+          aria-label={isSelected ? t('batch.deselectItem') : t('batch.selectItem')}
           onClick={(e) => {
             e.stopPropagation();
             onToggleSelect(item.id!);
@@ -1131,7 +1100,7 @@ function CardItem({
               ? 'border-2 border-zinc-400 bg-white/90 hover:border-zinc-900'
               : 'hidden group-hover:flex border-2 border-zinc-400 bg-white/90 hover:border-zinc-900'
           }`}
-          title={isSelected ? t('batch.deselectAll') : t('batch.enterBatch')}
+          title={isSelected ? t('batch.deselectItem') : t('batch.selectItem')}
         >
           {isSelected ? (
             <Check className="h-3 w-3 stroke-[3]" />

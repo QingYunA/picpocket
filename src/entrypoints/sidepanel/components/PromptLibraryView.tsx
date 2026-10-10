@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useLayoutEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   Search,
@@ -54,24 +54,39 @@ export const PromptLibraryView: React.FC<PromptLibraryViewProps> = ({ onGenerate
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Live query from Dexie
-  const promptItems = useLiveQuery(() => db.promptItems.toArray()) || [];
+  // Live query from Dexie（undefined 表示首次读取未完成，此时不显示空态）
+  const livePromptItems = useLiveQuery(() => db.promptItems.toArray());
+  const isLoading = livePromptItems === undefined;
+  const promptItems = useMemo(() => livePromptItems ?? [], [livePromptItems]);
   const promptSources = useLiveQuery(() => db.promptSources.toArray()) || [];
+
+  // 进入详情再返回时恢复列表滚动位置（列表会随详情页卸载）
+  const gridScrollRef = useRef<HTMLDivElement>(null);
+  const gridScrollTopRef = useRef(0);
+  useLayoutEffect(() => {
+    if (!selectedPrompt && gridScrollRef.current) {
+      gridScrollRef.current.scrollTop = gridScrollTopRef.current;
+    }
+  }, [selectedPrompt]);
 
   // Auto initialize default sources, clean up deprecated ones, and pre-populate curated prompt items in Dexie
   useEffect(() => {
     (async () => {
-      // 1. Clean up deprecated older sources
-      await cleanupDeprecatedSources();
+      try {
+        // 1. Clean up deprecated older sources
+        await cleanupDeprecatedSources();
 
-      // 2. Initialize default sources if empty
-      const sourceCount = await db.promptSources.count();
-      if (sourceCount === 0) {
-        await db.promptSources.bulkPut(DEFAULT_PROMPT_SOURCES);
-      }
-      const curatedItemCount = await db.promptItems.where('sourceId').equals('picpocket-curated').count();
-      if (curatedItemCount === 0) {
-        await db.promptItems.bulkPut(PICPOCKET_CURATED_PROMPTS);
+        // 2. Initialize default sources if empty
+        const sourceCount = await db.promptSources.count();
+        if (sourceCount === 0) {
+          await db.promptSources.bulkPut(DEFAULT_PROMPT_SOURCES);
+        }
+        const curatedItemCount = await db.promptItems.where('sourceId').equals('picpocket-curated').count();
+        if (curatedItemCount === 0) {
+          await db.promptItems.bulkPut(PICPOCKET_CURATED_PROMPTS);
+        }
+      } catch (err) {
+        console.warn('Failed to initialize prompt library:', err);
       }
     })();
   }, []);
@@ -137,8 +152,8 @@ export const PromptLibraryView: React.FC<PromptLibraryViewProps> = ({ onGenerate
     return sourcesList.find((s) => s.id === activeSource) || sourcesList[0];
   }, [sourcesList, activeSource]);
 
-  // Filter items based on active source, tag, and debounced search query
-  const filteredPrompts = useMemo(() => {
+  // 先按来源与搜索词筛选（标签云基于这一步，选中一个标签后仍能直接切到其他标签）
+  const sourceFilteredPrompts = useMemo(() => {
     return promptItems.filter((item) => {
       // Source filter
       if (activeSource === VAULT_SOURCE_KEY) {
@@ -147,11 +162,6 @@ export const PromptLibraryView: React.FC<PromptLibraryViewProps> = ({ onGenerate
         if (!item.isFavorite) return false;
       } else if (activeSource !== ALL_SOURCES_KEY) {
         if (item.sourceId !== activeSource) return false;
-      }
-
-      // Tag filter
-      if (activeTag && !item.tags?.includes(activeTag)) {
-        return false;
       }
 
       // Debounced search query filter
@@ -173,20 +183,29 @@ export const PromptLibraryView: React.FC<PromptLibraryViewProps> = ({ onGenerate
 
       return true;
     });
-  }, [promptItems, activeSource, activeTag, debouncedQuery]);
+  }, [promptItems, activeSource, debouncedQuery]);
 
-  // Dynamic Tags from filtered set
+  const filteredPrompts = useMemo(
+    () => (activeTag ? sourceFilteredPrompts.filter((item) => item.tags?.includes(activeTag)) : sourceFilteredPrompts),
+    [sourceFilteredPrompts, activeTag]
+  );
+
+  // Dynamic Tags：已选标签即使被搜索词筛到 0 条也保留在标签云里，保证能看到并取消它
   const dynamicTags = useMemo(() => {
     const counts: Record<string, number> = {};
-    filteredPrompts.forEach((item) => {
-      item.tags?.forEach((t) => {
-        counts[t] = (counts[t] || 0) + 1;
+    sourceFilteredPrompts.forEach((item) => {
+      item.tags?.forEach((tag) => {
+        counts[tag] = (counts[tag] || 0) + 1;
       });
     });
-    return Object.entries(counts)
+    const top = Object.entries(counts)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 15);
-  }, [filteredPrompts]);
+    if (activeTag && !top.some(([tag]) => tag === activeTag)) {
+      top.unshift([activeTag, counts[activeTag] || 0]);
+    }
+    return top;
+  }, [sourceFilteredPrompts, activeTag]);
 
   if (selectedPrompt) {
     return (
@@ -217,6 +236,8 @@ export const PromptLibraryView: React.FC<PromptLibraryViewProps> = ({ onGenerate
             <button
               onClick={() => setSearchQuery('')}
               className="absolute right-2 text-zinc-400 hover:text-zinc-600 cursor-pointer"
+              title={t('common.clear')}
+              aria-label={t('common.clear')}
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -398,8 +419,14 @@ export const PromptLibraryView: React.FC<PromptLibraryViewProps> = ({ onGenerate
       )}
 
       {/* Grid Content */}
-      <div className="flex-1 overflow-y-auto px-3 py-3">
-        {filteredPrompts.length === 0 ? (
+      <div
+        ref={gridScrollRef}
+        onScroll={(e) => {
+          gridScrollTopRef.current = e.currentTarget.scrollTop;
+        }}
+        className="flex-1 overflow-y-auto px-3 py-3"
+      >
+        {isLoading ? null : filteredPrompts.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center px-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-400">
               <Layers className="h-6 w-6" />

@@ -328,12 +328,16 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
     return prompt.masterPrompt || assembleMasterPrompt({ promptResult: prompt }) || item.pageTitle || '';
   };
 
-  const copyMasterFlow = () => {
+  const copyMasterFlow = async () => {
     const text = getMasterFlowPrompt();
     if (!text) return;
-    navigator.clipboard.writeText(text);
-    setCopiedMasterFlow(true);
-    setTimeout(() => setCopiedMasterFlow(false), 2000);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedMasterFlow(true);
+      setTimeout(() => setCopiedMasterFlow(false), 2000);
+    } catch (err) {
+      console.warn('Failed to copy prompt:', err);
+    }
   };
 
   return (
@@ -368,7 +372,6 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
         {/* Image Preview Card */}
         <div
           onClick={onOpenLightbox}
-          onDoubleClick={onOpenLightbox}
           className="group relative overflow-hidden rounded-xl border border-zinc-200 bg-zinc-50 shadow-2xs cursor-zoom-in"
           title={t('gallery.viewLargeImage')}
         >
@@ -590,9 +593,6 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
                   <span className="font-bold text-[11px] shrink-0">
                     {isAgentCollab ? t('gallery.statusAgent') : t('gallery.statusGenerated')}
                   </span>
-                  <span className="text-[10px] text-purple-700/80 truncate">
-                    {t('gallery.originalPromptDesc')}
-                  </span>
                 </div>
                 <button
                   type="button"
@@ -664,7 +664,7 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
                         type="button"
                         onClick={() => runAnalysis()}
                         disabled={isAnalyzing}
-                        className="flex-1 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white text-[11px] font-semibold transition-colors cursor-pointer shadow-2xs inline-flex items-center justify-center gap-1"
+                        className="flex-1 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white text-[11px] font-semibold transition-colors cursor-pointer shadow-2xs inline-flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <RotateCw className={`h-3 w-3 ${isAnalyzing ? 'animate-spin' : ''}`} />
                         <span>{t('inspector.reanalyze')}</span>
@@ -679,11 +679,11 @@ export const InspectorDrawer: React.FC<InspectorDrawerProps> = ({
 
             {/* 2. Prompt Export & Generation Action Card */}
             <div className="rounded-xl border border-zinc-200 bg-white p-3 shadow-2xs space-y-3">
-              <div className="flex items-center justify-between border-b border-zinc-100 pb-2">
+              <div className="flex items-center justify-between gap-2 border-b border-zinc-100 pb-2">
                 <span className="text-[10px] font-bold tracking-wider text-zinc-500 uppercase">
                   {isNativePrompt ? t('gallery.originalPromptTitle') : t('inspector.masterPromptTitle')}
                 </span>
-                <span className="text-[10px] text-zinc-400">
+                <span className="text-right text-[10px] text-zinc-400">
                   {isNativePrompt ? t('gallery.originalPromptDesc') : t('inspector.synthesizedHint')}
                 </span>
               </div>

@@ -14,20 +14,24 @@ interface PromptCardProps {
 export const PromptCard: React.FC<PromptCardProps> = ({ item, onClick, onGenerate }) => {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
-  const [isFav, setIsFav] = useState(Boolean(item.isFavorite));
   const [imgError, setImgError] = useState(false);
+  // 收藏状态以数据库为准（列表由 liveQuery 驱动，切换后自动刷新），不再维护本地副本
+  const isFav = Boolean(item.isFavorite);
 
-  const handleCopy = (e: React.MouseEvent) => {
+  const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(item.prompt);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
+    try {
+      await navigator.clipboard.writeText(item.prompt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch (err) {
+      console.warn('Failed to copy prompt:', err);
+    }
   };
 
-  const handleToggleFav = async (e: React.MouseEvent) => {
+  const handleToggleFav = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const updated = await toggleFavoritePrompt(item.id);
-    setIsFav(updated);
+    toggleFavoritePrompt(item.id).catch((err) => console.warn('Failed to toggle favorite:', err));
   };
 
   const displayImage = !imgError ? item.coverUrl || item.referenceImageUrls?.[0] : null;
@@ -44,6 +48,7 @@ export const PromptCard: React.FC<PromptCardProps> = ({ item, onClick, onGenerat
           <img
             src={displayImage}
             alt={item.title}
+            referrerPolicy="no-referrer"
             onError={() => setImgError(true)}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-103"
             loading="lazy"

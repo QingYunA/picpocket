@@ -161,7 +161,7 @@
 ### 9. 账号、权益与订阅 (Account, Entitlement & Subscription)
 
 - **Account Sign-in (账号登录)**
-  可选，支持 Google、GitHub 与邮箱 6 位验证码，基于 Supabase Auth（PKCE）。Google 登录改由官网 `picpocket.top` 页面完成（用 Google Identity Services 取得 ID Token，再由扩展 `signInWithIdToken` 换取会话），使 Google 账号选择页显示的是 picpocket.top 而不是 Supabase 域名。自备 Key 的功能无需登录。
+  可选，支持 Google 与邮箱 6 位验证码，基于 Supabase Auth（PKCE）。Google 登录改由官网 `picpocket.top` 页面完成（用 Google Identity Services 取得 ID Token，再由扩展 `signInWithIdToken` 换取会话），使 Google 账号选择页显示的是 picpocket.top 而不是 Supabase 域名。自备 Key 的功能无需登录。
 
 - **Session Sharing (会话共享)**
   登录会话持久化在 `chrome.storage.local` 的 `picpocket-auth`，经 `authStorage` 做「`chrome.storage.local` → `localStorage` → 内存」三层降级，侧边栏、工作台、设置页、后台与 PicPocket 画布共用同一登录状态（`useAuth`），任一页面登录或退出，其他页面立即同步。

@@ -471,7 +471,7 @@
         </p>
 
         <ul class="meta">
-          <li><span class="dot"></span><span data-l="en">Last updated: <strong>September 29, 2026</strong></span><span data-l="zh">最近更新：<strong>2026 年 9 月 29 日</strong></span></li>
+          <li><span class="dot"></span><span data-l="en">Last updated: <strong>October 10, 2026</strong></span><span data-l="zh">最近更新：<strong>2026 年 10 月 10 日</strong></span></li>
           <li><span data-l="en">Applies to: <strong>PicPocket v1.0 for Chrome</strong></span><span data-l="zh">适用范围：<strong>PicPocket Chrome 扩展 v1.0</strong></span></li>
           <li><span data-l="en">Analytics: <strong>None</strong></span><span data-l="zh">统计分析：<strong>无</strong></span></li>
         </ul>
@@ -611,7 +611,7 @@
           </p>
           <ul class="net">
             <li><strong><span data-l="en">Analyzing or generating with your own key</span><span data-l="zh">使用自己的 Key 反推或生图</span></strong>: <span data-l="en">the image (and any prompt text or reference image) is sent directly from your browser to the AI endpoint you configured, such as OpenAI, DeepSeek, SiliconFlow, StepFun or a custom OpenAI-compatible server. That provider handles it under its own privacy policy. PicPocket's servers are not involved.</span><span data-l="zh">图片（以及提示词文本或参考图）会从浏览器直接发往你配置的 AI 接口，例如 OpenAI、DeepSeek、硅基流动、阶跃星辰或自定义 OpenAI 兼容服务。该服务商按其自身的隐私政策处理这些内容，PicPocket 的服务器不参与其中。</span></li>
-            <li><strong><span data-l="en">Signing in (optional)</span><span data-l="zh">登录账号（可选）</span></strong>: <span data-l="en">when you sign in or out, PicPocket talks to our authentication service (Supabase) and to Google or GitHub if you choose them. See Section 04.</span><span data-l="zh">登录或退出时，PicPocket 会连接我们的认证服务（Supabase），以及你选择的 Google 或 GitHub，详见第 04 节。</span></li>
+            <li><strong><span data-l="en">Signing in (optional)</span><span data-l="zh">登录账号（可选）</span></strong>: <span data-l="en">when you sign in or out, PicPocket talks to our authentication service (Supabase) and to Google if you choose it. See Section 04.</span><span data-l="zh">登录或退出时，PicPocket 会连接我们的认证服务（Supabase），以及你选择的 Google，详见第 04 节。</span></li>
             <li><strong><span data-l="en">Using hosted quota with a redeem code</span><span data-l="zh">使用兑换码托管额度</span></strong>: <span data-l="en">if you choose this instead of your own key, the request goes through PicPocket's server. See Section 05.</span><span data-l="zh">如果你选择使用兑换码而不是自己的 Key，请求会经过 PicPocket 的服务器，详见第 05 节。</span></li>
             <li><strong><span data-l="en">Buying a plan or credit pack (optional)</span><span data-l="zh">购买会员或积分包（可选）</span></strong>: <span data-l="en">you are sent to the secure checkout page of our payment providers. See Section 05.</span><span data-l="zh">你会被带到我们的支付服务商提供的安全结账页面，详见第 05 节。</span></li>
             <li><strong><span data-l="en">Saving an image</span><span data-l="zh">收藏图片</span></strong>: <span data-l="en">PicPocket downloads the image from the website that hosts it, the same way your browser does when showing it.</span><span data-l="zh">PicPocket 会从图片所在的网站下载该图片，和浏览器显示图片时的方式相同。</span></li>
@@ -631,14 +631,13 @@
           <h3><span data-l="en">How you can sign in</span><span data-l="zh">登录方式</span></h3>
           <ul>
             <li><strong>Google</strong>: <span data-l="en">PicPocket opens <code class="code">www.picpocket.top</code>, where you sign in with Google Identity Services. We request only the basic <code class="code">openid</code>, <code class="code">email</code> and <code class="code">profile</code> scopes, so Google shares your name, email address and profile picture. We never see your Google password and don't request access to Gmail, Drive, Contacts or any other Google data.</span><span data-l="zh">PicPocket 会打开 <code class="code">www.picpocket.top</code>，由你通过 Google Identity Services 登录。我们只申请基础的 <code class="code">openid</code>、<code class="code">email</code>、<code class="code">profile</code> 权限，Google 只会提供你的姓名、邮箱地址和头像。我们看不到你的 Google 密码，也不会申请访问 Gmail、云端硬盘、通讯录或其他任何 Google 数据。</span></li>
-            <li><strong>GitHub</strong>: <span data-l="en">GitHub shares your name, username, email address and avatar.</span><span data-l="zh">GitHub 会提供你的名称、用户名、邮箱地址和头像。</span></li>
             <li><strong><span data-l="en">Email code</span><span data-l="zh">邮箱验证码</span></strong>: <span data-l="en">we email you a one-time 6-digit code. No password is created or stored.</span><span data-l="zh">我们向你的邮箱发送一次性 6 位验证码，不会创建或保存密码。</span></li>
           </ul>
           <h3><span data-l="en">What we keep and why</span><span data-l="zh">我们保留什么、用来做什么</span></h3>
           <ul>
             <li><span data-l="en">An account record: your email address, display name, avatar URL, the sign-in method you used, that provider's user ID, and when the account was created and last signed in.</span><span data-l="zh">账号记录：邮箱地址、显示名称、头像地址、登录方式、该登录方式下的用户 ID，以及账号创建和最近登录时间。</span></li>
             <li><span data-l="en">Your sign-in session is stored in Chrome's extension storage on your device, so you stay signed in until you sign out.</span><span data-l="zh">登录会话保存在你设备上 Chrome 的扩展存储中，在你主动退出前保持登录。</span></li>
-            <li><span data-l="en">We use this information only to sign you in and to provide PicPocket features tied to your account. We don't use it for advertising, don't sell it, and share it only with the service providers that run sign-in for us: Supabase (account database and authentication), Resend (delivering sign-in codes), and Google or GitHub when you choose them.</span><span data-l="zh">这些信息只用于登录和提供与账号相关的 PicPocket 功能。我们不会将其用于广告、不会出售，仅由为我们提供登录服务的服务商处理：Supabase（账号数据库与认证）、Resend（发送登录验证码），以及你选择的 Google 或 GitHub。</span></li>
+            <li><span data-l="en">We use this information only to sign you in and to provide PicPocket features tied to your account. We don't use it for advertising, don't sell it, and share it only with the service providers that run sign-in for us: Supabase (account database and authentication), Resend (delivering sign-in codes), and Google when you choose it.</span><span data-l="zh">这些信息只用于登录和提供与账号相关的 PicPocket 功能。我们不会将其用于广告、不会出售，仅由为我们提供登录服务的服务商处理：Supabase（账号数据库与认证）、Resend（发送登录验证码），以及你选择的 Google。</span></li>
           </ul>
           <p>
             <span data-l="en">PicPocket's use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.</span>
@@ -713,11 +712,6 @@
                   <td><span data-l="en">Only after you start a capture.</span><span data-l="zh">仅在你主动开始截图后。</span></td>
                 </tr>
                 <tr>
-                  <td><code class="code">identity</code></td>
-                  <td><span data-l="en">Opens the GitHub sign-in window and returns you to PicPocket afterwards.</span><span data-l="zh">打开 GitHub 登录窗口，并在登录完成后返回 PicPocket。</span></td>
-                  <td><span data-l="en">Only when you click "Continue with GitHub". It doesn't read your Chrome profile or other accounts.</span><span data-l="zh">仅在你点击“使用 GitHub 登录”时使用，不会读取你的 Chrome 资料或其他账号。</span></td>
-                </tr>
-                <tr>
                   <td><code class="code">contextMenus</code></td>
                   <td><span data-l="en">Adds "Collect to PicPocket" to the right-click menu on images.</span><span data-l="zh">在图片右键菜单中加入“采集到 PicPocket”。</span></td>
                   <td><span data-l="en">Does nothing until you click it.</span><span data-l="zh">点击之前不会做任何事。</span></td>
@@ -736,7 +730,7 @@
           <div class="sec-num">SECTION 07</div>
           <h2><span data-l="en">What we don't do</span><span data-l="zh">我们不做的事</span></h2>
           <ul class="never">
-            <li><strong><span data-l="en">No account required</span><span data-l="zh">不强制注册账号</span></strong>: <span data-l="en">PicPocket works without signing in. If you choose to sign in, we only receive the details listed in Section 04. We never ask for your phone number and never see your Google or GitHub password.</span><span data-l="zh">不登录也能使用 PicPocket。如果你选择登录，我们只会获得第 04 节列出的信息；我们不会索取手机号，也看不到你的 Google 或 GitHub 密码。</span></li>
+            <li><strong><span data-l="en">No account required</span><span data-l="zh">不强制注册账号</span></strong>: <span data-l="en">PicPocket works without signing in. If you choose to sign in, we only receive the details listed in Section 04. We never ask for your phone number and never see your Google password.</span><span data-l="zh">不登录也能使用 PicPocket。如果你选择登录，我们只会获得第 04 节列出的信息；我们不会索取手机号，也看不到你的 Google 密码。</span></li>
             <li><strong><span data-l="en">No browsing history</span><span data-l="zh">不收集浏览记录</span></strong>: <span data-l="en">we don't collect the pages you visit, your searches or your cookies. The only page details PicPocket keeps are the URL and title of pages you save images from, and those stay on your device.</span><span data-l="zh">我们不收集你访问的网页、搜索内容或 Cookie。PicPocket 唯一保留的页面信息，是你收藏图片时所在网页的地址和标题，而且只保存在你的设备上。</span></li>
             <li><strong><span data-l="en">No analytics or tracking</span><span data-l="zh">没有统计或追踪</span></strong>: <span data-l="en">the extension contains no analytics, crash-reporting or advertising SDKs. This website (www.picpocket.top) counts visits with Umami, a privacy-focused analytics tool that we host ourselves: it uses no cookies and no cross-site tracking. It records the page path (without query strings), referrer, browser, operating system, screen size, language, approximate country and page-load timing (Core Web Vitals), plus whether the sign-in and checkout pages finished successfully. Your IP address is used only to work out the country and is not stored, and the data is not shared with anyone.</span><span data-l="zh">扩展中没有任何统计分析、崩溃上报或广告 SDK。本网站（www.picpocket.top）使用 Umami 统计访问情况，它是我们自己部署的、注重隐私的统计工具：不使用 Cookie，不做跨站追踪。它会记录页面路径（不含查询参数）、来源页面、浏览器、操作系统、屏幕尺寸、语言、大致国家和页面加载耗时（Core Web Vitals），以及登录页与付款完成页是否成功。你的 IP 地址只用于判断国家，不会被保存，这些数据也不会分享给任何人。</span></li>
             <li><strong><span data-l="en">No selling or advertising</span><span data-l="zh">不出售，不用于广告</span></strong>: <span data-l="en">we never sell your data, share it for advertising, or use it for credit or lending decisions.</span><span data-l="zh">我们绝不出售你的数据，不为广告目的共享，也不将其用于信用评估或借贷决策。</span></li>

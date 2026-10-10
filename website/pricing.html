@@ -15,7 +15,11 @@
   <meta property="og:description" content="PicPocket pricing: free with your own API key, or use hosted models with credits. Subscription plans, credit packs and per-request credit costs.">
   <meta property="og:image" content="https://www.picpocket.top/assets/og-image.jpg">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="theme-color" content="#080b13">
+  <meta name="twitter:title" content="Pricing — PicPocket">
+  <meta name="twitter:description" content="PicPocket pricing: free with your own API key, or use hosted models with credits. Subscription plans, credit packs and per-request credit costs.">
+  <meta name="twitter:image" content="https://www.picpocket.top/assets/og-image.jpg">
+  <meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#080b13" media="(prefers-color-scheme: dark)">
   <link rel="icon" type="image/png" sizes="192x192" href="/assets/icon-192.png">
   <link rel="icon" type="image/png" sizes="64x64" href="/assets/icon-64.png">
   <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
@@ -193,6 +197,7 @@
       color: var(--ink-2);
     }
     .article p + p { margin-top: 12px; }
+    .table-wrap + p { margin-top: 16px; }
     .article strong { color: var(--ink); font-weight: 600; }
 
     .article ul, .article ol.steps {
@@ -317,7 +322,7 @@
       padding: 3px 10px;
       border-radius: 999px;
       background: var(--ok-soft);
-      color: var(--ok);
+      color: var(--ok-text);
       white-space: nowrap;
     }
     .pill-ok::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
@@ -423,12 +428,13 @@
       <a href="/" class="brand" aria-label="PicPocket home">
         <img src="/assets/icon-64.png" alt="" width="32" height="32">
         <span class="brand-name">PicPocket</span>
-        <span class="brand-tag">Legal</span>
+        <span class="brand-tag"><span data-l="en">Pricing</span><span data-l="zh">定价</span></span>
       </a>
       <ul class="nav-links">
         <li><a href="/#features"><span data-l="en">Features</span><span data-l="zh">功能</span></a></li>
         <li><a href="/#how"><span data-l="en">How it works</span><span data-l="zh">使用方式</span></a></li>
         <li><a href="/pricing" aria-current="page"><span data-l="en">Pricing</span><span data-l="zh">定价</span></a></li>
+        <li><a href="/#install"><span data-l="en">Install</span><span data-l="zh">安装</span></a></li>
         <li><a href="/privacy"><span data-l="en">Privacy</span><span data-l="zh">隐私</span></a></li>
         <li><a href="/#faq"><span data-l="en">FAQ</span><span data-l="zh">常见问题</span></a></li>
       </ul>
@@ -599,7 +605,7 @@
                 </tr>
                 <tr>
                   <td><strong><span data-l="en">Generate a 4K image</span><span data-l="zh">生成 4K 图片</span></strong></td>
-                  <td>up to 32</td>
+                  <td><span data-l="en">up to 32</span><span data-l="zh">最高 32</span></td>
                   <td><span data-l="en">Per image, on models that offer 4K output</span><span data-l="zh">每张图，仅限支持 4K 输出的模型</span></td>
                 </tr>
               </tbody>
@@ -638,7 +644,10 @@
             <li><a href="/#features"><span data-l="en">Features</span><span data-l="zh">功能</span></a></li>
             <li><a href="/#how"><span data-l="en">How it works</span><span data-l="zh">使用方式</span></a></li>
             <li><a href="/pricing"><span data-l="en">Pricing</span><span data-l="zh">定价</span></a></li>
+            <li><a href="/#install"><span data-l="en">Install</span><span data-l="zh">安装</span></a></li>
             <li><a href="/#faq"><span data-l="en">FAQ</span><span data-l="zh">常见问题</span></a></li>
+            <li><a href="https://chromewebstore.google.com/detail/picpocket-image-to-prompt/bncoffcoihlpfbicajogmpcdckcfpnfa" target="_blank" rel="noopener">Chrome Web Store</a></li>
+            <li><a href="https://github.com/QingYunA/picpocket" target="_blank" rel="noopener">GitHub</a></li>
           </ul>
         </div>
         <div class="footer-col">

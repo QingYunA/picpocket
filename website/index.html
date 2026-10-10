@@ -8,7 +8,8 @@
   <meta name="title-zh" content="PicPocket — 把网页上的任何图片变成提示词">
   <meta name="description" content="Free image-to-prompt Chrome extension. Save any image from the web and reverse it into ready-to-paste prompts for Midjourney, Flux & Stable Diffusion.">
   <link rel="canonical" href="https://www.picpocket.top/">
-  <meta name="theme-color" content="#080b13">
+  <meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#080b13" media="(prefers-color-scheme: dark)">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="PicPocket">
   <meta property="og:url" content="https://www.picpocket.top/">
@@ -94,7 +95,7 @@
             "name": "Do I need an account?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "No. Install the extension, add your own API key in settings, and start capturing. Saving images to your pocket doesn't need a key at all."
+              "text": "No. Install the extension, add your own API key in settings, and start capturing. Saving images to your pocket doesn't need a key at all. You only need an account if you want to use hosted credits."
             }
           },
           {
@@ -102,7 +103,7 @@
             "name": "What does it cost?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "The extension is free. When you use your own key, you pay your AI provider directly for the requests you make. Creators and beta testers can also redeem a code for hosted quota; those requests go through PicPocket's server, as the privacy policy explains."
+              "text": "The extension is free. With your own key, you pay your AI provider directly for the requests you make. If you'd rather not manage keys, hosted models run on credits, and every account gets 30 free credits a month. Hosted requests go through PicPocket's server, as the privacy policy explains."
             }
           },
           {
@@ -283,6 +284,8 @@
       color: var(--ink-3);
       white-space: nowrap;
       overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
     }
     .ext-btn {
       width: 28px; height: 28px;
@@ -407,7 +410,7 @@
     }
     .capture-pill .pill-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px; border-radius: 999px; background: #fff; }
     .capture-pill .pill-btn svg { width: 11px; height: 11px; flex-shrink: 0; }
-    .capture-pill .pill-reverse { background: #e0f2fe; color: #0284c7; }
+    .capture-pill .pill-reverse { background: #e0f2fe; color: #0369a1; }
     @keyframes pill {
       0%, 20% { opacity: 0; transform: translateY(-4px); }
       30%, 80% { opacity: 1; transform: none; }
@@ -480,7 +483,7 @@
       padding: 2px 8px;
       border-radius: 999px;
       background: var(--ok-soft);
-      color: var(--ok);
+      color: var(--ok-text);
       font-size: 11px;
       font-weight: 600;
     }
@@ -893,7 +896,7 @@
       line-height: 1.8;
       color: #f3f1ea;
     }
-    .term code { font-family: inherit; display: block; white-space: pre-wrap; word-break: break-all; }
+    .term code { font-family: inherit; display: block; white-space: pre-wrap; overflow-wrap: anywhere; }
     .term .m { color: #7c8296; margin-right: 6px; }
     .term-copy {
       position: absolute;
@@ -920,8 +923,8 @@
     .install-note svg { flex-shrink: 0; }
     .section-head .lede a { color: var(--ink); }
     .install-cta { margin-top: 28px; }
-    .install-alt { margin-top: 28px; font-size: 14.5px; color: var(--ink-3); }
-    .install-alt a { color: var(--ink); }
+    .install-sub { margin: 56px 0 20px; font-size: 14.5px; color: var(--ink-3); }
+    .install-sub a { color: var(--ink); }
 
     /* ---------- Privacy band ---------- */
     .privacy-band {
@@ -1065,6 +1068,9 @@
       .card, .card.w3, .card.w4 { grid-column: 1 / -1; padding: 22px; }
       .viz-4d { grid-template-columns: 1fr; }
       .viz-4d .src { height: 160px; }
+      .viz-canvas .node { width: 76px; }
+      .viz-canvas .node .ni { height: 50px; }
+      .viz-canvas .node.prompt { width: 96px; left: 32% !important; padding: 6px 8px; font-size: 10px; }
       .section { padding-top: 84px; }
       .section-head { margin-bottom: 36px; }
       .privacy-band { padding: 40px 22px; border-radius: var(--r-lg); }
@@ -1389,9 +1395,9 @@
             <h3><span data-l="en">A prompt vault built in</span><span data-l="zh">内置提示词库</span></h3>
             <p><span data-l="en">Browse curated open-source prompt libraries, favorite what works, and keep your own drafts in one searchable place.</span><span data-l="zh">浏览精选开源提示词库，收藏好用的词，把自己的草稿也存在同一个可搜索的地方。</span></p>
             <div class="viz viz-vault" aria-hidden="true">
-              <div class="vault-row"><div class="th"><img class="case-img" src="/assets/cases/ocean.webp" alt="" loading="lazy" decoding="async"></div><div><b>Moonlit tide</b><small>full moon over a calm sea, golden path…</small></div><span class="src-tag">gpt-image-2</span></div>
-              <div class="vault-row"><div class="th"><img class="case-img" src="/assets/cases/leaf.webp" alt="" loading="lazy" decoding="async"></div><div><b>Monstera by the window</b><small>backlit leaves, soft morning light…</small></div><span class="src-tag">nano-banana</span></div>
-              <div class="vault-row"><div class="th"><img class="case-img" src="/assets/cases/arch.webp" alt="" loading="lazy" decoding="async"></div><div><b>Terracotta arches</b><small>sunlit courtyard, warm plaster walls…</small></div><span class="src-tag">★ Mine</span></div>
+              <div class="vault-row"><div class="th"><img class="case-img" src="/assets/cases/ocean.webp" alt="" loading="lazy" decoding="async"></div><div><b><span data-l="en">Moonlit tide</span><span data-l="zh">月下潮汐</span></b><small><span data-l="en">full moon over a calm sea, golden path…</span><span data-l="zh">满月挂在平静海面，金色月光之路…</span></small></div><span class="src-tag">gpt-image-2</span></div>
+              <div class="vault-row"><div class="th"><img class="case-img" src="/assets/cases/leaf.webp" alt="" loading="lazy" decoding="async"></div><div><b><span data-l="en">Monstera by the window</span><span data-l="zh">窗边的龟背竹</span></b><small><span data-l="en">backlit leaves, soft morning light…</span><span data-l="zh">逆光的叶片，柔和晨光…</span></small></div><span class="src-tag">nano-banana</span></div>
+              <div class="vault-row"><div class="th"><img class="case-img" src="/assets/cases/arch.webp" alt="" loading="lazy" decoding="async"></div><div><b><span data-l="en">Terracotta arches</span><span data-l="zh">赤陶拱门</span></b><small><span data-l="en">sunlit courtyard, warm plaster walls…</span><span data-l="zh">洒满阳光的庭院，暖色灰泥墙…</span></small></div><span class="src-tag"><span data-l="en">★ Mine</span><span data-l="zh">★ 我的</span></span></div>
             </div>
           </article>
 
@@ -1401,7 +1407,7 @@
             <h3><span data-l="en">Generate right there</span><span data-l="zh">侧边栏直接生图</span></h3>
             <p><span data-l="en">Send a reversed prompt to the generator with its reference image and get new images without leaving the page.</span><span data-l="zh">把反推出的提示词连同参考图一起送进生图台，不离开当前网页就能出图。</span></p>
             <div class="viz viz-gen" aria-hidden="true">
-              <div class="gen-input">A lone traveler on rolling sand dunes at dusk, pink and amber sky, cinematic wide shot<span class="caret"></span></div>
+              <div class="gen-input"><span data-l="en">A lone traveler on rolling sand dunes at dusk, pink and amber sky, cinematic wide shot</span><span data-l="zh">黄昏时起伏沙丘上的独行旅人，粉色与琥珀色天空，电影感宽幅构图</span><span class="caret"></span></div>
               <div class="gen-bar"><span class="chip">3:4</span><span class="chip">gpt-image-2</span><span class="go"><span data-l="en">Generate</span><span data-l="zh">生成</span></span></div>
               <div class="gen-grid">
                 <div><img class="case-img" src="/assets/cases/dune.webp" alt="" loading="lazy" decoding="async"></div>
@@ -1423,7 +1429,7 @@
                 <path d="M256 60 C 285 60 285 164 311 164" stroke="#f5b52e" stroke-width="1.6" fill="none" vector-effect="non-scaling-stroke"/>
               </svg>
               <div class="node" style="left:4%;top:14%"><div class="ni"><img class="case-img" src="/assets/cases/ocean.webp" alt="" loading="lazy" decoding="async"></div><small><span data-l="en">Reference</span><span data-l="zh">参考图</span></small></div>
-              <div class="node prompt" style="left:38%;top:16%">full moon over a calm sea, <b style="color:var(--gold-ink)">golden moonlight</b> path…</div>
+              <div class="node prompt" style="left:38%;top:16%"><span data-l="en">full moon over a calm sea, <b style="color:var(--gold-ink)">golden moonlight</b> path…</span><span data-l="zh">满月挂在平静海面，<b style="color:var(--gold-ink)">金色月光</b>铺成一条路…</span></div>
               <div class="node sel" style="right:3%;top:4%"><div class="ni"><img class="case-img" src="/assets/cases/ocean2.webp" alt="" loading="lazy" decoding="async"></div><small>v1</small></div>
               <div class="node" style="right:3%;top:54%"><div class="ni"><img class="case-img" src="/assets/cases/ocean3.webp" alt="" loading="lazy" decoding="async"></div><small>v2</small></div>
             </div>
@@ -1484,12 +1490,12 @@
         <div class="section-head reveal">
           <span class="eyebrow"><span data-l="en">Install</span><span data-l="zh">安装</span></span>
           <h2 class="display">
-            <span data-l="en">Up and running in <em>a few minutes.</em></span>
-            <span data-l="zh">几分钟，<em>装好就能用。</em></span>
+            <span data-l="en">Add it in <em>one click.</em></span>
+            <span data-l="zh">一键添加，<em>装好就能用。</em></span>
           </h2>
           <p class="lede">
-            <span data-l="en">PicPocket is on the Chrome Web Store. Add it in one click, and Chrome keeps it up to date for you.</span>
-            <span data-l="zh">PicPocket 已上架 Chrome 应用商店，一键添加，之后由 Chrome 自动更新。</span>
+            <span data-l="en">PicPocket is on the Chrome Web Store, and Chrome keeps it up to date for you.</span>
+            <span data-l="zh">PicPocket 已上架 Chrome 应用商店，之后由 Chrome 自动更新。</span>
           </p>
           <div class="install-cta">
             <a class="btn btn-gold btn-lg" href="https://chromewebstore.google.com/detail/picpocket-image-to-prompt/bncoffcoihlpfbicajogmpcdckcfpnfa" target="_blank" rel="noopener">
@@ -1498,17 +1504,17 @@
               <span data-l="zh">添加到 Chrome</span>
             </a>
           </div>
-          <p class="install-alt">
-            <span data-l="en">Prefer to build from source? You'll need <a href="https://git-scm.com" target="_blank" rel="noopener">Git</a> and <a href="https://bun.sh" target="_blank" rel="noopener">Bun</a>.</span>
-            <span data-l="zh">想从源码构建？需要先安装 <a href="https://git-scm.com" target="_blank" rel="noopener">Git</a> 和 <a href="https://bun.sh" target="_blank" rel="noopener">Bun</a>。</span>
-          </p>
         </div>
+        <p class="install-sub reveal">
+          <span data-l="en">Or build from source. You'll need <a href="https://git-scm.com" target="_blank" rel="noopener">Git</a> and <a href="https://bun.sh" target="_blank" rel="noopener">Bun</a>.</span>
+          <span data-l="zh">也可以从源码构建，需要先安装 <a href="https://git-scm.com" target="_blank" rel="noopener">Git</a> 和 <a href="https://bun.sh" target="_blank" rel="noopener">Bun</a>。</span>
+        </p>
         <div class="install">
           <div class="inst reveal">
             <div class="inst-num">1</div>
             <h3><span data-l="en">Get the code</span><span data-l="zh">获取代码</span></h3>
             <p><span data-l="en">Clone the repository, or download it as a ZIP from GitHub.</span><span data-l="zh">克隆仓库，或在 GitHub 上下载 ZIP 压缩包。</span></p>
-            <div class="term"><button class="term-copy" type="button" data-copy="git clone https://github.com/QingYunA/picpocket.git">Copy</button><code><span class="m">$</span> git clone https://github.com/QingYunA/picpocket.git</code></div>
+            <div class="term"><button class="term-copy" type="button" data-copy="git clone https://github.com/QingYunA/picpocket.git">Copy</button><code><span class="m">$</span> git clone https://github.com/<wbr>QingYunA/picpocket.git</code></div>
           </div>
           <div class="inst reveal">
             <div class="inst-num">2</div>
@@ -1562,7 +1568,7 @@
             </li>
             <li>
               <span class="pi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></span>
-              <div><b><span data-l="en">No tracking</span><span data-l="zh">没有追踪</span></b><span data-l="en">No analytics SDKs, no browsing history, no selling data.</span><span data-l="zh">不集成分析 SDK，不记录浏览历史，不出售任何数据。</span></div>
+              <div><b><span data-l="en">No tracking</span><span data-l="zh">没有追踪</span></b><span data-l="en">No analytics SDKs in the extension, no browsing history, no selling data.</span><span data-l="zh">扩展不集成分析 SDK，不记录浏览历史，不出售任何数据。</span></div>
             </li>
           </ul>
         </div>
@@ -1594,15 +1600,15 @@
           <details>
             <summary><span data-l="en">Do I need an account?</span><span data-l="zh">需要注册账号吗？</span><span class="plus" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
             <div class="answer">
-              <span data-l="en">No. Install the extension, add your own API key in settings, and start capturing. Saving images to your pocket doesn't need a key at all.</span>
-              <span data-l="zh">不需要。安装扩展后在设置中填入自己的 API Key 即可开始使用。单纯收藏图片到口袋完全不需要 Key。</span>
+              <span data-l="en">No. Install the extension, add your own API key in settings, and start capturing. Saving images to your pocket doesn't need a key at all. You only need an account if you want to use hosted credits.</span>
+              <span data-l="zh">不需要。安装扩展后在设置中填入自己的 API Key 即可开始使用。单纯收藏图片到口袋完全不需要 Key。只有想使用托管积分时，才需要登录账号。</span>
             </div>
           </details>
           <details>
             <summary><span data-l="en">What does it cost?</span><span data-l="zh">需要付费吗？</span><span class="plus" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
             <div class="answer">
-              <span data-l="en">The extension is free. When you use your own key, you pay your AI provider directly for the requests you make. Creators and beta testers can also redeem a code for hosted quota; those requests go through PicPocket's server, as the <a href="/privacy#section-4">privacy policy</a> explains.</span>
-              <span data-l="zh">扩展本身免费。使用自己的 Key 时，调用费用直接由你和 AI 服务商结算。创作者和内测用户也可以使用兑换码获得托管额度，这类请求会经过 PicPocket 的服务器，详见<a href="/privacy#section-4">隐私政策</a>。</span>
+              <span data-l="en">The extension is free. With your own key, you pay your AI provider directly for the requests you make. If you'd rather not manage keys, hosted models run on credits, and every account gets 30 free credits a month (see <a href="/pricing">Pricing</a>). Hosted requests go through PicPocket's server, as the <a href="/privacy#section-5">privacy policy</a> explains.</span>
+              <span data-l="zh">扩展本身免费。使用自己的 Key 时，调用费用直接由你和 AI 服务商结算。如果不想自己管理 Key，可以使用托管模型，按积分计费，每个账号每月赠送 30 积分，详见<a href="/pricing">定价</a>。托管请求会经过 PicPocket 的服务器，详见<a href="/privacy#section-5">隐私政策</a>。</span>
             </div>
           </details>
           <details>
@@ -1665,8 +1671,9 @@
             <li><a href="#how"><span data-l="en">How it works</span><span data-l="zh">使用方式</span></a></li>
             <li><a href="/pricing"><span data-l="en">Pricing</span><span data-l="zh">定价</span></a></li>
             <li><a href="#install"><span data-l="en">Install</span><span data-l="zh">安装</span></a></li>
-            <li><a href="https://github.com/QingYunA/picpocket" target="_blank" rel="noopener">GitHub</a></li>
             <li><a href="#faq"><span data-l="en">FAQ</span><span data-l="zh">常见问题</span></a></li>
+            <li><a href="https://chromewebstore.google.com/detail/picpocket-image-to-prompt/bncoffcoihlpfbicajogmpcdckcfpnfa" target="_blank" rel="noopener">Chrome Web Store</a></li>
+            <li><a href="https://github.com/QingYunA/picpocket" target="_blank" rel="noopener">GitHub</a></li>
           </ul>
         </div>
         <div class="footer-col">
@@ -1674,7 +1681,7 @@
           <ul>
             <li><a href="/privacy"><span data-l="en">Privacy policy</span><span data-l="zh">隐私政策</span></a></li>
             <li><a href="/terms"><span data-l="en">Terms of service</span><span data-l="zh">服务条款</span></a></li>
-            <li><a href="/privacy#section-5"><span data-l="en">Permissions</span><span data-l="zh">权限说明</span></a></li>
+            <li><a href="/privacy#section-6"><span data-l="en">Permissions</span><span data-l="zh">权限说明</span></a></li>
           </ul>
         </div>
         <div class="footer-col">
@@ -1685,7 +1692,7 @@
         </div>
       </div>
       <div class="footer-bottom">
-        <span>&copy; 2026 PicPocket</span>
+        <span><span data-l="en">&copy; 2026 PicPocket Team. All rights reserved.</span><span data-l="zh">&copy; 2026 PicPocket 团队。保留所有权利。</span></span>
         <span data-l="en">Made for designers and AI artists.</span>
         <span data-l="zh">为设计师与 AI 创作者打造。</span>
       </div>

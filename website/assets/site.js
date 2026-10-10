@@ -24,6 +24,9 @@
     document.querySelectorAll('[data-lang-toggle]').forEach(function (el) {
       el.setAttribute('aria-label', zh ? 'Switch to English' : '切换到中文');
     });
+    document.querySelectorAll('[data-theme-toggle]').forEach(function (el) {
+      el.setAttribute('aria-label', zh ? '切换深色模式' : 'Toggle dark mode');
+    });
     var title = document.querySelector('meta[name="title-' + (zh ? 'zh' : 'en') + '"]');
     if (title) document.title = title.getAttribute('content');
   }

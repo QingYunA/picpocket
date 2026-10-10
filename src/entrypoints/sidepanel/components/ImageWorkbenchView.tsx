@@ -1564,26 +1564,27 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
             </div>
 
             {/* Zen Mode Footer */}
-            <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-100 bg-zinc-50/50 text-xs">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-2 px-4 py-3 border-t border-zinc-100 bg-zinc-50/50 text-xs">
+              <div className="flex min-w-0 items-center gap-2">
                 {prompt.length > 0 && (
                   <button
                     type="button"
                     onClick={() => setPrompt('')}
-                    className="text-zinc-400 hover:text-rose-600 transition-colors flex items-center gap-1 cursor-pointer"
+                    className="shrink-0 whitespace-nowrap text-zinc-400 hover:text-rose-600 transition-colors flex items-center gap-1 cursor-pointer"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     <span>{t('generator.clearPrompt')}</span>
                   </button>
                 )}
-                <span className="text-[11px] text-zinc-400 hidden sm:inline">
-                  (⌘/Ctrl + Enter {t('generator.zenGenerateHint')})
+                {/* 侧栏宽度永远小于 sm 断点，原先的 hidden sm:inline 让这条快捷键提示从不显示 */}
+                <span className="min-w-0 truncate text-[11px] text-zinc-400">
+                  ⌘/Ctrl + Enter {t('generator.zenGenerateHint')}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setIsZenModeOpen(false)}
-                className="px-3.5 py-1.5 rounded-lg bg-zinc-900 text-white font-medium hover:bg-zinc-800 transition-all cursor-pointer shadow-xs active:scale-95 flex items-center gap-1.5"
+                className="shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-lg bg-zinc-900 text-white font-medium hover:bg-zinc-800 transition-all cursor-pointer shadow-xs active:scale-95 flex items-center gap-1.5"
               >
                 <Check className="h-3.5 w-3.5 text-zinc-300" />
                 <span>{t('generator.zenClose')}</span>

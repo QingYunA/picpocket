@@ -75,7 +75,8 @@ export const WorkbenchGalleryCard: React.FC<WorkbenchGalleryCardProps> = ({
       )}
 
       {/* Image Actions Bar */}
-      <div className="p-2 bg-white flex items-center justify-between gap-1 border-t border-zinc-100">
+      {/* 两列网格里单张卡片只有约 130px 宽，操作按钮放不下一行时折行而不是被 overflow-hidden 裁掉 */}
+      <div className="p-2 bg-white flex flex-wrap items-center justify-between gap-1 border-t border-zinc-100">
         <div className="flex items-center gap-1">
           {/* Save to gallery */}
           <button
@@ -132,7 +133,7 @@ export const WorkbenchGalleryCard: React.FC<WorkbenchGalleryCardProps> = ({
           </button>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="ml-auto flex items-center gap-1">
           {/* Copy Prompt */}
           <button
             type="button"

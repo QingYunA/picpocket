@@ -79,7 +79,7 @@ import { CreditBalanceButton } from './CreditBalanceButton';
 import { imageChannelMode } from '@/config/channelMode';
 import { useHostedCredits } from '@/hooks/useHostedCredits';
 import { formatCreditCost, imageCreditCost, isShortOnCredits, scaleCreditCost } from '@/services/creditPricing';
-import { currentChannelModel, selectChannelModel } from '@/config/channelSelection';
+import { channelModelGroups, currentChannelModel, selectChannelModel } from '@/config/channelSelection';
 import { ConfirmModal } from './ConfirmModal';
 import { ReferenceImagesTray } from './workbench/ReferenceImagesTray';
 import { GenerationControlsBar } from './workbench/GenerationControlsBar';
@@ -947,8 +947,11 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
   const handleReuseTask = async (task: GenerationBatchTask) => {
     setPrompt(task.prompt);
     setAspectRatio(task.aspectRatio);
+    // 只在当前渠道提供该模型时才沿用；否则会把别的渠道的模型名写进当前渠道，之后请求必然报错
     if (task.model) {
-      handleModelSelect(task.model);
+      const { channelId } = currentChannelModel(settings, 'image');
+      const group = channelModelGroups(settings, 'image').find((item) => item.channelId === channelId);
+      if (group?.models.includes(task.model)) handleModelSelect(task.model);
     }
     const refs = await resolveTaskReferences(task, referenceLoaders);
     if (refs.images.length > 0) {
@@ -1038,9 +1041,11 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
                 }
                 className="flex items-center gap-1 h-7 px-2 rounded-lg bg-indigo-50 border border-indigo-200/90 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 transition-colors text-[11px] font-semibold cursor-pointer shrink-0 shadow-2xs group"
                 title={t('workbench.openFullscreenTooltip')}
+                aria-label={t('workbench.openFullscreenTooltip')}
               >
                 <LayoutDashboard className="h-3.5 w-3.5 text-indigo-600 transition-transform group-hover:scale-110" />
-                <span className="inline">{t('workbench.canvasTab')}</span>
+                {/* 与 App 顶栏一致：窄于 480px 只留图标，避免英文标题 + 按钮挤出 320~400px 的侧栏 */}
+                <span className="hidden min-[480px]:inline">{t('workbench.canvasTab')}</span>
               </button>
 
               <button
@@ -1048,6 +1053,7 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
                 onClick={onOpenSettings}
                 className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-400 hover:text-zinc-800 hover:bg-zinc-100 transition-colors cursor-pointer shrink-0"
                 title={t('header.settings')}
+                aria-label={t('header.settings')}
               >
                 <Sliders className="h-3.5 w-3.5" />
               </button>

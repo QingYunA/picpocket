@@ -1,10 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 vi.mock('../supabase', () => ({
   supabase: {
     auth: {
-      signInWithOAuth: vi.fn(),
-      exchangeCodeForSession: vi.fn(),
       signInWithOtp: vi.fn(),
       verifyOtp: vi.fn(),
       signOut: vi.fn(),
@@ -15,24 +13,10 @@ vi.mock('../supabase', () => ({
 
 import { supabase } from '../supabase';
 import {
-  extractAuthCallback,
-  signInWithOAuth,
   sendEmailCode,
   verifyEmailCode,
   toAccountUser,
-  AuthError,
 } from '../auth';
-
-const REDIRECT = 'https://bncoffcoihlpfbicajogmpcdckcfpnfa.chromiumapp.org/';
-
-function mockIdentity(launch: (opts: { url: string; interactive: boolean }) => Promise<string | undefined>) {
-  (globalThis as any).chrome = {
-    identity: {
-      getRedirectURL: vi.fn(() => REDIRECT),
-      launchWebAuthFlow: vi.fn(launch),
-    },
-  };
-}
 
 const fakeUser = {
   id: 'user-1',
@@ -40,58 +24,6 @@ const fakeUser = {
   app_metadata: { provider: 'github' },
   user_metadata: { user_name: 'ada', avatar_url: 'https://avatars.example.com/ada.png' },
 };
-
-describe('extractAuthCallback', () => {
-  it('reads the PKCE code from the query string', () => {
-    expect(extractAuthCallback(`${REDIRECT}?code=abc123`)).toEqual({ code: 'abc123' });
-  });
-
-  it('reads provider errors from query or hash', () => {
-    expect(extractAuthCallback(`${REDIRECT}?error=access_denied&error_description=User+denied`).error).toBe('User denied');
-    expect(extractAuthCallback(`${REDIRECT}#error=server_error&error_description=boom`).error).toBe('boom');
-  });
-});
-
-describe('signInWithOAuth', () => {
-  beforeEach(() => vi.clearAllMocks());
-  afterEach(() => {
-    delete (globalThis as any).chrome;
-  });
-
-  it('runs the PKCE flow through chrome.identity and returns the signed-in user', async () => {
-    vi.mocked(supabase.auth.signInWithOAuth).mockResolvedValue({ data: { provider: 'github', url: 'https://auth.example.com/authorize' }, error: null } as any);
-    vi.mocked(supabase.auth.exchangeCodeForSession).mockResolvedValue({ data: { session: {}, user: fakeUser }, error: null } as any);
-    mockIdentity(async () => `${REDIRECT}?code=xyz`);
-
-    const user = await signInWithOAuth('github');
-
-    expect(supabase.auth.signInWithOAuth).toHaveBeenCalledWith({
-      provider: 'github',
-      options: { redirectTo: REDIRECT, skipBrowserRedirect: true },
-    });
-    expect((globalThis as any).chrome.identity.launchWebAuthFlow).toHaveBeenCalledWith({ url: 'https://auth.example.com/authorize', interactive: true });
-    expect(supabase.auth.exchangeCodeForSession).toHaveBeenCalledWith('xyz');
-    expect(user).toEqual({ id: 'user-1', email: 'ada@example.com', name: 'ada', avatarUrl: 'https://avatars.example.com/ada.png', provider: 'github' });
-  });
-
-  it('reports cancellation when the user closes the auth window', async () => {
-    vi.mocked(supabase.auth.signInWithOAuth).mockResolvedValue({ data: { url: 'https://auth.example.com/authorize' }, error: null } as any);
-    mockIdentity(async () => {
-      throw new Error('The user did not approve access.');
-    });
-
-    await expect(signInWithOAuth('google')).rejects.toMatchObject({ code: 'cancelled' });
-    expect(supabase.auth.exchangeCodeForSession).not.toHaveBeenCalled();
-  });
-
-  it('surfaces provider errors from the callback URL', async () => {
-    vi.mocked(supabase.auth.signInWithOAuth).mockResolvedValue({ data: { url: 'https://auth.example.com/authorize' }, error: null } as any);
-    mockIdentity(async () => `${REDIRECT}?error=access_denied&error_description=denied`);
-
-    await expect(signInWithOAuth('google')).rejects.toBeInstanceOf(AuthError);
-    expect(supabase.auth.exchangeCodeForSession).not.toHaveBeenCalled();
-  });
-});
 
 describe('email one-time code', () => {
   beforeEach(() => vi.clearAllMocks());

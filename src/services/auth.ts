@@ -2,8 +2,6 @@ import { z } from 'zod';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 
-export type OAuthProvider = 'google' | 'github';
-
 export type AuthErrorCode = 'cancelled' | 'invalid_email' | 'invalid_code' | 'rate_limited' | 'provider_error' | 'expired' | 'network' | 'unknown';
 
 export class AuthError extends Error {
@@ -38,49 +36,11 @@ export function toAccountUser(user: User): AccountUser {
   };
 }
 
-/** 解析 OAuth 回调地址中的 PKCE code 或错误（错误可能在 query 或 hash 中） */
-export function extractAuthCallback(url: string): { code?: string; error?: string } {
-  const parsed = new URL(url);
-  const hash = new URLSearchParams(parsed.hash.replace(/^#/, ''));
-  const read = (k: string) => parsed.searchParams.get(k) ?? hash.get(k) ?? undefined;
-  const error = read('error_description') || read('error');
-  if (error) return { error };
-  const code = read('code');
-  return code ? { code } : {};
-}
-
 export function fromSupabaseError(error: { status?: number; message?: string } | null, fallback: AuthErrorCode): AuthError {
   if (!error) return new AuthError(fallback);
   if (error.status === 429 || /rate limit/i.test(error.message || '')) return new AuthError('rate_limited', error.message);
   if (/fetch|network/i.test(error.message || '')) return new AuthError('network', error.message);
   return new AuthError(fallback, error.message);
-}
-
-/** Google / GitHub 登录：PKCE 授权码流程，授权窗口由 chrome.identity 打开 */
-export async function signInWithOAuth(provider: OAuthProvider): Promise<AccountUser> {
-  const redirectTo = chrome.identity.getRedirectURL();
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider,
-    options: { redirectTo, skipBrowserRedirect: true },
-  });
-  if (error || !data?.url) throw fromSupabaseError(error, 'provider_error');
-
-  let responseUrl: string | undefined;
-  try {
-    responseUrl = await chrome.identity.launchWebAuthFlow({ url: data.url, interactive: true });
-  } catch (err) {
-    // 用户关闭授权窗口时 Chrome 抛出 "The user did not approve access."
-    throw new AuthError('cancelled', err instanceof Error ? err.message : String(err));
-  }
-  if (!responseUrl) throw new AuthError('cancelled');
-
-  const callback = extractAuthCallback(responseUrl);
-  if (callback.error) throw new AuthError('provider_error', callback.error);
-  if (!callback.code) throw new AuthError('provider_error', 'Missing authorization code');
-
-  const exchanged = await supabase.auth.exchangeCodeForSession(callback.code);
-  if (exchanged.error || !exchanged.data?.user) throw fromSupabaseError(exchanged.error, 'provider_error');
-  return toAccountUser(exchanged.data.user);
 }
 
 /** 邮箱登录第一步：发送 6 位验证码（新邮箱自动注册） */

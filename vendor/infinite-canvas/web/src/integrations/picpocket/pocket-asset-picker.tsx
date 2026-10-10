@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Empty, Input, Pagination } from "antd";
+import { App, Empty, Input, Pagination } from "antd";
 import { Folder, FolderOpen, Search } from "lucide-react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useTranslation } from "react-i18next";
@@ -10,6 +10,7 @@ import {
     listPocketFolders,
     resolvePocketCanvasAsset,
 } from "./pocket-adapter";
+import { getFolderAndDescendantIds } from "./folder-tree";
 import { PocketFolderTree } from "./pocket-folder-tree";
 
 type Props = {
@@ -20,24 +21,29 @@ const PAGE_SIZE = 12;
 
 export function PocketAssetPicker({ onInsert }: Props) {
     const { t } = useTranslation();
+    const { message } = App.useApp();
     const assets = useLiveQuery(listPocketAssetSummaries, []) || [];
     const folders = useLiveQuery(listPocketFolders, []) || [];
     const [folderId, setFolderId] = useState<number | "all" | "inbox">("all");
     const [query, setQuery] = useState("");
     const [page, setPage] = useState(1);
     const [insertingId, setInsertingId] = useState<number | null>(null);
+    // 选中父文件夹时连同子文件夹里的资产一起显示，与画布侧栏的资产面板保持一致
+    const targetFolderIds = useMemo(() => (typeof folderId === "number" ? getFolderAndDescendantIds(folders, folderId) : null), [folders, folderId]);
     const filtered = useMemo(() => {
         const needle = query.trim().toLowerCase();
         return assets.filter((asset) => {
             if (folderId === "inbox" && asset.folderId !== null) return false;
-            if (typeof folderId === "number" && asset.folderId !== folderId) return false;
+            if (targetFolderIds && (asset.folderId === null || !targetFolderIds.has(asset.folderId))) return false;
             if (!needle) return true;
             return [asset.title, ...asset.tags].join(" ").toLowerCase().includes(needle);
         });
-    }, [assets, folderId, query]);
+    }, [assets, folderId, query, targetFolderIds]);
+    // 删除资产后总页数可能变少，当前页不能停在超出范围的位置上
+    const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)));
     const visible = useMemo(
-        () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-        [filtered, page],
+        () => filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+        [filtered, currentPage],
     );
 
     useEffect(() => {
@@ -56,6 +62,9 @@ export function PocketAssetPicker({ onInsert }: Props) {
                 prompt: asset.prompt,
                 picpocketAssetId: asset.id,
             }, id);
+        } catch (error) {
+            console.error("[PicPocket] Failed to insert pocket asset", error);
+            message.error(t("canvas.picPocketAssets.insertFailed"));
         } finally {
             setInsertingId(null);
         }
@@ -112,7 +121,7 @@ export function PocketAssetPicker({ onInsert }: Props) {
                     <div className="mt-4 flex justify-center">
                         <Pagination
                             size="small"
-                            current={page}
+                            current={currentPage}
                             pageSize={PAGE_SIZE}
                             total={filtered.length}
                             onChange={setPage}
@@ -140,7 +149,7 @@ function FolderButton({
             type="button"
             onClick={onClick}
             className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors ${
-                active ? "bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900" : "hover:bg-stone-200/70 dark:hover:bg-stone-800"
+                active ? "bg-violet-600 font-medium text-white" : "text-stone-700 hover:bg-stone-200/70 dark:text-stone-300 dark:hover:bg-stone-800"
             }`}
         >
             <Icon className="size-3.5 shrink-0" />

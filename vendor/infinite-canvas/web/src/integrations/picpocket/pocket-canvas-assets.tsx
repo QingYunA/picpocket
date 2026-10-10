@@ -36,11 +36,13 @@ import {
     pruneSelectionToVisible,
     renamePocketFolder,
     resolvePocketCanvasAsset,
-    saveCanvasBlobToPocket,
+    importLocalImageToPocket,
     setActiveFolder,
     type PocketAssetSummary,
     type PocketFolder,
 } from "./pocket-adapter";
+import { fitNodeSize } from "@/lib/canvas/canvas-node-size";
+import { layoutNodeRows } from "./node-placement";
 import { PocketFolderTree } from "./pocket-folder-tree";
 import { getFolderAndDescendantIds } from "./folder-tree";
 import { useVirtualGrid } from "./virtual-grid";
@@ -66,7 +68,8 @@ export function PocketCanvasAssets({ onInsert }: { onInsert: (payload: InsertAss
     const { t } = useTranslation();
     const { message, modal } = App.useApp();
     const assets = useLiveQuery(listPocketAssetSummaries, []) || [];
-    const folders = useLiveQuery(listPocketFolders, []) || [];
+    const liveFolders = useLiveQuery(listPocketFolders, []);
+    const folders = useMemo(() => liveFolders || [], [liveFolders]);
     const [query, setQuery] = useState("");
     const [folderId, setFolderId] = useState<number | "all" | "inbox">("all");
     const containerRef = useRef<HTMLDivElement>(null);
@@ -101,6 +104,11 @@ export function PocketCanvasAssets({ onInsert }: { onInsert: (payload: InsertAss
         parentId?: number | null;
         name: string;
     }>({ open: false, mode: "create", name: "" });
+
+    // 当前文件夹在别处（侧边栏、另一个窗口）被删掉后回到「全部」，否则列表一直是空的、标题也是空白
+    useEffect(() => {
+        if (liveFolders && typeof folderId === "number" && !liveFolders.some((folder) => folder.id === folderId)) setFolderId("all");
+    }, [folderId, liveFolders]);
 
     // 统计各文件夹下的资产数量
     const folderCounts = useMemo(() => {
@@ -233,50 +241,45 @@ export function PocketCanvasAssets({ onInsert }: { onInsert: (payload: InsertAss
     // 插入资产到画布
     const handleInsert = useCallback(
         (asset: PocketAssetSummary) => {
-            void resolvePocketCanvasAsset(asset.id).then((full) => {
-                if (!full) return;
-                onInsert({
-                    kind: "image",
-                    dataUrl: full.dataUrl,
-                    title: full.title,
-                    prompt: full.prompt,
-                    picpocketAssetId: full.id,
+            void resolvePocketCanvasAsset(asset.id)
+                .then((full) => {
+                    if (!full) return;
+                    onInsert({
+                        kind: "image",
+                        dataUrl: full.dataUrl,
+                        title: full.title,
+                        prompt: full.prompt,
+                        picpocketAssetId: full.id,
+                    });
+                })
+                .catch((error) => {
+                    console.error("[PicPocket] Failed to insert pocket asset", error);
+                    message.error(t("canvas.picPocketAssets.insertFailed"));
                 });
-            });
         },
-        [onInsert],
+        [message, onInsert, t],
     );
 
-    // 批量插入已选资产到画布 (以网格排版分散排布，避免重叠在中心)
+    // 批量插入已选资产到画布：按各图的实际节点尺寸排成每行 3 个并整体居中，避免大图互相压住
     const handleBatchInsert = useCallback(async () => {
-        const ids = Array.from(selectedAssetIds);
-        if (!ids.length) return;
-        const cols = Math.min(3, ids.length);
-        const spacing = 360;
-        for (let i = 0; i < ids.length; i++) {
-            const id = ids[i];
-            const full = await resolvePocketCanvasAsset(id);
+        const picked = assets.filter((asset) => selectedAssetIds.has(asset.id));
+        if (!picked.length) return;
+        const layout = layoutNodeRows(picked.map((asset) => fitNodeSize(asset.width, asset.height)), 3, 40);
+        for (let i = 0; i < picked.length; i++) {
+            const full = await resolvePocketCanvasAsset(picked[i]!.id);
             if (!full) continue;
-            const col = i % cols;
-            const row = Math.floor(i / cols);
-            const offset =
-                ids.length > 1
-                    ? {
-                          x: (col - (cols - 1) / 2) * spacing,
-                          y: row * spacing,
-                      }
-                    : undefined;
+            const center = layout.centers[i]!;
             onInsert({
                 kind: "image",
                 dataUrl: full.dataUrl,
                 title: full.title,
                 prompt: full.prompt,
                 picpocketAssetId: full.id,
-                offset,
+                offset: picked.length > 1 ? { x: center.x - layout.width / 2, y: center.y - layout.height / 2 } : undefined,
             });
         }
         setSelectedAssetIds(new Set());
-    }, [onInsert, selectedAssetIds]);
+    }, [assets, onInsert, selectedAssetIds]);
 
     // 单张删除资产文件
     const handleDeleteAsset = useCallback(
@@ -466,12 +469,7 @@ export function PocketCanvasAssets({ onInsert }: { onInsert: (payload: InsertAss
             const hide = message.loading(t("canvas.sidePanel.addingAssets"), 0);
             try {
                 for (const file of files) {
-                    await saveCanvasBlobToPocket(file, {
-                        title: file.name.replace(/\.[^/.]+$/, ""),
-                        width: 1024,
-                        height: 1024,
-                        folderId: targetFolderId,
-                    });
+                    await importLocalImageToPocket(file, targetFolderId);
                 }
                 message.success(t("canvas.sidePanel.addedAssets", { count: files.length }));
             } catch (error) {
@@ -500,6 +498,7 @@ export function PocketCanvasAssets({ onInsert }: { onInsert: (payload: InsertAss
                         message.success(t("canvas.picPocketAssets.folderDeleted"));
                     } catch (error) {
                         console.error(error);
+                        message.error(t("canvas.picPocketAssets.folderDeleteFailed"));
                     }
                 },
             });
@@ -742,6 +741,7 @@ export function PocketCanvasAssets({ onInsert }: { onInsert: (payload: InsertAss
                             })
                         }
                         title={t("canvas.picPocketAssets.newFolder")}
+                        aria-label={t("canvas.picPocketAssets.newFolder")}
                         className="grid size-5 place-items-center rounded text-stone-500 transition-colors hover:bg-stone-200 hover:text-stone-800 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-200"
                     >
                         <FolderPlus className="size-3.5" />
@@ -894,6 +894,7 @@ export function PocketCanvasAssets({ onInsert }: { onInsert: (payload: InsertAss
                                     icon={<Plus className="size-3.5" />}
                                     onClick={() => void handleBatchInsert()}
                                     title={t("canvas.picPocketAssets.batchInsert")}
+                                    aria-label={t("canvas.picPocketAssets.batchInsert")}
                                     className="size-6 p-0 text-stone-600 hover:text-violet-600 dark:text-stone-300"
                                 />
                                 <Dropdown menu={{ items: folderMoveChildren }} trigger={["click"]}>
@@ -902,6 +903,7 @@ export function PocketCanvasAssets({ onInsert }: { onInsert: (payload: InsertAss
                                         type="text"
                                         icon={<FolderInput className="size-3.5" />}
                                         title={t("canvas.picPocketAssets.batchMove")}
+                                        aria-label={t("canvas.picPocketAssets.batchMove")}
                                         className="size-6 p-0 text-stone-600 hover:text-violet-600 dark:text-stone-300"
                                     />
                                 </Dropdown>
@@ -911,6 +913,7 @@ export function PocketCanvasAssets({ onInsert }: { onInsert: (payload: InsertAss
                                     icon={<Download className="size-3.5" />}
                                     onClick={() => void handleDownload(Array.from(selectedAssetIds))}
                                     title={t("canvas.picPocketAssets.batchDownload")}
+                                    aria-label={t("canvas.picPocketAssets.batchDownload")}
                                     className="size-6 p-0 text-stone-600 hover:text-violet-600 dark:text-stone-300"
                                 />
                                 <Button
@@ -920,6 +923,7 @@ export function PocketCanvasAssets({ onInsert }: { onInsert: (payload: InsertAss
                                     icon={<Trash2 className="size-3.5" />}
                                     onClick={handleBatchDelete}
                                     title={t("canvas.picPocketAssets.batchDelete")}
+                                    aria-label={t("canvas.picPocketAssets.batchDelete")}
                                     className="size-6 p-0"
                                 />
                                 <Button
@@ -928,6 +932,7 @@ export function PocketCanvasAssets({ onInsert }: { onInsert: (payload: InsertAss
                                     icon={<X className="size-3.5" />}
                                     onClick={handleDeselectAll}
                                     title={t("common.cancel")}
+                                    aria-label={t("common.cancel")}
                                     className="size-6 p-0 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200"
                                 />
                             </div>
@@ -998,6 +1003,7 @@ export function PocketCanvasAssets({ onInsert }: { onInsert: (payload: InsertAss
                                                     <div
                                                         role="checkbox"
                                                         aria-checked={isSelected}
+                                                        aria-label={asset.title}
                                                         tabIndex={0}
                                                         onClick={(e) => toggleSelect(asset.id, e)}
                                                         onKeyDown={(e) => {
@@ -1016,7 +1022,7 @@ export function PocketCanvasAssets({ onInsert }: { onInsert: (payload: InsertAss
                                                                 ? "border-violet-600 bg-violet-600 text-white shadow-xs"
                                                                 : isSelecting
                                                                   ? "border-stone-400/80 bg-white/90 text-transparent backdrop-blur hover:border-violet-500 dark:border-stone-500 dark:bg-stone-900/90"
-                                                                  : "border-white/80 bg-black/40 text-transparent opacity-0 group-hover:opacity-100 hover:bg-black/60"
+                                                                  : "border-white/80 bg-black/40 text-transparent opacity-0 focus-visible:opacity-100 group-hover:opacity-100 hover:bg-black/60"
                                                         }`}
                                                     >
                                                         <Check className="size-3 stroke-[3]" />
@@ -1044,7 +1050,8 @@ export function PocketCanvasAssets({ onInsert }: { onInsert: (payload: InsertAss
                                                                 handleDeleteAsset(asset);
                                                             }}
                                                             title={t("canvas.picPocketAssets.deleteAsset")}
-                                                            className="absolute right-1 top-1 grid size-5 place-items-center rounded bg-white/90 text-stone-500 opacity-0 shadow-xs backdrop-blur transition-opacity hover:bg-white hover:text-red-500 group-hover:opacity-100 dark:bg-stone-900/90 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-red-400"
+                                                            aria-label={t("canvas.picPocketAssets.deleteAsset")}
+                                                            className="absolute right-1 top-1 grid size-5 place-items-center rounded bg-white/90 text-stone-500 opacity-0 shadow-xs backdrop-blur transition-opacity focus-visible:opacity-100 hover:bg-white hover:text-red-500 group-hover:opacity-100 dark:bg-stone-900/90 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-red-400"
                                                         >
                                                             <Trash2 className="size-3" />
                                                         </button>

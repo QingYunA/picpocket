@@ -159,10 +159,14 @@ export const ReferenceImagesTray: React.FC<ReferenceImagesTrayProps> = ({
           e.preventDefault();
           setIsDragOver(true);
         }}
-        onDragLeave={() => setIsDragOver(false)}
+        onDragLeave={(e) => {
+          // 指针移入子元素也会触发 dragleave，只在真正离开容器时取消高亮
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setIsDragOver(false);
+        }}
         onDrop={(e) => {
           e.preventDefault();
           setIsDragOver(false);
+          if (disabled) return;
           handleUploadFiles(e.dataTransfer.files);
         }}
         className={`rounded-xl border transition-all p-2 ${
@@ -186,7 +190,7 @@ export const ReferenceImagesTray: React.FC<ReferenceImagesTrayProps> = ({
                   </div>
                   <img
                     src={imgUrl}
-                    alt={`Reference ${index + 1}`}
+                    alt={`${t('generator.referenceImage')} ${index + 1}`}
                     referrerPolicy="no-referrer"
                     className="relative h-full w-full object-cover cursor-pointer"
                     onClick={() => onPreview(imgUrl)}
@@ -194,20 +198,24 @@ export const ReferenceImagesTray: React.FC<ReferenceImagesTrayProps> = ({
                       e.currentTarget.style.opacity = '0';
                     }}
                   />
-                  <span
+                  <button
+                    type="button"
                     onClick={() => onSetPrimary(index)}
+                    disabled={disabled || index === 0}
                     title={index === 0 ? t('generator.mainReferenceBadge') : t('generator.setAsMainRef')}
-                    className={`absolute left-1 top-1 rounded px-1 text-[8px] font-mono leading-tight cursor-pointer ${
-                      index === 0 ? 'bg-sky-600 text-white font-bold' : 'bg-black/70 text-zinc-300 hover:bg-black'
+                    className={`absolute left-1 top-1 rounded px-1 text-[8px] font-mono leading-tight ${
+                      index === 0 ? 'bg-sky-600 text-white font-bold cursor-default' : 'bg-black/70 text-zinc-300 hover:bg-black cursor-pointer'
                     }`}
                   >
                     {index === 0 ? t('generator.mainReferenceBadge') : `#${index + 1}`}
-                  </span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => onRemoveImage(index)}
-                    className="absolute right-1 top-1 hidden group-hover:flex h-4 w-4 items-center justify-center rounded-full bg-black/70 text-white hover:bg-red-600 transition-colors cursor-pointer"
+                    disabled={disabled}
+                    className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-black/70 text-white opacity-0 transition-opacity hover:bg-red-600 focus-visible:opacity-100 group-hover:opacity-100 cursor-pointer disabled:cursor-not-allowed"
                     title={t('generator.removeRef')}
+                    aria-label={t('generator.removeRef')}
                   >
                     <X className="h-2.5 w-2.5" />
                   </button>
@@ -237,7 +245,8 @@ export const ReferenceImagesTray: React.FC<ReferenceImagesTrayProps> = ({
               <button
                 type="button"
                 onClick={onClearAll}
-                className="text-zinc-400 hover:text-red-600 transition-colors cursor-pointer"
+                disabled={disabled}
+                className="text-zinc-400 hover:text-red-600 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {t('generator.clearReferences')}
               </button>

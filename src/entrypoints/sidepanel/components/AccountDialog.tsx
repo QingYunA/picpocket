@@ -13,6 +13,7 @@ import {
 import { cancelGoogleWebSignIn, GOOGLE_SIGN_IN_RESULT, startGoogleWebSignIn } from '@/services/googleWebSignIn';
 import { AccountAvatar } from './AccountAvatar';
 import { useEntitlement } from '@/hooks/useEntitlement';
+import { openOptionsPage } from '@/utils/navigation';
 
 interface AccountDialogProps {
   isOpen: boolean;
@@ -65,6 +66,15 @@ export const AccountDialog: React.FC<AccountDialogProps> = ({ isOpen, onClose, u
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, onClose]);
+
   // 官网登录失败时由后台广播结果；成功则 user 变化后自动切换到已登录视图
   useEffect(() => {
     if (!awaitingGoogle) return;
@@ -100,14 +110,25 @@ export const AccountDialog: React.FC<AccountDialogProps> = ({ isOpen, onClose, u
   const spinner = <Loader2 className="h-4 w-4 shrink-0 animate-spin" />;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-2xs p-4 animate-in fade-in duration-150">
-      <div className="relative flex max-h-[85vh] w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-xl text-zinc-900">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-2xs p-4 animate-in fade-in duration-150"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="account-dialog-title"
+        className="relative flex max-h-[85vh] w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-xl text-zinc-900"
+      >
         <div className="flex items-start justify-between border-b border-zinc-100 px-5 pt-5 pb-4">
           <div className="min-w-0">
-            <h2 className="text-sm font-semibold whitespace-nowrap">{user ? user.name : t('account.title')}</h2>
+            <h2 id="account-dialog-title" className="truncate text-sm font-semibold">{user ? user.name : t('account.title')}</h2>
             {!user && <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">{t('account.subtitle')}</p>}
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="ml-3 shrink-0 rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 cursor-pointer"
             aria-label={t('common.close')}
@@ -130,7 +151,9 @@ export const AccountDialog: React.FC<AccountDialogProps> = ({ isOpen, onClose, u
               </div>
               <button
                 type="button"
-                onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL('/options.html#/account') })}
+                onClick={() => {
+                  void openOptionsPage({ route: '/account' });
+                }}
                 className="flex w-full items-center justify-between rounded-xl border border-amber-200 bg-amber-50/50 px-3 py-2.5 text-left hover:bg-amber-50 cursor-pointer"
               >
                 <span className="flex items-center gap-2 text-xs text-zinc-700">
@@ -158,7 +181,10 @@ export const AccountDialog: React.FC<AccountDialogProps> = ({ isOpen, onClose, u
             </>
           ) : awaitingGoogle ? (
             <>
-              <p className="text-xs leading-relaxed text-zinc-600">{t('account.googleWaiting')}</p>
+              <p className="flex items-start gap-2 text-xs leading-relaxed text-zinc-600">
+                <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin text-zinc-400" />
+                <span>{t('account.googleWaiting')}</span>
+              </p>
               <button
                 onClick={() => {
                   setAwaitingGoogle(false);
@@ -181,8 +207,11 @@ export const AccountDialog: React.FC<AccountDialogProps> = ({ isOpen, onClose, u
               <p className="text-xs text-zinc-600">{t('account.codeSentTo', { email: sentTo })}</p>
               <input
                 value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                onKeyDown={(e) => e.key === 'Enter' && code.length === 6 && handleVerify()}
+                onChange={(e) => {
+                  setCode(e.target.value.replace(/\D/g, '').slice(0, 6));
+                  if (error) setError(null);
+                }}
+                onKeyDown={(e) => e.key === 'Enter' && code.length === 6 && !disabled && handleVerify()}
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 autoFocus
@@ -221,8 +250,11 @@ export const AccountDialog: React.FC<AccountDialogProps> = ({ isOpen, onClose, u
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && email.trim() && handleSend()}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (error) setError(null);
+                }}
+                onKeyDown={(e) => e.key === 'Enter' && email.trim() && !disabled && handleSend()}
                 autoComplete="email"
                 placeholder={t('account.emailPlaceholder')}
                 className="w-full rounded-xl border border-zinc-200 px-3 py-2 text-xs outline-none focus:border-amber-400"
@@ -238,7 +270,11 @@ export const AccountDialog: React.FC<AccountDialogProps> = ({ isOpen, onClose, u
             </>
           )}
 
-          {error && <p className="rounded-lg bg-rose-50 px-3 py-2 text-[11px] text-rose-700">{t(ERROR_KEYS[error])}</p>}
+          {error && (
+            <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-[11px] leading-relaxed text-rose-700">
+              {t(ERROR_KEYS[error])}
+            </p>
+          )}
         </div>
       </div>
     </div>

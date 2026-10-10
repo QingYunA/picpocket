@@ -103,16 +103,16 @@ export const AccountPage: React.FC = () => {
   return (
     <ConfigLayout title={t('billing.title')} description={t('billing.subtitle')}>
       {error && (
-        <div className="flex items-center justify-between rounded-xl bg-rose-50 px-4 py-3 text-xs text-rose-700">
+        <div role="alert" className="flex items-center justify-between gap-3 rounded-xl bg-rose-50 px-4 py-3 text-xs text-rose-700">
           <span>{t(`billing.errors.${error}`)}</span>
           {!entitlement && (
-            <button type="button" onClick={refresh} className="font-semibold underline cursor-pointer">
+            <button type="button" onClick={refresh} className="shrink-0 whitespace-nowrap font-semibold underline cursor-pointer">
               {t('billing.retry')}
             </button>
           )}
         </div>
       )}
-      {notice && <div className="rounded-xl bg-emerald-50 px-4 py-3 text-xs text-emerald-700">{notice}</div>}
+      {notice && <div role="status" className="rounded-xl bg-emerald-50 px-4 py-3 text-xs text-emerald-700">{notice}</div>}
 
       {!entitlement ? (
         loading && <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />

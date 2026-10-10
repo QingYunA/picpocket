@@ -2,6 +2,7 @@ import React from 'react';
 import { ConfigLayout } from '../../components/config-layout';
 import { ConfigSection } from '../../components/config-section';
 import { ConfigItem } from '../../components/config-item';
+import { ToggleSwitch } from '../../components/toggle-switch';
 import { useI18n } from '@/i18n';
 import type { UserSettings, Language } from '@/types';
 import { Languages, MousePointer, BookmarkCheck, Check } from 'lucide-react';
@@ -52,25 +53,25 @@ export const GeneralPage: React.FC<GeneralPageProps> = ({
             <button
               type="button"
               onClick={() => handleLanguageChange('zh')}
+              aria-pressed={language === 'zh'}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
                 language === 'zh'
                   ? 'bg-white text-zinc-900 font-bold shadow-2xs'
                   : 'text-zinc-600 hover:text-zinc-900'
               }`}
             >
-              <span>🇨🇳</span>
               <span>{t('settings.langZh')}</span>
             </button>
             <button
               type="button"
               onClick={() => handleLanguageChange('en')}
+              aria-pressed={language === 'en'}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${
                 language === 'en'
                   ? 'bg-white text-zinc-900 font-bold shadow-2xs'
                   : 'text-zinc-600 hover:text-zinc-900'
               }`}
             >
-              <span>🇺🇸</span>
               <span>{t('settings.langEn')}</span>
             </button>
           </div>
@@ -88,15 +89,11 @@ export const GeneralPage: React.FC<GeneralPageProps> = ({
           description={t('settings.hoverBadgeDesc')}
           highlight={highlightField === 'hoverBadge'}
         >
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={settings.enableHoverBadge ?? true}
-              onChange={(e) => handleHoverBadgeToggle(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-10 h-5 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-zinc-900" />
-          </label>
+          <ToggleSwitch
+            checked={settings.enableHoverBadge ?? true}
+            onChange={handleHoverBadgeToggle}
+            label={t('settings.hoverBadgeTitle')}
+          />
         </ConfigItem>
       </ConfigSection>
 
@@ -137,6 +134,7 @@ export const GeneralPage: React.FC<GeneralPageProps> = ({
                   key={option.mode}
                   type="button"
                   onClick={() => handleContextMenuChange(option.mode)}
+                  aria-pressed={isSelected}
                   className={`flex flex-col justify-between p-4 rounded-xl border text-left transition-all cursor-pointer ${
                     isSelected
                       ? 'border-zinc-900 bg-zinc-900/5 shadow-2xs'

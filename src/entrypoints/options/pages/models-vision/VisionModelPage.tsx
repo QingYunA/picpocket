@@ -251,7 +251,8 @@ export const VisionModelPage: React.FC<VisionModelPageProps> = ({
                     value={selectedChannel.apiKey}
                     onChange={(event) => updateChannel({ apiKey: event.target.value })}
                     onBlur={() => {
-                      if (selectedChannel.apiKey) updateChannel({ apiKey: sanitizeHttpHeaderToken(selectedChannel.apiKey) });
+                      const cleaned = sanitizeHttpHeaderToken(selectedChannel.apiKey);
+                      if (selectedChannel.apiKey && cleaned !== selectedChannel.apiKey) updateChannel({ apiKey: cleaned });
                     }}
                     placeholder={t('settings.apiKeyPlaceholder')}
                     className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 py-2.5 pr-14 font-mono text-xs text-zinc-900 shadow-2xs transition-all focus:border-zinc-900 focus:bg-white focus:outline-none"
@@ -283,7 +284,10 @@ export const VisionModelPage: React.FC<VisionModelPageProps> = ({
                       name = t('options.vision.customChannel');
                     }
                   }
-                  updateChannel({ baseUrl, providerId: nextProvider?.id || 'custom', name });
+                  const providerId = nextProvider?.id || 'custom';
+                  // 没有任何规范化变化时不写存储，避免每次失焦都触发一次保存与测试结果重置
+                  if (baseUrl === selectedChannel.baseUrl && providerId === selectedChannel.providerId && name === selectedChannel.name) return;
+                  updateChannel({ baseUrl, providerId, name });
                 }}
                 placeholder={selectedProvider?.baseUrl || 'https://api.example.com/v1'}
                 className="w-full max-w-2xl rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 py-2.5 font-mono text-xs text-zinc-900 shadow-2xs transition-all focus:border-zinc-900 focus:bg-white focus:outline-none"

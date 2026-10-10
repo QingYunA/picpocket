@@ -68,6 +68,7 @@ export const ImageModelPage: React.FC<ImageModelPageProps> = ({
   const appliedProviderRef = useRef<string | undefined>(undefined);
   const editVersionRef = useRef(0);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const testRequestRef = useRef(0);
 
   useEffect(() => {
     const requested = channels.find((channel) => channel.id === initialProvider || channel.providerId === initialProvider);
@@ -114,6 +115,14 @@ export const ImageModelPage: React.FC<ImageModelPageProps> = ({
     };
   })];
 
+  // 作废进行中的连接测试：切换渠道或改动配置后，旧渠道的测试结果不应再出现
+  const resetTest = () => {
+    testRequestRef.current += 1;
+    setTestStatus('idle');
+    setTestMessage('');
+    setTestLatency(null);
+  };
+
   const enqueueUpdate = (updater: (prev: UserSettings) => UserSettings): Promise<void> => {
     const operation = saveQueueRef.current.then(() => onUpdateSettings(updater));
     saveQueueRef.current = operation.catch(() => {});
@@ -128,7 +137,7 @@ export const ImageModelPage: React.FC<ImageModelPageProps> = ({
       id: channelId,
       changes: current?.id === channelId ? { ...current.changes, ...changes } : changes,
     }));
-    setTestStatus('idle');
+    resetTest();
     try {
       await enqueueUpdate((prev) => withImageChannels(
         prev,
@@ -155,6 +164,7 @@ export const ImageModelPage: React.FC<ImageModelPageProps> = ({
     setSelectedChannelId(channel.id);
     setAddingChannel(false);
     setDeletePending(false);
+    resetTest();
   };
 
   const setDefaultChannel = async () => {
@@ -175,6 +185,7 @@ export const ImageModelPage: React.FC<ImageModelPageProps> = ({
       return withImageChannels(prev, remaining, active === selectedChannel.id ? PICPOCKET_CHANNEL_ID : active);
     });
     setDeletePending(false);
+    resetTest();
   };
 
   const handleAutoSaveGalleryToggle = async (enabled: boolean) => {
@@ -186,14 +197,16 @@ export const ImageModelPage: React.FC<ImageModelPageProps> = ({
   };
 
   const handleTestConnection = async () => {
+    if (!selectedChannel) return;
+    const requestId = ++testRequestRef.current;
     setTestStatus('testing');
     setTestMessage(t('settings.testingConnection'));
     setTestLatency(null);
 
-    if (!selectedChannel) return;
     const testKey = selectedChannel.apiKey || settings.apiKey;
     const testUrl = selectedChannel.baseUrl;
     const res = await testApiEndpoint(testUrl, testKey, t);
+    if (testRequestRef.current !== requestId) return;
     setTestStatus(res.status);
     setTestMessage(res.message);
     setTestLatency(res.latency);
@@ -231,9 +244,7 @@ export const ImageModelPage: React.FC<ImageModelPageProps> = ({
         onSelectId={(id) => {
           setSelectedChannelId(id);
           setDeletePending(false);
-          setTestStatus('idle');
-          setTestMessage('');
-          setTestLatency(null);
+          resetTest();
         }}
         railTitle={t('options.image.railTitle')}
       >
@@ -281,9 +292,8 @@ export const ImageModelPage: React.FC<ImageModelPageProps> = ({
                   value={selectedChannel.apiKey}
                   onChange={(e) => updateChannel({ apiKey: e.target.value })}
                   onBlur={() => {
-                    if (selectedChannel.apiKey) {
-                      updateChannel({ apiKey: sanitizeHttpHeaderToken(selectedChannel.apiKey) });
-                    }
+                    const cleaned = sanitizeHttpHeaderToken(selectedChannel.apiKey);
+                    if (selectedChannel.apiKey && cleaned !== selectedChannel.apiKey) updateChannel({ apiKey: cleaned });
                   }}
                   placeholder={settings.apiKey ? t('settings.inheritMainKeyPlaceholder') : 'sk-...'}
                   className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 py-2.5 pr-14 text-xs font-mono text-zinc-900 focus:border-zinc-900 focus:bg-white focus:outline-none transition-all shadow-2xs"
@@ -318,9 +328,8 @@ export const ImageModelPage: React.FC<ImageModelPageProps> = ({
                 value={selectedChannel.baseUrl}
                 onChange={(e) => updateChannel({ baseUrl: e.target.value })}
                 onBlur={() => {
-                  if (selectedChannel.baseUrl) {
-                    updateChannel({ baseUrl: sanitizeHttpUrl(selectedChannel.baseUrl) });
-                  }
+                  const cleaned = sanitizeHttpUrl(selectedChannel.baseUrl);
+                  if (selectedChannel.baseUrl && cleaned !== selectedChannel.baseUrl) updateChannel({ baseUrl: cleaned });
                 }}
                 placeholder={selectedProvider?.baseUrl || 'https://api.example.com/v1'}
                 className="w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 py-2.5 text-xs font-mono text-zinc-900 focus:border-zinc-900 focus:bg-white focus:outline-none transition-all shadow-2xs"

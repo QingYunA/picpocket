@@ -31,6 +31,7 @@ export const PlanGrid: React.FC<PlanGridProps> = ({ entitlement, disabled, onCho
             key={value}
             type="button"
             onClick={() => setBillingInterval(value)}
+            aria-pressed={interval === value}
             className={`rounded-lg px-3 py-1.5 text-xs font-medium cursor-pointer ${
               interval === value ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-800'
             }`}

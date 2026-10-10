@@ -138,10 +138,8 @@ export async function syncDualRemainingQuota(quotas: {
             ? quotas.visionRemaining
             : current.quotaRemaining,
       };
-      await saveUserSettings({
-        ...settings,
-        proMembership: updated,
-      });
+      // 只提交会员字段：saveUserSettings 自带合并，带上整份旧快照会覆盖期间用户刚改的其他设置
+      await saveUserSettings({ proMembership: updated });
     }
   } catch (err) {
     console.warn('[billing] Failed to sync dual remaining quota:', err);
@@ -295,11 +293,7 @@ export async function activateLicenseKey(
       expiresAt: row.expires_at ? new Date(row.expires_at).getTime() : undefined,
     };
 
-    const settings = await getUserSettings();
-    await saveUserSettings({
-      ...settings,
-      proMembership: membership,
-    });
+    await saveUserSettings({ proMembership: membership });
 
     return {
       success: true,

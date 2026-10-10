@@ -4,7 +4,7 @@ import {
   createThumbnail,
   dataUrlToBlob,
   updateGenerationTask,
-  saveGeneratedImageToGallery,
+  cancelGenerationTaskIfRunning,
 } from '../db';
 import { getTranslation } from '../i18n';
 import { handleExternalSignIn, handleSignInTabRemoved, isGoogleIdTokenMessage } from '../services/googleWebSignIn';
@@ -40,6 +40,7 @@ import type {
   GenerationBatchTask,
 } from '../types';
 import { CAPTURE_TAGS, withAnalyzedTag } from '../utils/itemHelpers';
+import { isLikelyImageBlob } from '../utils/file';
 import { classifyGeneratingTask, GENERATION_ACTIVE_WINDOW_MS } from '../utils/generationRecovery';
 
 export default defineBackground(() => {
@@ -115,10 +116,12 @@ export default defineBackground(() => {
     .catch((err) => console.warn('PicPocket channel migration failed:', err));
 
   // Listen for storage changes to update context menus immediately
+  // 设置里的额度同步、模型切换等写入同样会触发该事件，仅在菜单模式变化时才重建菜单（语言变化由 onLanguageChange 处理）
   chrome.storage?.onChanged?.addListener((changes, areaName) => {
-    if (areaName === 'local' && changes.promptsnap_settings) {
-      updateContextMenus();
-    }
+    if (areaName !== 'local' || !changes.promptsnap_settings) return;
+    const oldMode = (changes.promptsnap_settings.oldValue as Partial<UserSettings> | undefined)?.contextMenuMode;
+    const newMode = (changes.promptsnap_settings.newValue as Partial<UserSettings> | undefined)?.contextMenuMode;
+    if (oldMode !== newMode) updateContextMenus();
   });
 
   onLanguageChange((newLang) => {
@@ -140,6 +143,7 @@ export default defineBackground(() => {
         );
       } catch (err) {
         console.error('Failed to collect image:', err);
+        notifyCaptureFailed(tab?.id);
       }
     } else if (info.menuItemId === 'promptsnap-collect-and-analyze') {
       // Synchronously open sidepanel while user gesture token is still active
@@ -156,6 +160,7 @@ export default defineBackground(() => {
         );
       } catch (err) {
         console.error('Failed to collect and analyze image:', err);
+        notifyCaptureFailed(tab?.id);
       }
     }
   });
@@ -183,6 +188,8 @@ export default defineBackground(() => {
         });
         return true;
       }
+      sendResponse({ success: false, error: 'Invalid itemId' });
+      return false;
     }
 
     if (message.action === 'GET_FOLDERS') {
@@ -280,10 +287,8 @@ export default defineBackground(() => {
         activeGenerations.delete(taskId);
       }
       clearActiveGeneration(taskId).catch(() => {});
-      updateGenerationTask(taskId, {
-        status: 'cancelled',
-        error: '用户已中断生成',
-      })
+      // 取消与完成可能交错：只有仍在生成中的任务才改写为 cancelled，已完成的任务不被覆盖
+      cancelGenerationTaskIfRunning(taskId, '用户已中断生成')
         .then(() => {
           sendResponse({ success: true });
         })
@@ -330,10 +335,11 @@ export default defineBackground(() => {
         return false;
       }
 
-      getUserSettings().then(async (settings) => {
-        const controller = new AbortController();
-        activeAnalyses.set(itemId, controller);
+      // 同步登记：先于任何 await 占位，既避免重复消息并发启动同一条反推，也避免被冷启动自愈扫描误判为悬挂
+      const controller = new AbortController();
+      activeAnalyses.set(itemId, controller);
 
+      getUserSettings().then(async (settings) => {
         await setActiveAnalysis({
           itemId,
           startTime: startTime || Date.now(),
@@ -345,6 +351,7 @@ export default defineBackground(() => {
         runBackgroundAnalysis(itemId, settings, targetModel, customPrompt, startTime || Date.now(), controller);
         sendResponse({ success: true, itemId });
       }).catch((err) => {
+        activeAnalyses.delete(itemId);
         sendResponse({ success: false, error: String(err) });
       });
       return true;
@@ -412,6 +419,8 @@ export default defineBackground(() => {
 // 内存中维护正在运行中的反推任务 Controller
 const activeAnalyses = new Map<number, AbortController>();
 const BACKGROUND_BOOT_TIME = Date.now();
+/** 采集时下载原图的超时 */
+const CAPTURE_FETCH_TIMEOUT_MS = 30_000;
 const STALE_GENERATION_ERROR = '后台进程已重启，生成任务中断，请重新生成';
 const FOREGROUND_TIMEOUT_ERROR = '生成任务超时未完成（页面可能已关闭），请重新生成';
 
@@ -425,6 +434,8 @@ async function reconcileStaleAnalyzingItems() {
 
     const active = await getActiveAnalysis();
     for (const it of analyzingItems) {
+      // 本进程内仍在执行的反推（例如唤醒 SW 的正是一次收藏并反推）不能被当作悬挂任务重置
+      if (it.id !== undefined && activeAnalyses.has(it.id)) continue;
       const isRunning = Boolean(
         active &&
         active.itemId === it.id &&
@@ -653,6 +664,12 @@ async function runBackgroundGeneration(
   }
 }
 
+/** 右键菜单采集失败时，让当前页面弹出失败提示（页面没有内容脚本，如 chrome:// 页时静默忽略） */
+function notifyCaptureFailed(tabId: number | undefined): void {
+  if (tabId === undefined) return;
+  chrome.tabs.sendMessage(tabId, { action: 'SHOW_CAPTURE_FAILED' }).catch(() => {});
+}
+
 async function captureAndSaveImage(
   src: string,
   sourceUrl: string,
@@ -666,13 +683,18 @@ async function captureAndSaveImage(
     blob = dataUrlToBlob(src);
   } else {
     try {
-      const res = await fetch(src);
-      if (!res.ok) throw new Error(`Fetch failed: ${res.statusText}`);
+      // 无超时的 fetch 在源站挂起时会让右键菜单 / 悬浮徽标永远没有反馈
+      const res = await fetch(src, { signal: AbortSignal.timeout(CAPTURE_FETCH_TIMEOUT_MS) });
+      if (!res.ok) throw new Error(`Fetch failed: HTTP ${res.status}`);
       blob = await res.blob();
     } catch (err) {
       console.error('Failed to fetch image in background:', err);
       throw err;
     }
+  }
+  // 防盗链站点常以 200 返回 HTML 拦截页，不能当作图片入库
+  if (!isLikelyImageBlob(blob)) {
+    throw new Error(`Not an image (${blob.type || 'empty'})`);
   }
   const { thumbnailBlob, width, height, aspectRatio } = await createThumbnail(blob);
 
@@ -705,16 +727,18 @@ async function captureAndSaveImage(
     folderId: targetFolderId,
   })) as number;
 
+  // 紧随入库同步登记反推任务：先于后续任何 await，避免被冷启动自愈扫描当作悬挂任务重置
+  const analysisController = autoAnalyze ? new AbortController() : null;
+  if (analysisController) activeAnalyses.set(id, analysisController);
+
   // 2. 如果开启了 autoAnalyze，Background 立即无缝启动反推长任务，无需等待 Sidepanel 挂载！
-  if (autoAnalyze) {
+  if (analysisController) {
     // 记录 pending item id，让冷启动的侧边栏挂载时能立刻对齐并打开该 item 的详情抽屉
     await setPendingAutoAnalyzeItemId(id).catch(() => {});
 
     // 同步设置 active_analysis
     const settings = await getUserSettings();
     const startTime = Date.now();
-    const controller = new AbortController();
-    activeAnalyses.set(id, controller);
 
     await setActiveAnalysis({
       itemId: id,
@@ -723,7 +747,7 @@ async function captureAndSaveImage(
     }).catch(() => {});
 
     // 启动后台反推（网络长连接与保活心跳）
-    runBackgroundAnalysis(id, settings, settings.model, undefined, startTime, controller);
+    runBackgroundAnalysis(id, settings, settings.model, undefined, startTime, analysisController);
   }
 
   // 3. 通知前台 Sidepanel（如果已打开）

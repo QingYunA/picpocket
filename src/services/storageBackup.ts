@@ -215,15 +215,8 @@ export function createZipArchive(entries: ZipEntry[]): Blob {
 
   parts.push(eocd);
 
-  const totalLength = parts.reduce((acc, p) => acc + p.length, 0);
-  const fullArchive = new Uint8Array(totalLength);
-  let writeOffset = 0;
-  for (const p of parts) {
-    fullArchive.set(p, writeOffset);
-    writeOffset += p.length;
-  }
-
-  return new Blob([fullArchive], { type: 'application/zip' });
+  // 直接以分片组装 Blob，省去再拼接成一整块 Uint8Array 的内存拷贝（图库较大时可省下一倍峰值内存）
+  return new Blob(parts as BlobPart[], { type: 'application/zip' });
 }
 
 type BinaryCollector = (name: string, data: Uint8Array) => void;

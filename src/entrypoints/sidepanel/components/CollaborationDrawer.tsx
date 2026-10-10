@@ -27,7 +27,7 @@ import {
   MCP_CLIENT_TARGETS,
   type McpClientTarget,
 } from '@/services/mcpPrompts';
-import { saveUserSettings, DEFAULT_MCP_SETTINGS } from '@/utils/storage';
+import { getUserSettings, saveUserSettings, DEFAULT_MCP_SETTINGS } from '@/utils/storage';
 import { openOptionsPage } from '@/utils/navigation';
 
 interface CollaborationDrawerProps {
@@ -70,22 +70,27 @@ export const CollaborationDrawer: React.FC<CollaborationDrawerProps> = ({
     };
   }, [isOpen, mcpConfig.port]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
+  // 只写 mcpSettings 一项，且基于存储里最新的值：避免用面板持有的旧 settings 覆盖设置页刚改的渠道、Key 等
   const handleTogglePermission = async (key: 'read' | 'write' | 'generate') => {
-    const updatedPermissions = {
-      ...permissions,
-      [key]: !permissions[key],
-    };
-    const updatedSettings: UserSettings = {
-      ...settings,
+    const latest = (await getUserSettings()).mcpSettings || DEFAULT_MCP_SETTINGS;
+    const saved = await saveUserSettings({
       mcpSettings: {
-        ...mcpConfig,
-        permissions: updatedPermissions,
+        ...latest,
+        permissions: { ...latest.permissions, [key]: !latest.permissions[key] },
       },
-    };
-    await saveUserSettings(updatedSettings);
-    onUpdateSettings(updatedSettings);
+    });
+    onUpdateSettings(saved);
   };
 
   const handleSavePort = async () => {
@@ -95,15 +100,9 @@ export const CollaborationDrawer: React.FC<CollaborationDrawerProps> = ({
       setTimeout(() => setPortSaveMsg(''), 3000);
       return;
     }
-    const updatedSettings: UserSettings = {
-      ...settings,
-      mcpSettings: {
-        ...mcpConfig,
-        port: parsed,
-      },
-    };
-    await saveUserSettings(updatedSettings);
-    onUpdateSettings(updatedSettings);
+    const latest = (await getUserSettings()).mcpSettings || DEFAULT_MCP_SETTINGS;
+    const saved = await saveUserSettings({ mcpSettings: { ...latest, port: parsed } });
+    onUpdateSettings(saved);
     await mcpManager.restart();
     setPortSaveMsg(t('mcp.portSaved'));
     setTimeout(() => setPortSaveMsg(''), 2500);
@@ -135,48 +134,51 @@ export const CollaborationDrawer: React.FC<CollaborationDrawerProps> = ({
     2
   );
 
-  const handleCopyPrompt = () => {
-    navigator.clipboard.writeText(currentPrompt);
-    setCopiedPrompt(true);
-    setTimeout(() => setCopiedPrompt(false), 2500);
+  // 写入剪贴板成功后才显示「已复制」，被浏览器拒绝时不误导用户
+  const copyText = async (text: string, markCopied: (copied: boolean) => void, resetMs = 2000) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (err) {
+      console.warn('Failed to copy to clipboard:', err);
+      return;
+    }
+    markCopied(true);
+    setTimeout(() => markCopied(false), resetMs);
   };
 
-  const handleCopyInstallCli = () => {
-    navigator.clipboard.writeText(installCliCommand);
-    setCopiedInstallCli(true);
-    setTimeout(() => setCopiedInstallCli(false), 2000);
-  };
-
-  const handleCopyCmd = () => {
-    navigator.clipboard.writeText(bridgeCommand);
-    setCopiedCmd(true);
-    setTimeout(() => setCopiedCmd(false), 2000);
-  };
-
-  const handleCopyConfig = () => {
-    navigator.clipboard.writeText(mcpConfigJson);
-    setCopiedConfig(true);
-    setTimeout(() => setCopiedConfig(false), 2000);
-  };
+  const handleCopyPrompt = () => copyText(currentPrompt, setCopiedPrompt, 2500);
+  const handleCopyInstallCli = () => copyText(installCliCommand, setCopiedInstallCli);
+  const handleCopyCmd = () => copyText(bridgeCommand, setCopiedCmd);
+  const handleCopyConfig = () => copyText(mcpConfigJson, setCopiedConfig);
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="h-full w-full max-w-[390px] bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-200 border-l border-zinc-200/80">
+    <div
+      className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs animate-in fade-in duration-200"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('mcp.drawerTitle')}
+        className="h-full w-full max-w-[390px] bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-200 border-l border-zinc-200/80"
+      >
         {/* Header */}
         <div className="flex h-13 shrink-0 items-center justify-between border-b border-zinc-100 px-4">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200/50">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-200/50">
               <Bot className="h-4 w-4" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h2 className="text-xs font-bold text-zinc-900 leading-tight truncate">
                 {t('mcp.drawerTitle')}
               </h2>
               <div className="flex items-center gap-1.5 mt-0.5">
                 {connectionState === 'connected' ? (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    {t('mcp.statusConnected')} (127.0.0.1:{mcpConfig.port})
+                  <span className="inline-flex max-w-full items-center gap-1 px-1.5 py-0.2 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="truncate">{t('mcp.statusConnected')} (127.0.0.1:{mcpConfig.port})</span>
                   </span>
                 ) : connectionState === 'connecting' ? (
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
@@ -197,20 +199,24 @@ export const CollaborationDrawer: React.FC<CollaborationDrawerProps> = ({
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1">
             <button
+              type="button"
               onClick={() => {
                 onClose();
                 openOptionsPage({ route: '/mcp' });
               }}
               className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors cursor-pointer"
-              title="在全屏设置中心查看控制台与审计流水"
+              title={t('mcp.openInSettings')}
+              aria-label={t('mcp.openInSettings')}
             >
               <ExternalLink className="h-3.5 w-3.5" />
             </button>
             <button
+              type="button"
               onClick={onClose}
               className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 transition-colors cursor-pointer"
+              aria-label={t('common.close')}
             >
               <X className="h-4 w-4" />
             </button>

@@ -103,19 +103,22 @@ export async function renameFolder(id: number, newName: string): Promise<void> {
 }
 
 export async function deleteFolder(id: number): Promise<void> {
-  // Move all direct items in this folder to uncategorized (null)
-  await db.items.where('folderId').equals(id).modify({ folderId: null });
+  // 整棵子树在同一事务内删除：中途失败整体回滚，不会留下「图片已转未分类但文件夹还在」的半套状态
+  await db.transaction('rw', db.items, db.folders, async () => {
+    // Move all direct items in this folder to uncategorized (null)
+    await db.items.where('folderId').equals(id).modify({ folderId: null });
 
-  // Recursively find and delete child subfolders
-  const subFolders = await db.folders.where('parentId').equals(id).toArray();
-  for (const sub of subFolders) {
-    if (sub.id) {
-      await deleteFolder(sub.id);
+    // Recursively find and delete child subfolders
+    const subFolders = await db.folders.where('parentId').equals(id).toArray();
+    for (const sub of subFolders) {
+      if (sub.id) {
+        await deleteFolder(sub.id);
+      }
     }
-  }
 
-  // Delete this folder
-  await db.folders.delete(id);
+    // Delete this folder
+    await db.folders.delete(id);
+  });
 }
 
 export async function moveItemToFolder(itemId: number, folderId: number | null): Promise<void> {
@@ -212,6 +215,9 @@ export async function createThumbnail(
       }
     }
 
+    // 及时释放位图内存：Service Worker 连续收藏大图时，等待 GC 会堆积解码后的像素缓冲
+    bitmap.close?.();
+
     return {
       thumbnailBlob: thumbnailBlob || blob,
       width: origWidth,
@@ -229,96 +235,39 @@ export async function createThumbnail(
   }
 }
 
-export interface CropRect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  dpr: number;
-}
-
 /**
- * Safely convert a base64 DataURL into a Blob without relying on fetch()
+ * Safely convert a DataURL into a Blob without relying on fetch()
  * Prevents "Failed to fetch" on large screenshots in Service Worker.
+ * 同时支持 base64 与百分号编码（如 `data:image/svg+xml,%3Csvg...`）两种载荷；缺少载荷时返回空 Blob。
  */
 export function dataUrlToBlob(dataUrl: string): Blob {
-  const parts = dataUrl.split(',');
-  if (parts.length < 2 || !parts[0] || !parts[1]) {
-    return new Blob([], { type: 'image/png' });
-  }
-  const mime = parts[0].match(/:(.*?);/)?.[1] || 'image/png';
-  const binStr = atob(parts[1]);
-  const len = binStr.length;
-  const u8arr = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    u8arr[i] = binStr.charCodeAt(i);
-  }
-  return new Blob([u8arr], { type: mime });
-}
+  const commaIdx = dataUrl.indexOf(',');
+  if (commaIdx === -1) return new Blob([], { type: 'image/png' });
 
-/**
- * Accurately crop a rectangular area from an image DataURL or Blob.
- * Handles Retina DPR scaling and supports both Worker (OffscreenCanvas) and DOM environments.
- */
-export async function cropImage(
-  dataUrlOrBlob: string | Blob,
-  rect: CropRect
-): Promise<{ croppedBlob: Blob; width: number; height: number }> {
-  let blob: Blob;
-  if (typeof dataUrlOrBlob === 'string') {
-    blob = dataUrlToBlob(dataUrlOrBlob);
-  } else {
-    blob = dataUrlOrBlob;
-  }
+  const header = dataUrl.slice(0, commaIdx);
+  const payload = dataUrl.slice(commaIdx + 1);
+  if (!payload) return new Blob([], { type: 'image/png' });
 
-  if (typeof createImageBitmap === 'undefined') {
-    return { croppedBlob: blob, width: Math.round(rect.width), height: Math.round(rect.height) };
-  }
+  const [rawMime = '', ...params] = header.replace(/^data:/i, '').split(';');
+  const mime = rawMime.trim() || 'image/png';
+  const isBase64 = params.some((param) => param.trim().toLowerCase() === 'base64');
 
-  try {
-    const bitmap = await createImageBitmap(blob);
-    const dpr = rect.dpr || 1;
-
-    const sx = Math.max(0, Math.round(rect.x * dpr));
-    const sy = Math.max(0, Math.round(rect.y * dpr));
-    const sw = Math.min(bitmap.width - sx, Math.max(1, Math.round(rect.width * dpr)));
-    const sh = Math.min(bitmap.height - sy, Math.max(1, Math.round(rect.height * dpr)));
-
-    let croppedBlob: Blob | null = null;
-
-    if (typeof OffscreenCanvas !== 'undefined') {
-      const offscreen = new OffscreenCanvas(sw, sh);
-      const ctx = offscreen.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, sw, sh);
-        croppedBlob = await offscreen.convertToBlob({ type: 'image/png' });
-      }
-    } else if (typeof document !== 'undefined') {
-      const canvas = document.createElement('canvas');
-      canvas.width = sw;
-      canvas.height = sh;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, sw, sh);
-        croppedBlob = await new Promise<Blob>((resolve) => {
-          canvas.toBlob((b) => resolve(b || blob), 'image/png');
-        });
-      }
+  if (isBase64) {
+    const binStr = atob(payload);
+    const u8arr = new Uint8Array(binStr.length);
+    for (let i = 0; i < binStr.length; i++) {
+      u8arr[i] = binStr.charCodeAt(i);
     }
-
-    return {
-      croppedBlob: croppedBlob || blob,
-      width: sw,
-      height: sh,
-    };
-  } catch (err) {
-    console.warn('Image crop failed, falling back to original blob:', err);
-    return {
-      croppedBlob: blob,
-      width: Math.round(rect.width),
-      height: Math.round(rect.height),
-    };
+    return new Blob([u8arr], { type: mime });
   }
+
+  let text = payload;
+  try {
+    text = decodeURIComponent(payload);
+  } catch {
+    // 含未编码的 % 时按原文处理
+  }
+  return new Blob([text], { type: mime });
 }
 
 /**
@@ -332,6 +281,8 @@ export async function saveGeneratedImageToGallery(
   folderId?: number | null
 ): Promise<number> {
   const blob = dataUrlToBlob(image.dataUrl);
+  // 图片地址下载失败时 dataUrl 会保留为原始 http 链接，解码出空 Blob；直接入库只会得到一张打不开的空白素材
+  if (blob.size === 0) throw new Error('图片数据不可用（原链接可能已过期），无法保存到图库');
   const { thumbnailBlob, width, height, aspectRatio } = await createThumbnail(blob);
 
   const id = await db.items.add({

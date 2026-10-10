@@ -4,7 +4,6 @@ import {
   X,
   CheckCircle2,
   AlertCircle,
-  RefreshCw,
 } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import {
@@ -34,12 +33,21 @@ export const ProSubscriptionModal: React.FC<ProSubscriptionModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      getProMembership().then(setMembership);
+      getProMembership().then(setMembership).catch(() => {});
       setFeedback(null);
       setShowInputOverride(false);
       setLicenseInput('');
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -74,8 +82,18 @@ export const ProSubscriptionModal: React.FC<ProSubscriptionModalProps> = ({
   const isActivated = Boolean(membership.isPro);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-2xs p-4 animate-in fade-in duration-150">
-      <div className="relative flex max-h-[85vh] w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-xl text-zinc-900">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-2xs p-4 animate-in fade-in duration-150"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pro-subscription-title"
+        className="relative flex max-h-[85vh] w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-xl text-zinc-900"
+      >
         {/* Header */}
         <div className="flex items-start justify-between border-b border-zinc-100 px-5 pt-5 pb-4">
           <div className="flex items-center gap-3">
@@ -83,7 +101,7 @@ export const ProSubscriptionModal: React.FC<ProSubscriptionModalProps> = ({
               <KeyRound className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-zinc-900">
+              <h2 id="pro-subscription-title" className="text-sm font-bold text-zinc-900">
                 {t('subscription.modalTitle')}
               </h2>
               <p className="text-[11px] text-zinc-500 mt-0.5 leading-snug">
@@ -93,8 +111,10 @@ export const ProSubscriptionModal: React.FC<ProSubscriptionModalProps> = ({
           </div>
 
           <button
+            type="button"
             onClick={onClose}
-            className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors cursor-pointer"
+            aria-label={t('common.close')}
+            className="ml-3 shrink-0 rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition-colors cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
@@ -132,7 +152,7 @@ export const ProSubscriptionModal: React.FC<ProSubscriptionModalProps> = ({
                         / {membership.visionTotalQuota}
                       </span>
                     )}
-                    <span className="text-[10px] text-zinc-400 ml-1">次</span>
+                    <span className="text-[10px] text-zinc-400 ml-1">{t('subscription.timesUnit')}</span>
                   </div>
                 </div>
 
@@ -149,7 +169,7 @@ export const ProSubscriptionModal: React.FC<ProSubscriptionModalProps> = ({
                         / {membership.imageTotalQuota}
                       </span>
                     )}
-                    <span className="text-[10px] text-zinc-400 ml-1">次</span>
+                    <span className="text-[10px] text-zinc-400 ml-1">{t('subscription.timesUnit')}</span>
                   </div>
                 </div>
               </div>
@@ -163,7 +183,7 @@ export const ProSubscriptionModal: React.FC<ProSubscriptionModalProps> = ({
                     })}
                   </span>
                 ) : (
-                  <span>永久有效</span>
+                  <span>{t('subscription.permanentValid')}</span>
                 )}
                 <button
                   type="button"
@@ -186,7 +206,11 @@ export const ProSubscriptionModal: React.FC<ProSubscriptionModalProps> = ({
                     type="text"
                     value={licenseInput}
                     onChange={(e) => setLicenseInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && licenseInput.trim() && !isActivating) handleActivate();
+                    }}
                     placeholder={t('subscription.licensePlaceholder')}
+                    autoFocus
                     className="flex-1 rounded-xl border border-zinc-200 bg-zinc-50/50 px-3 py-2 text-xs font-mono text-zinc-900 focus:border-zinc-900 focus:bg-white focus:outline-none transition-all"
                   />
                   <button
@@ -202,6 +226,7 @@ export const ProSubscriptionModal: React.FC<ProSubscriptionModalProps> = ({
 
               {feedback && (
                 <div
+                  role={feedback.isError ? 'alert' : 'status'}
                   className={`p-2.5 rounded-xl border text-[11px] flex items-center gap-1.5 ${
                     feedback.isError
                       ? 'bg-red-50 text-red-800 border-red-200'
@@ -224,7 +249,7 @@ export const ProSubscriptionModal: React.FC<ProSubscriptionModalProps> = ({
                     onClick={() => setShowInputOverride(false)}
                     className="text-zinc-500 hover:text-zinc-800 text-[11px] cursor-pointer"
                   >
-                    ← 返回当前额度
+                    ← {t('subscription.backToQuota')}
                   </button>
                 </div>
               )}

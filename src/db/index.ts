@@ -364,6 +364,19 @@ export async function updateGenerationTask(
 }
 
 /**
+ * 仅当任务仍处于 generating 时才标记为 cancelled，返回是否真的写入。
+ * 取消请求与任务完成可能交错：已 success / failed 的任务不能被迟到的取消覆盖。
+ */
+export async function cancelGenerationTaskIfRunning(id: string, error: string): Promise<boolean> {
+  return db.transaction('rw', db.generationTasks, async () => {
+    const task = await db.generationTasks.get(id);
+    if (!task || task.status !== 'generating') return false;
+    await db.generationTasks.update(id, { status: 'cancelled', error });
+    return true;
+  });
+}
+
+/**
  * Deletes a single generation task by its ID.
  */
 export async function deleteGenerationTask(id: string): Promise<void> {

@@ -105,9 +105,10 @@ import {
     saveCanvasImageToPocket,
     saveReversePromptToPocket,
 } from "@/integrations/picpocket/pocket-adapter";
-import { applyRecoveredGenerations, completeCanvasGeneration, recoverCanvasGenerations } from "@/integrations/picpocket/generation-recovery";
+import { applyRecoveredGenerations, completeCanvasGeneration, listPendingCanvasNodeIds, recoverCanvasGenerations } from "@/integrations/picpocket/generation-recovery";
 import { CANVAS_MCP_ACK_KEY, CANVAS_MCP_COMMAND_KEY, CANVAS_MCP_PRESENCE_KEY, CANVAS_MCP_SNAPSHOT_KEY, compactCanvasSnapshot, type CanvasMcpCommand } from "@/integrations/picpocket/canvas-mcp-bridge";
 import { isPicPocketCanvasNodeTypeSupported, isPicPocketModelCapabilitySupported } from "@/integrations/picpocket/picpocket-config-model";
+import { NODE_PANEL_SIZE, computeRevealViewport, findFreeNodeCenter, layoutNodeRows } from "@/integrations/picpocket/node-placement";
 
 // Register built-in nodes in the shared registry once when the module loads.
 registerBuiltinNodes();
@@ -467,6 +468,10 @@ function InfiniteCanvasPage() {
                 const recovered = await recoverCanvasGenerations(projectId);
                 restoredNodes = applyRecoveredGenerations(restoredNodes, recovered);
                 await Promise.all(recovered.map((item) => completeCanvasGeneration(item.taskId)));
+                // 生图任务在后台继续跑，可以等；其余 loading 节点（如反推文本，请求随页面一起中断）已无任务可等，复位为可重试，避免永远转圈
+                const pendingNodeIds = await listPendingCanvasNodeIds(projectId);
+                const interrupted = resetInterruptedGeneration(restoredNodes);
+                restoredNodes = restoredNodes.map((node, index) => (pendingNodeIds.has(node.id) ? node : interrupted[index]!));
             }
             const restoredSessions = await hydrateAssistantImages(project.chatSessions || []);
             setNodes(restoredNodes);
@@ -477,6 +482,8 @@ function InfiniteCanvasPage() {
             setShowImageInfo(project.showImageInfo || false);
             setViewport(project.viewport);
             useCanvasGenerationDefaults.getState().setDefaults(project.generationDefaults ?? null);
+            // 视口以项目里保存的为准，不要被首次挂载时的「居中」覆盖
+            didInitialCenterRef.current = true;
             historyRef.current = { past: [], future: [] };
             if (historyCommitTimerRef.current) {
                 clearTimeout(historyCommitTimerRef.current);
@@ -577,9 +584,12 @@ function InfiniteCanvasPage() {
         selectionBoxRef.current = selectionBox;
     }, [selectionBox]);
 
+    // 画布容器要等项目加载完（不再显示加载占位）才会挂载，所以要在 projectLoaded 之后再量尺寸；
+    // 依赖写成 [] 时容器还不存在、副作用直接返回，size 会一直停在初始的 1200x720，
+    // 屏幕中心、缩放锚点、新节点落点都会按这个假尺寸算，窗口越大偏得越远
     useEffect(() => {
         const el = containerRef.current;
-        if (!el) return;
+        if (!projectLoaded || !el) return;
 
         const updateSize = () => {
             const rect = el.getBoundingClientRect();
@@ -594,7 +604,7 @@ function InfiniteCanvasPage() {
         const resizeObserver = new ResizeObserver(updateSize);
         resizeObserver.observe(el);
         return () => resizeObserver.disconnect();
-    }, []);
+    }, [projectLoaded]);
 
     const screenToCanvas = useCallback((clientX: number, clientY: number) => {
         const rect = containerRef.current?.getBoundingClientRect();
@@ -2349,18 +2359,38 @@ function InfiniteCanvasPage() {
         [createAudioFileNode, createImageFileNode, createVideoFileNode, screenToCanvas, size.height, size.width],
     );
 
+    // 已有节点的外框（不含组节点：组本来就是用来包住其他节点的），用于给新插入的节点找空位
+    const occupiedNodeBoxes = useCallback(
+        () => nodesRef.current.filter((node) => node.type !== CanvasNodeType.Group).map((node) => ({ x: node.position.x, y: node.position.y, width: node.width, height: node.height })),
+        [],
+    );
+
+    // 节点下方的提示词面板在世界层里，节点贴近窗口下沿时「生成」按钮会落到窗口外；插入后把节点和面板整体移进可视区
+    const revealNodeWithPanel = useCallback(
+        (node: Pick<CanvasNodeData, "position" | "width" | "height">) => {
+            const next = computeRevealViewport({
+                viewport: viewportRef.current,
+                container: size,
+                node: { x: node.position.x, y: node.position.y, width: node.width, height: node.height },
+                panel: NODE_PANEL_SIZE,
+            });
+            if (next) setViewport(next);
+        },
+        [size],
+    );
+
     const insertAssistantImage = useCallback(
         async (image: CanvasAssistantImage, targetPosition?: Position) => {
             const storedImage = image.storageKey ? { url: image.dataUrl, storageKey: image.storageKey, width: 1, height: 1, bytes: 0, mimeType: "image/png" } : await uploadImage(image.dataUrl);
             await ensureImagePreview(storedImage.storageKey);
             const meta = storedImage.width === 1 && storedImage.height === 1 ? await readImageMeta(storedImage.url) : storedImage;
             const config = fitNodeSize(meta.width, meta.height);
-            const center = targetPosition || screenToCanvas((containerRef.current?.getBoundingClientRect().left || 0) + size.width / 2, (containerRef.current?.getBoundingClientRect().top || 0) + size.height / 2);
+            const center = targetPosition || findFreeNodeCenter(screenToCanvas((containerRef.current?.getBoundingClientRect().left || 0) + size.width / 2, (containerRef.current?.getBoundingClientRect().top || 0) + size.height / 2), config, occupiedNodeBoxes());
             const id = `image-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
             const node: CanvasNodeData = {
                 id,
                 type: CanvasNodeType.Image,
-                title: image.prompt.slice(0, 32) || "Generated Image",
+                title: image.title || image.prompt.slice(0, 32) || "Generated Image",
                 position: { x: center.x - config.width / 2, y: center.y - config.height / 2 },
                 width: config.width,
                 height: config.height,
@@ -2371,8 +2401,49 @@ function InfiniteCanvasPage() {
             setSelectedNodeIds(new Set([id]));
             setSelectedConnectionId(null);
             setDialogNodeId(id);
+            if (!targetPosition) revealNodeWithPanel(node);
         },
-        [screenToCanvas, size.height, size.width],
+        [occupiedNodeBoxes, revealNodeWithPanel, screenToCanvas, size.height, size.width],
+    );
+
+    // 只有提示词、没有图片的接力（侧边栏带词打开画布、MCP 指令）：在空位放一个待生成的图片节点并打开提示词面板
+    const addPromptImageNode = useCallback(
+        (prompt: string, title?: string) => {
+            const spec = NODE_DEFAULT_SIZE[CanvasNodeType.Image];
+            const node = createCanvasNode(CanvasNodeType.Image, findFreeNodeCenter(getCanvasCenter(), spec, occupiedNodeBoxes()), {
+                prompt,
+                composerContent: prompt,
+                status: "idle",
+            });
+            if (title) node.title = title;
+            setNodes((previous) => [...previous, node]);
+            setSelectedNodeIds(new Set([node.id]));
+            setSelectedConnectionId(null);
+            setDialogNodeId(node.id);
+            revealNodeWithPanel(node);
+        },
+        [getCanvasCenter, occupiedNodeBoxes, revealNodeWithPanel],
+    );
+
+    // 批量拖入口袋资产：按各图实际节点尺寸排成每行 3 个，第一张落在释放点，后续依次向右、向下，避免互相压住。
+    // 逐张读取、逐张插入，同时避免一次性把所有原图 DataURL 留在内存里
+    const insertPocketAssetsAsRows = useCallback(
+        async (ids: number[], origin: Position) => {
+            const sizes: Array<{ width: number; height: number }> = [];
+            for (const id of ids) {
+                const full = await resolvePocketCanvasAsset(id);
+                if (!full) continue;
+                sizes.push(fitNodeSize(full.width, full.height));
+                const { centers } = layoutNodeRows(sizes, 3, 40);
+                const slot = centers[sizes.length - 1]!;
+                const first = centers[0]!;
+                await insertAssistantImage(
+                    { id: `asset-${Date.now()}-${id}`, title: full.title, prompt: full.prompt, dataUrl: full.dataUrl, picpocketAssetId: full.id },
+                    { x: origin.x + slot.x - first.x, y: origin.y + slot.y - first.y },
+                );
+            }
+        },
+        [insertAssistantImage],
     );
 
     const handleDrop = useCallback(
@@ -2384,6 +2455,7 @@ function InfiniteCanvasPage() {
                     void insertAssistantImage(
                         {
                             id: `asset-${Date.now()}${suffix}`,
+                            title: full.title,
                             prompt: full.prompt,
                             dataUrl: full.dataUrl,
                             picpocketAssetId: full.id,
@@ -2400,15 +2472,7 @@ function InfiniteCanvasPage() {
                     const parsed = JSON.parse(pocketBatchData);
                     if (Array.isArray(parsed?.ids) && parsed.ids.length > 0) {
                         const basePos = screenToCanvas(event.clientX, event.clientY);
-                        const COLUMNS = 3;
-                        const SPACING_X = 280;
-                        const SPACING_Y = 280;
-                        parsed.ids.forEach((id: number, index: number) => {
-                            const col = index % COLUMNS;
-                            const row = Math.floor(index / COLUMNS);
-                            const pos = { x: basePos.x + col * SPACING_X, y: basePos.y + row * SPACING_Y };
-                            insertResolvedPocketAsset(id, pos, `-${id}`);
-                        });
+                        void insertPocketAssetsAsRows(parsed.ids as number[], basePos);
                         return;
                     }
                 } catch (e) {
@@ -3130,7 +3194,7 @@ function InfiniteCanvasPage() {
 
     const insertAssistantText = useCallback(
         (text: string, title?: string) => {
-            const center = screenToCanvas((containerRef.current?.getBoundingClientRect().left || 0) + size.width / 2, (containerRef.current?.getBoundingClientRect().top || 0) + size.height / 2);
+            const center = findFreeNodeCenter(screenToCanvas((containerRef.current?.getBoundingClientRect().left || 0) + size.width / 2, (containerRef.current?.getBoundingClientRect().top || 0) + size.height / 2), NODE_DEFAULT_SIZE[CanvasNodeType.Text], occupiedNodeBoxes());
             const node = {
                 ...createCanvasNode(CanvasNodeType.Text, center, { content: text, status: NODE_STATUS_SUCCESS }),
                 title: title || text.slice(0, 32) || "Assistant Text",
@@ -3140,7 +3204,7 @@ function InfiniteCanvasPage() {
             setSelectedNodeIds(new Set([node.id]));
             setSelectedConnectionId(null);
         },
-        [screenToCanvas, size.height, size.width],
+        [occupiedNodeBoxes, screenToCanvas, size.height, size.width],
     );
 
     const handleAssetInsert = useCallback(
@@ -3177,7 +3241,7 @@ function InfiniteCanvasPage() {
                       }
                     : undefined;
                 insertAssistantImage(
-                    { id: `asset-${Date.now()}`, prompt: payload.prompt || "", dataUrl: payload.dataUrl, storageKey: payload.storageKey, picpocketAssetId: payload.picpocketAssetId },
+                    { id: `asset-${Date.now()}`, title: payload.title, prompt: payload.prompt || "", dataUrl: payload.dataUrl, storageKey: payload.storageKey, picpocketAssetId: payload.picpocketAssetId },
                     targetPosition,
                 );
             }
@@ -3188,8 +3252,8 @@ function InfiniteCanvasPage() {
 
     // 接力素材一经读取就已从存储里移除，所以处理期间不能因为依赖变化（缩放、平移会让 insertAssistantImage 换引用）而丢弃结果：
     // 回调通过 ref 取最新函数，副作用只在画布加载完成时订阅一次，仅在页面卸载后才放弃
-    const handoffRef = useRef({ insertAssistantImage, getCanvasCenter, message, t });
-    handoffRef.current = { insertAssistantImage, getCanvasCenter, message, t };
+    const handoffRef = useRef({ insertAssistantImage, addPromptImageNode, message, t });
+    handoffRef.current = { insertAssistantImage, addPromptImageNode, message, t };
     useEffect(() => {
         if (!projectLoaded) return;
         let cancelled = false;
@@ -3212,21 +3276,11 @@ function InfiniteCanvasPage() {
                             picpocketAssetId: launch.asset?.id,
                         });
                     }
-                    if (launch.prompt) {
-                        const node = createCanvasNode(CanvasNodeType.Image, handoffRef.current.getCanvasCenter(), {
-                            prompt: launch.prompt,
-                            composerContent: launch.prompt,
-                            status: "idle",
-                        });
-                        setNodes((previous) => [...previous, node]);
-                        setSelectedNodeIds(new Set([node.id]));
-                        setSelectedConnectionId(null);
-                        setDialogNodeId(node.id);
-                    }
+                    if (launch.prompt) handoffRef.current.addPromptImageNode(launch.prompt);
                 })
                 .catch((error) => {
                     console.error("[PicPocket] Failed to open pocket asset on canvas", error);
-                    handoffRef.current.message.error(handoffRef.current.t("canvas.importFailed"));
+                    handoffRef.current.message.error(handoffRef.current.t("canvas.picPocketAssets.insertFailed"));
                 })
                 .finally(() => {
                     consuming = false;
@@ -3273,32 +3327,29 @@ function InfiniteCanvasPage() {
         return () => window.clearTimeout(timer);
     }, [connections, currentProject?.title, nodes, projectId, projectLoaded, titleDraft, viewport]);
 
+    // 与接力一样通过 ref 取最新回调：缩放、平移会让 insertAssistant* 换引用，若放进依赖，
+    // 指令执行到一半（图片还在入库）时副作用重建，会把仍留在存储里的同一条指令再执行一遍，画布上就多出重复节点
+    const mcpCommandRef = useRef({ insertAssistantImage, insertAssistantText, addPromptImageNode });
+    mcpCommandRef.current = { insertAssistantImage, insertAssistantText, addPromptImageNode };
     useEffect(() => {
         if (import.meta.env.VITE_PICPOCKET_EXTENSION !== "1" || !projectLoaded || !chrome.storage?.local) return;
         let lastCommandId = "";
         const execute = async (command?: CanvasMcpCommand) => {
             if (!command || command.commandId === lastCommandId) return;
             lastCommandId = command.commandId;
+            const handlers = mcpCommandRef.current;
             try {
                 if (command.type === "text") {
-                    insertAssistantText(command.text || "", command.title);
+                    handlers.insertAssistantText(command.text || "", command.title);
                 } else if (command.imageUrl) {
-                    await insertAssistantImage({
+                    await handlers.insertAssistantImage({
                         id: command.commandId,
+                        title: command.title,
                         prompt: command.prompt || "",
                         dataUrl: command.imageUrl,
                     });
                 } else {
-                    const node = createCanvasNode(CanvasNodeType.Image, getCanvasCenter(), {
-                        prompt: command.prompt || "",
-                        composerContent: command.prompt || "",
-                        status: "idle",
-                    });
-                    if (command.title) node.title = command.title;
-                    setNodes((previous) => [...previous, node]);
-                    setSelectedNodeIds(new Set([node.id]));
-                    setSelectedConnectionId(null);
-                    setDialogNodeId(node.id);
+                    handlers.addPromptImageNode(command.prompt || "", command.title);
                 }
                 await chrome.storage.local.set({ [CANVAS_MCP_ACK_KEY]: { commandId: command.commandId } });
             } catch (error) {
@@ -3319,7 +3370,7 @@ function InfiniteCanvasPage() {
         chrome.storage.onChanged.addListener(listener);
         void chrome.storage.local.get(CANVAS_MCP_COMMAND_KEY).then((stored) => execute(stored[CANVAS_MCP_COMMAND_KEY] as CanvasMcpCommand | undefined));
         return () => chrome.storage.onChanged.removeListener(listener);
-    }, [getCanvasCenter, insertAssistantImage, insertAssistantText, projectLoaded]);
+    }, [projectLoaded]);
 
     useEffect(() => {
         if (import.meta.env.VITE_PICPOCKET_EXTENSION !== "1" || !projectLoaded || !chrome.runtime?.onMessage) return;

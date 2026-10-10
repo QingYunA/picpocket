@@ -115,6 +115,7 @@ export type CanvasAssistantReference = {
 
 export type CanvasAssistantImage = {
     id: string;
+    title?: string;
     dataUrl: string;
     storageKey?: string;
     prompt: string;

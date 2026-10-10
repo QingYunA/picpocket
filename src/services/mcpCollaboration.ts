@@ -28,6 +28,10 @@ const CANVAS_MCP_ACK_KEY = 'picpocket_canvas_mcp_ack_v1';
 const CANVAS_MCP_PRESENCE_KEY = 'picpocket_canvas_mcp_presence_v1';
 let canvasCommandQueue: Promise<void> = Promise.resolve();
 
+/** 图片链接无法下载时，convertImageUrlToDataUrl 会原样返回链接；此时入库只会得到空白素材，应明确报错 */
+const IMAGE_FETCH_FAILED_TEXT =
+  '【图片获取失败 / Image Fetch Failed】: 无法下载该链接指向的图片（链接已失效、需要登录或服务端拒绝访问）。请改为传入 base64 dataUrl。';
+
 async function executeGetCanvasState(permissions: McpPermissions): Promise<McpToolResponse> {
   if (!permissions.read) {
     return {
@@ -375,6 +379,12 @@ export async function executeSaveAsset(
   }
 
   const finalDataUrl = await convertImageUrlToDataUrl(rawUrl);
+  if (!finalDataUrl.startsWith('data:')) {
+    return {
+      isError: true,
+      content: [{ type: 'text', text: IMAGE_FETCH_FAILED_TEXT }],
+    };
+  }
   const promptText = (args.prompt || '').trim();
   const title = (args.title || '').trim() || (promptText.length > 30 ? `${promptText.slice(0, 30)}...` : 'AI 协同资产');
 
@@ -667,6 +677,9 @@ export async function executeGenerateAndSaveAsset(
     const rawRefUrl = (args.referenceImageUrl || args.referenceImageDataUrl || '').trim();
     if (rawRefUrl) {
       resolvedReferenceDataUrl = await convertImageUrlToDataUrl(rawRefUrl);
+      if (!resolvedReferenceDataUrl.startsWith('data:')) {
+        return { isError: true, content: [{ type: 'text', text: IMAGE_FETCH_FAILED_TEXT }] };
+      }
       referenceNote = rawRefUrl.startsWith('data:')
         ? 'Base64 数据 (Inline DataURL)'
         : `外部图片 (${rawRefUrl.length > 50 ? `${rawRefUrl.slice(0, 50)}...` : rawRefUrl})`;
@@ -797,10 +810,10 @@ class McpCollaborationManager {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
-    }
+    // 先解除引用再关闭：旧连接稍后触发的 onclose 据此识别自己已过期，不会误清新连接或排队重连
+    const ws = this.ws;
+    this.ws = null;
+    ws?.close();
     this.setState('disconnected');
   }
 
@@ -854,10 +867,11 @@ class McpCollaborationManager {
     }
 
     const settings = await getUserSettings();
+    // 读设置期间可能已被 stop()，或另一次 connect()（重连定时器与 start 并发）已建好连接
+    if (this.isExplicitlyStopped || this.ws) return;
     const mcpConfig: McpSettings = settings.mcpSettings || DEFAULT_MCP_SETTINGS;
 
     if (!mcpConfig.enabled) {
-
       this.setState('disconnected');
       return;
     }
@@ -881,6 +895,7 @@ class McpCollaborationManager {
       };
 
       ws.onmessage = async (event) => {
+        if (this.ws !== ws) return;
         try {
           const msg = JSON.parse(event.data);
           if (msg.type === 'registered') {
@@ -900,10 +915,12 @@ class McpCollaborationManager {
       };
 
       ws.onerror = () => {
-        this.setState('error');
+        if (this.ws === ws) this.setState('error');
       };
 
       ws.onclose = () => {
+        // 已被 stop()/restart() 替换的旧连接，其关闭事件不得影响当前连接状态
+        if (this.ws !== ws) return;
         this.setState('disconnected');
         this.ws = null;
         if (!this.isExplicitlyStopped) {

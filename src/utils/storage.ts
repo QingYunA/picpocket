@@ -56,6 +56,11 @@ export async function getUserSettings(): Promise<UserSettings> {
     language: getDefaultLanguage(),
   };
 
+  // 本会话 chrome.storage 写入失败时的内存副本比 chrome.storage 里的旧值新，优先返回
+  if (inMemoryStorage?.promptsnap_settings) {
+    return { ...fallbackSettings, ...inMemoryStorage.promptsnap_settings };
+  }
+
   const chromeRead = await readChromeLocal('promptsnap_settings');
   if (chromeRead) {
     return { ...fallbackSettings, ...((chromeRead.value as Partial<UserSettings> | undefined) || {}) };
@@ -122,12 +127,13 @@ async function writeUserSettings(settings: Partial<UserSettings>): Promise<UserS
     updated.imageBaseUrl = sanitizeHttpUrl(updated.imageBaseUrl);
   }
 
-  // 三层容错：任一层写入失败（配额溢出、宿主存储不可用）只告警，全部失败时退回内存，不让设置保存抛出异常
-  let persisted = false;
+  // 三层容错：任一层写入失败（配额溢出、宿主存储不可用）只告警，不让设置保存抛出异常；
+  // chrome.storage 没写进去时在内存留一份，保证本会话读回的是最新值而不是 chrome.storage 里的旧值
+  let chromePersisted = false;
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
     try {
       await chrome.storage.local.set({ promptsnap_settings: updated });
-      persisted = true;
+      chromePersisted = true;
     } catch (e) {
       console.warn('Failed to persist settings to chrome.storage.local:', e);
     }
@@ -136,15 +142,15 @@ async function writeUserSettings(settings: Partial<UserSettings>): Promise<UserS
   if (typeof localStorage !== 'undefined') {
     try {
       localStorage.setItem('promptsnap_settings', JSON.stringify(updated));
-      persisted = true;
     } catch (e) {
       console.warn('Failed to persist settings to localStorage:', e);
     }
   }
 
-  if (!persisted) {
-    if (!inMemoryStorage) inMemoryStorage = {};
-    inMemoryStorage.promptsnap_settings = updated;
+  if (chromePersisted) {
+    if (inMemoryStorage) delete inMemoryStorage.promptsnap_settings;
+  } else {
+    inMemoryStorage = { ...(inMemoryStorage || {}), promptsnap_settings: updated };
   }
 
   return updated;

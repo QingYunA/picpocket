@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isLikelyImageBlob } from '../file';
+import { isLikelyImageBlob, toPngBlob } from '../file';
 
 describe('isLikelyImageBlob', () => {
   it('放行图片类型、无类型与 octet-stream', () => {
@@ -13,5 +13,12 @@ describe('isLikelyImageBlob', () => {
     expect(isLikelyImageBlob(new Blob(['<html>403</html>'], { type: 'text/html; charset=utf-8' }))).toBe(false);
     expect(isLikelyImageBlob(new Blob(['{"error":1}'], { type: 'application/json' }))).toBe(false);
     expect(isLikelyImageBlob(new Blob([], { type: 'image/png' }))).toBe(false);
+  });
+});
+
+describe('toPngBlob', () => {
+  it('PNG 原样返回，不经 canvas 重新编码', async () => {
+    const png = new Blob(['x'], { type: 'image/png' });
+    expect(await toPngBlob(png)).toBe(png);
   });
 });

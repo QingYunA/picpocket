@@ -27,7 +27,6 @@ export const zh = {
     title: 'PicPocket',
     capture: '截图采集',
     capturing: '截图中',
-    captureTooltip: '框选截取网页素材',
     search: '搜索',
     settings: '设置',
     modelSettings: '偏好与模型设置',
@@ -668,13 +667,9 @@ export const zh = {
     collectOnly: '收集到 PicPocket',
   },
   pill: {
-    newCollected: '新采集 {count} 项素材至未分类',
-    moveToCurrent: '移入当前文件夹',
-    view: '去查看',
     savedMicro: '已保存新素材',
     savedToFolder: '已保存至「{name}」',
     savedAndAnalyzingToFolder: '已保存至「{name}」并开始反推',
-    movedSuccess: '已成功移入当前文件夹',
   },
   webCapsule: {
     saved: '已保存',
@@ -684,6 +679,7 @@ export const zh = {
     uncategorized: '未归档',
     changeFolder: '选择文件夹',
     movedSuccess: '已移入 {folder}',
+    moveFailed: '移动文件夹失败，请在侧边栏中重试',
   },
   cardMenu: {
     moveToFolder: '移动到文件夹',

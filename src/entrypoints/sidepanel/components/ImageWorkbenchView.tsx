@@ -66,7 +66,7 @@ import {
   setActiveGeneration,
   clearActiveGeneration,
 } from '@/utils/storage';
-import { readFileAsDataUrl } from '@/utils/file';
+import { readFileAsDataUrl, toPngBlob } from '@/utils/file';
 import { downloadBlobOrUrl } from '@/services/storageBackup';
 import { openInfiniteCanvasPage } from '@/utils/navigation';
 import { hostedImageSupportsEdit } from '@/config/hostedModels';
@@ -922,9 +922,8 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
     try {
       const blob = dataUrlToBlob(image.dataUrl);
       if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-        await navigator.clipboard.write([
-          new ClipboardItem({ [blob.type || 'image/png']: blob }),
-        ]);
+        // Chrome 剪贴板只接受 image/png；传 Promise 让转换期间仍保有用户手势
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': toPngBlob(blob) })]);
       } else {
         await navigator.clipboard.writeText(image.dataUrl);
       }

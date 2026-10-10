@@ -651,12 +651,16 @@ export default defineContentScript({
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
           // Update item folder in background；扩展刚更新时旧页面的上下文已失效，消息发送可能同步抛错
+          const reportMoveFailed = () => showToast(getTranslation(currentLang, 'webCapsule.moveFailed'), 'error');
           try {
             chrome.runtime
               .sendMessage({ action: 'UPDATE_ITEM_FOLDER', itemId, folderId: item.id })
-              .catch(() => {});
+              .then((resp) => {
+                if (!resp?.success) reportMoveFailed();
+              })
+              .catch(reportMoveFailed);
           } catch {
-            // 忽略：下次保存时会提示刷新页面
+            reportMoveFailed();
           }
 
           const label = shadow.getElementById('folder-label');

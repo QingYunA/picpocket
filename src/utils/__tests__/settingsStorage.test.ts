@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { getUserSettings, saveUserSettings, getActiveGeneration, resetInMemoryStorageForTesting } from '../storage';
+import { DEFAULT_SETTINGS, getUserSettings, saveUserSettings, getActiveGeneration, resetInMemoryStorageForTesting } from '../storage';
 
 type Store = Record<string, unknown>;
 
@@ -57,12 +57,16 @@ describe('saveUserSettings 并发与容错', () => {
     installChromeStorage(store, { failSet: true });
 
     await expect(saveUserSettings({ model: 'fallback-model' })).resolves.toMatchObject({ model: 'fallback-model' });
+    expect(store.promptsnap_settings).toBeUndefined();
+    await expect(getUserSettings()).resolves.toMatchObject({ model: 'fallback-model' });
   });
 
   it('chrome.storage 读取失败（扩展上下文失效）时降级为默认值而不是抛出', async () => {
     installChromeStorage({}, { failGet: true });
 
-    await expect(getUserSettings()).resolves.toMatchObject({ language: expect.any(String) });
+    const settings = await getUserSettings();
+    expect(settings.model).toBe(DEFAULT_SETTINGS.model);
+    expect(['zh', 'en']).toContain(settings.language);
     await expect(getActiveGeneration()).resolves.toBeNull();
   });
 });

@@ -17,8 +17,13 @@ describe("wheelZoomFactor", () => {
         expect(wheelZoomFactor(-7, true) * wheelZoomFactor(7, true)).toBeCloseTo(1, 10);
     });
 
-    test("a huge pinch delta is capped per event", () => {
-        expect(wheelZoomFactor(-1000, true)).toBeCloseTo(Math.exp(0.4), 10);
-        expect(wheelZoomFactor(1000, true)).toBeCloseTo(Math.exp(-0.4), 10);
+    test("a large pinch delta is capped per event", () => {
+        expect(wheelZoomFactor(-45, true)).toBeCloseTo(Math.exp(0.4), 10);
+        expect(wheelZoomFactor(45, true)).toBeCloseTo(Math.exp(-0.4), 10);
+    });
+
+    test("Ctrl + mouse wheel keeps the 10% notch instead of the pinch curve", () => {
+        expect(wheelZoomFactor(-100, true)).toBeCloseTo(1.1, 5);
+        expect(wheelZoomFactor(100, true)).toBeCloseTo(1 / 1.1, 5);
     });
 });

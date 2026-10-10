@@ -29,7 +29,6 @@ export const en: Translations = {
     title: 'PicPocket',
     capture: 'Capture',
     capturing: 'Capturing...',
-    captureTooltip: 'Snip and capture web visual elements',
     search: 'Search',
     settings: 'Settings',
     modelSettings: 'Preferences & Model Settings',
@@ -670,13 +669,9 @@ export const en: Translations = {
     collectOnly: 'Collect to PicPocket',
   },
   pill: {
-    newCollected: '{count} new item(s) collected to Uncategorized',
-    moveToCurrent: 'Move to Current',
-    view: 'View',
     savedMicro: 'New item saved',
     savedToFolder: 'Saved to "{name}"',
     savedAndAnalyzingToFolder: 'Saved to "{name}" & analyzing prompt',
-    movedSuccess: 'Moved to current folder',
   },
   webCapsule: {
     saved: 'Saved',
@@ -686,6 +681,7 @@ export const en: Translations = {
     uncategorized: 'Uncategorized',
     changeFolder: 'Select Folder',
     movedSuccess: 'Moved to {folder}',
+    moveFailed: "Couldn't move it. Try again from the side panel.",
   },
   cardMenu: {
     moveToFolder: 'Move to Folder',

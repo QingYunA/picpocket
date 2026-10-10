@@ -4,25 +4,7 @@ import { useI18n } from '@/i18n';
 import type { InspirationItem } from '@/types';
 import { db } from '@/db';
 import { isAiGeneratedItem, isAgentCollabItem } from '@/utils/itemHelpers';
-
-/** Chrome 剪贴板只接受 image/png，其他格式先经 canvas 转成 PNG */
-async function toPngBlob(blob: Blob): Promise<Blob> {
-  if (blob.type === 'image/png') return blob;
-  const bitmap = await createImageBitmap(blob);
-  try {
-    const canvas = document.createElement('canvas');
-    canvas.width = bitmap.width;
-    canvas.height = bitmap.height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Canvas 2D context unavailable');
-    ctx.drawImage(bitmap, 0, 0);
-    return await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((out) => (out ? resolve(out) : reject(new Error('toBlob failed'))), 'image/png');
-    });
-  } finally {
-    bitmap.close();
-  }
-}
+import { toPngBlob } from '@/utils/file';
 
 const EXTENSION_BY_MIME: Record<string, string> = {
   'image/jpeg': 'jpg',

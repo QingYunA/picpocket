@@ -28,13 +28,23 @@ changes. Re-check them when merging upstream:
   reveals their prompt panel; measures the canvas container after the project
   loads (the original `[]`-deps effect never ran, leaving `size` at its
   placeholder); keeps the MCP command effect free of unstable callbacks.
-- `web/src/components/canvas/infinite-canvas.tsx`: pinch-to-zoom uses
-  `wheelZoomFactor`.
+- `web/src/components/canvas/infinite-canvas.tsx`: wheel zoom uses
+  `wheelZoomFactor` (trackpad pinch gets its own curve; Ctrl + mouse wheel keeps
+  the 10% notch).
 - `web/src/components/layout/user-status-actions.tsx`,
   `web/src/components/canvas/canvas-top-bar.tsx`: the extension build hides the
   upstream docs, GitHub and version entries (the version check requested
   `raw.githubusercontent.com` on every canvas load).
-- `web/src/components/canvas/canvas-node-hover-toolbar.tsx`: text nodes cannot
-  be saved to assets in the extension (that store is not visible there).
+- `web/src/components/canvas/canvas-node-hover-toolbar.tsx`: in builds without
+  media generation (the extension), only image nodes offer "save to assets";
+  text and video nodes would land in the upstream asset store, which is not
+  visible there.
+- `web/src/i18n/locales/en-US.ts`, `web/src/i18n/locales/zh-CN.ts`: "My Assets"
+  entries renamed to "My Pocket" / 「我的口袋」, plus a dedicated insert-failure
+  message and folder-deletion wording.
+- `web/src/types/canvas.ts`: `CanvasAssistantImage` gains an optional `title`
+  so pocket assets keep their name when inserted.
+- `web/bunfig.toml`, `web/tests/setup.ts`: bun test preloads `fake-indexeddb`
+  for the PicPocket integration tests.
 - `web/src/services/api/image.extension.ts`: generation registry cleanup and
   live-task tracking.

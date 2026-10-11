@@ -134,9 +134,9 @@ export const McpPage: React.FC<McpPageProps> = ({
 
   const currentPort = mcpConfig.port || 18088;
   const targetedPrompt = buildTargetedPrompt(selectedTarget, mcpConfig);
-  const installCliCmd = buildInstallCommand(selectedTarget, currentPort);
+  const installCliCmd = buildInstallCommand(selectedTarget, currentPort, mcpConfig.authToken);
   const isWindows = typeof navigator !== 'undefined' && navigator.userAgent.includes('Win');
-  const clientConfigSnippet = buildClientConfigSnippet(selectedTarget, currentPort, isWindows);
+  const clientConfigSnippet = buildClientConfigSnippet(selectedTarget, currentPort, isWindows, mcpConfig.authToken);
 
   const handleCopyPrompt = () => {
     navigator.clipboard.writeText(targetedPrompt);

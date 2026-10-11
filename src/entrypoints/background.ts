@@ -22,6 +22,7 @@ import {
   setPendingAutoAnalyzeItemId,
 } from '../utils/storage';
 import { migrateToPicpocketChannel } from '../config/channelMode';
+import { ensureMcpAuthTokenOnInstall } from '../services/mcpInstallToken';
 import {
   generateImagesWithReport,
   finalizeGenerationTaskSuccess,
@@ -94,7 +95,12 @@ export default defineBackground(() => {
   }
 
   // Configure side panel behavior: open on action button click
-  chrome.runtime.onInstalled.addListener(() => {
+  chrome.runtime.onInstalled.addListener((details) => {
+    // 仅全新安装生成专属 MCP 配对 Token；更新安装保留现有 Token，已配置的 MCP 客户端不受影响
+    if (details.reason === 'install') {
+      ensureMcpAuthTokenOnInstall().catch((err) => console.warn('MCP auth token init failed:', err));
+    }
+
     if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
       chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((err) => {
         console.warn('Failed to setPanelBehavior:', err);

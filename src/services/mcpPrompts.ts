@@ -1,5 +1,6 @@
 import type { McpSettings } from '@/types';
 import { DEFAULT_MCP_SETTINGS } from '@/utils/storage';
+import { isLegacyMcpToken } from '@/utils/mcpToken';
 
 export type McpClientTarget = 'auto' | 'cursor' | 'claude' | 'antigravity' | 'windsurf' | 'zed';
 
@@ -33,6 +34,10 @@ const ANTI_DRIFT_NOTICE = `### 🛑 CRITICAL ANTI-DRIFT INSTRUCTIONS (STRICT GUA
 export function buildTargetedPrompt(target: McpClientTarget, mcpConfig: McpSettings): string {
   const port = mcpConfig.port || 18088;
   const token = mcpConfig.authToken || DEFAULT_MCP_SETTINGS.authToken;
+  // 专属 Token 必须交给 bridge（环境变量），否则握手会因 Token 不一致被拒；旧版默认值 bridge 自带回退，保持原提示词不变
+  const needsToken = !isLegacyMcpToken(token);
+  const envJson = needsToken ? `,\n      "env": { "PICPOCKET_MCP_TOKEN": "${token}" }` : '';
+  const claudeEnvFlag = needsToken ? ` -e PICPOCKET_MCP_TOKEN=${token}` : '';
 
   if (target === 'cursor') {
     return `${ANTI_DRIFT_NOTICE}
@@ -61,7 +66,7 @@ You are an expert AI assistant running Claude Code CLI. Configure the PicPocket 
 ### Fast Installation Method:
 Run the official Claude Code CLI registration command:
 \`\`\`bash
-claude mcp add --scope project picpocket -- $(which bun || echo bun) $(pwd)/packages/mcp-bridge/src/index.ts --port ${port}
+claude mcp add --scope project picpocket${claudeEnvFlag} -- $(which bun || echo bun) $(pwd)/packages/mcp-bridge/src/index.ts --port ${port}
 \`\`\`
 
 ### Verification:
@@ -112,7 +117,7 @@ You are an expert AI assistant running inside Windsurf. Configure the PicPocket 
   "mcpServers": {
     "picpocket": {
       "command": "<absolute-path-to-bun>",
-      "args": ["<absolute-path-to-project>/packages/mcp-bridge/src/index.ts", "--port", "${port}"]
+      "args": ["<absolute-path-to-project>/packages/mcp-bridge/src/index.ts", "--port", "${port}"]${envJson}
     }
   }
 }
@@ -138,7 +143,7 @@ You are an expert AI assistant running inside Zed editor. Configure the PicPocke
   "context_servers": {
     "picpocket": {
       "command": "<absolute-path-to-bun>",
-      "args": ["<absolute-path-to-project>/packages/mcp-bridge/src/index.ts", "--port", "${port}"]
+      "args": ["<absolute-path-to-project>/packages/mcp-bridge/src/index.ts", "--port", "${port}"]${envJson}
     }
   }
 }
@@ -164,7 +169,7 @@ You are an expert AI development assistant. Safely configure the PicPocket local
 
 ### Target Decision Matrix (Pick YOUR host only):
 1. **If you are Cursor**: Target workspace \`.cursor/mcp.json\` -> key \`mcpServers.picpocket\`.
-2. **If you are Claude Code**: Run \`claude mcp add --scope project picpocket -- $(which bun) $(pwd)/packages/mcp-bridge/src/index.ts --port ${port}\`.
+2. **If you are Claude Code**: Run \`claude mcp add --scope project picpocket${claudeEnvFlag} -- $(which bun) $(pwd)/packages/mcp-bridge/src/index.ts --port ${port}\`.
 3. **If you are Antigravity**: Target \`~/.gemini/config/mcp_config.json\` -> key \`mcpServers.picpocket\`.
 4. **If you are Windsurf**: Target \`~/.codeium/windsurf/mcp_config.json\` -> key \`mcpServers.picpocket\`.
 5. **If you are Zed**: Target \`~/.config/zed/settings.json\` -> key \`context_servers.picpocket\`.

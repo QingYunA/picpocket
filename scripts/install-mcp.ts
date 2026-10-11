@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline';
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
+import { isLegacyMcpToken } from '../src/utils/mcpToken';
 
 interface TargetClient {
   id: string;
@@ -10,7 +11,7 @@ interface TargetClient {
   configPath: string;
   schemaType: 'mcpServers' | 'context_servers';
   reloadGuide: string;
-  isCustomHandler?: (binaryPath: string, bridgeScriptPath: string, port: number) => boolean;
+  isCustomHandler?: (binaryPath: string, bridgeScriptPath: string, port: number, token?: string) => boolean;
 }
 
 function resolveBinaryPath(): string {
@@ -27,10 +28,17 @@ function resolveBinaryPath(): string {
   return process.execPath;
 }
 
-function parseCliArgs(): { target?: string; port: number } {
-  const args = process.argv.slice(2);
+export interface CliArgs {
+  target?: string;
+  port: number;
+  token?: string;
+}
+
+/** 解析命令行参数；纯函数，args 不含 node/脚本路径 */
+export function parseCliArgs(args: string[], env: Record<string, string | undefined> = {}): CliArgs {
   let target: string | undefined;
   let port = 18088;
+  let token: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -40,20 +48,60 @@ function parseCliArgs(): { target?: string; port: number } {
         port = parsedPort;
         i++;
       }
+    } else if (arg === '--token') {
+      // 取值缺失或紧跟另一个选项时视为未提供，避免把 --port 之类的选项吞成 Token
+      const value = args[i + 1];
+      if (value && !value.startsWith('-')) {
+        token = value;
+        i++;
+      }
+    } else if (arg.startsWith('--token=')) {
+      token = arg.slice('--token='.length) || undefined;
     } else if (!arg.startsWith('-') && !target) {
       target = arg.toLowerCase().trim();
     }
   }
 
-  const envPort = parseInt(
-    process.env.PICPOCKET_MCP_PORT || process.env.PROMPTSNAP_MCP_PORT || '',
-    10
-  );
+  const envPort = parseInt(env.PICPOCKET_MCP_PORT || env.PROMPTSNAP_MCP_PORT || '', 10);
   if (!isNaN(envPort) && envPort > 0) {
     port = envPort;
   }
 
-  return { target, port };
+  return { target, port, token };
+}
+
+/** 生成写入客户端配置的 picpocket 服务条目；专属 Token 经环境变量 PICPOCKET_MCP_TOKEN 传给 bridge */
+export function buildServerEntry(
+  schemaType: TargetClient['schemaType'],
+  binaryPath: string,
+  bridgeScriptPath: string,
+  port: number,
+  token?: string
+): Record<string, unknown> {
+  const args = port === 18088 ? [bridgeScriptPath] : [bridgeScriptPath, '--port', String(port)];
+  const tokenEnv = isLegacyMcpToken(token) ? {} : { PICPOCKET_MCP_TOKEN: token };
+
+  if (schemaType === 'context_servers') {
+    return {
+      command: binaryPath,
+      args,
+      ...(Object.keys(tokenEnv).length > 0 && { env: tokenEnv }),
+    };
+  }
+  return {
+    command: binaryPath,
+    args,
+    env: { PICPOCKET_MCP_PORT: String(port), ...tokenEnv },
+  };
+}
+
+/** `claude mcp add` 的参数数组（不经 shell）；-e 必须在服务名之后，否则服务名会被当成环境变量吞掉 */
+export function buildClaudeAddArgs(binaryPath: string, bridgeScriptPath: string, port: number, token?: string): string[] {
+  return [
+    'mcp', 'add', '--scope', 'project', 'picpocket',
+    ...(isLegacyMcpToken(token) ? [] : ['-e', `PICPOCKET_MCP_TOKEN=${token}`]),
+    '--', binaryPath, bridgeScriptPath, '--port', String(port),
+  ];
 }
 
 function getCandidateClients(home: string, appData: string, workspaceRoot: string, isWindows: boolean): TargetClient[] {
@@ -71,13 +119,12 @@ function getCandidateClients(home: string, appData: string, workspaceRoot: strin
       configPath: path.join(workspaceRoot, '.mcp.json'),
       schemaType: 'mcpServers',
       reloadGuide: '进入 claude 会话输入 /mcp 即可使用',
-      isCustomHandler: (binaryPath, bridgeScriptPath, port) => {
+      isCustomHandler: (binaryPath, bridgeScriptPath, port, token) => {
         try {
           execSync('claude --version', { stdio: ['pipe', 'pipe', 'pipe'] });
-          execSync(
-            `claude mcp add --scope project picpocket -- "${binaryPath}" "${bridgeScriptPath}" --port ${port}`,
-            { stdio: ['pipe', 'pipe', 'pipe'] }
-          );
+          execFileSync('claude', buildClaudeAddArgs(binaryPath, bridgeScriptPath, port, token), {
+            stdio: ['pipe', 'pipe', 'pipe'],
+          });
           console.log(`\x1b[32m✔ [Claude Code 原生 CLI]\x1b[0m 已通过 claude mcp add 注册项目级服务`);
           return true;
         } catch {
@@ -133,12 +180,13 @@ function injectClientConfig(
   client: TargetClient,
   binaryPath: string,
   bridgeScriptPath: string,
-  port: number
+  port: number,
+  token?: string
 ): boolean {
   console.log(`\n\x1b[36m▶ 正在为 [${client.name}] 注入 PicPocket MCP 配置...\x1b[0m`);
 
   // Try custom handler (e.g. claude mcp add)
-  if (client.isCustomHandler && client.isCustomHandler(binaryPath, bridgeScriptPath, port)) {
+  if (client.isCustomHandler && client.isCustomHandler(binaryPath, bridgeScriptPath, port, token)) {
     return true;
   }
 
@@ -172,23 +220,14 @@ function injectClientConfig(
     fs.mkdirSync(parentDir, { recursive: true });
   }
 
-  const serverArgs = port === 18088 ? [bridgeScriptPath] : [bridgeScriptPath, '--port', String(port)];
+  const serverEntry = buildServerEntry(client.schemaType, binaryPath, bridgeScriptPath, port, token);
 
   if (client.schemaType === 'context_servers') {
     configObj.context_servers = configObj.context_servers || {};
-    configObj.context_servers.picpocket = {
-      command: binaryPath,
-      args: serverArgs,
-    };
+    configObj.context_servers.picpocket = serverEntry;
   } else {
     configObj.mcpServers = configObj.mcpServers || {};
-    configObj.mcpServers.picpocket = {
-      command: binaryPath,
-      args: serverArgs,
-      env: {
-        PICPOCKET_MCP_PORT: String(port),
-      },
-    };
+    configObj.mcpServers.picpocket = serverEntry;
   }
 
   fs.writeFileSync(client.configPath, JSON.stringify(configObj, null, 2), 'utf-8');
@@ -216,7 +255,7 @@ export async function installMcpConfig() {
     process.exit(1);
   }
 
-  const { target, port } = parseCliArgs();
+  const { target, port, token } = parseCliArgs(process.argv.slice(2), process.env);
   const candidates = getCandidateClients(home, appData, workspaceRoot, isWindows);
 
   // 1. If target was explicitly passed via CLI
@@ -242,7 +281,7 @@ export async function installMcpConfig() {
       process.exit(1);
     }
 
-    injectClientConfig(matchedClient, binaryPath, bridgeScriptPath, port);
+    injectClientConfig(matchedClient, binaryPath, bridgeScriptPath, port, token);
     return;
   }
 
@@ -278,7 +317,7 @@ export async function installMcpConfig() {
       return;
     }
 
-    injectClientConfig(selectedClient, binaryPath, bridgeScriptPath, port);
+    injectClientConfig(selectedClient, binaryPath, bridgeScriptPath, port, token);
     return;
   }
 
@@ -290,7 +329,7 @@ export async function installMcpConfig() {
   console.log(`  \x1b[32mbun run mcp:install antigravity\x1b[0m  # 为 Antigravity 配置`);
   console.log(`  \x1b[32mbun run mcp:install windsurf\x1b[0m     # 为 Windsurf 配置`);
   console.log(`  \x1b[32mbun run mcp:install zed\x1b[0m          # 为 Zed 配置`);
-  console.log(`  可选附加参数: --port <port> (默认 18088)\n`);
+  console.log(`  可选附加参数: --port <port> (默认 18088)、--token <pairing-token> (扩展设置页显示的配对密钥)\n`);
 }
 
 if (import.meta.main) {

@@ -72,4 +72,22 @@ describe('mcpPrompts', () => {
     const prompt = buildAgentSetupPrompt(DEFAULT_MCP_SETTINGS);
     expect(prompt).toContain('Target Decision Matrix');
   });
+
+  describe('专属 Token 透传', () => {
+    const TOKEN = 'pp_AbC-123_xyz';
+    const custom = { ...DEFAULT_MCP_SETTINGS, authToken: TOKEN };
+
+    it('专属 Token 时 claude / windsurf / zed / auto 提示词都要求把 Token 交给 bridge', () => {
+      expect(buildTargetedPrompt('claude', custom)).toContain(`-e PICPOCKET_MCP_TOKEN=${TOKEN} --`);
+      expect(buildTargetedPrompt('windsurf', custom)).toContain(`"PICPOCKET_MCP_TOKEN": "${TOKEN}"`);
+      expect(buildTargetedPrompt('zed', custom)).toContain(`"PICPOCKET_MCP_TOKEN": "${TOKEN}"`);
+      expect(buildTargetedPrompt('auto', custom)).toContain(`-e PICPOCKET_MCP_TOKEN=${TOKEN} --`);
+    });
+
+    it('旧版默认 Token 时 claude / windsurf / zed 提示词保持不变（不带 env）', () => {
+      for (const target of ['claude', 'windsurf', 'zed'] as const) {
+        expect(buildTargetedPrompt(target, DEFAULT_MCP_SETTINGS)).not.toContain('PICPOCKET_MCP_TOKEN');
+      }
+    });
+  });
 });

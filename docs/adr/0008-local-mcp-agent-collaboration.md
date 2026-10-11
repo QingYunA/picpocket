@@ -65,3 +65,12 @@
 ### 负向与妥协
 - 首次使用需在对应 Agent 配置文件中注入一次 Bridge CLI 启动命令（已由一键 Prompt 与定向脚本完全无感化）。
 
+## 附录 A：每次安装独有的随机配对 Token
+
+原决策中的「本地动态配对 Token」实际是公开常量 `promptsnap-local-token`，任何能从允许来源（如本机 `http://localhost` 页面）连上 Bridge 的页面都能冒充扩展并收到 Agent 的工具调用。修订如下：
+
+- **新安装生成随机 Token**：后台 Service Worker 仅在 `chrome.runtime.onInstalled` 且 `reason === 'install'` 时，用 `crypto.getRandomValues` 生成 `pp_` + 32 字节 base64url，经 `saveUserSettings`（串行写入 + 三层存储降级）写入 `mcpSettings.authToken`（`src/utils/mcpToken.ts`、`src/services/mcpInstallToken.ts`）。已有非默认 Token 不覆盖。
+- **存量用户不轮换**：更新安装不触碰 Token，已配置的 MCP 客户端继续可用；也不提供「重新生成」入口。
+- **Bridge 经环境变量取得 Token**：`PICPOCKET_MCP_TOKEN`（兼容 `PROMPTSNAP_MCP_TOKEN`）。未配置时回退旧默认值以兼容存量配置，并向 stderr 输出一行警告，提示设置 `PICPOCKET_MCP_TOKEN`。
+- **配置片段统一透传**：Token 与旧默认值不同时，设置页 / 协同抽屉（共用 `mcpSnippets.ts`）与 `bun run mcp:install --token <token>` 都会把它写入客户端配置——JSON 客户端用 `env.PICPOCKET_MCP_TOKEN`，Zed 写入服务条目内的 `env`，Claude Code 用 `claude mcp add picpocket -e PICPOCKET_MCP_TOKEN=<token> -- …`（`-e` 必须在服务名之后，写在前面会吞掉服务名）。Token 等于旧默认值时片段保持原样。
+- **凭据不外泄**：`authToken` 属于 `backupFormat.ts` 的 `SECRET_FIELDS`，不进入备份；除用户在设置页 / 抽屉中主动查看或复制配置外，不在任何日志中输出。

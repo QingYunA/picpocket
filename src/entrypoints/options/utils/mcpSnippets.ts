@@ -55,7 +55,7 @@ export function buildClientConfigSnippet(
     return `claude mcp add picpocket${envFlag} -- bun ${args.join(' ')}`;
   }
   if (target === 'zed') {
-    return JSON.stringify({ context_servers: { picpocket: { command: { path: 'bun', args, ...(env && { env }) } } } }, null, 2);
+    return JSON.stringify({ context_servers: { picpocket: { command: 'bun', args, ...(env && { env }) } } }, null, 2);
   }
   return JSON.stringify({ mcpServers: { picpocket: { command: 'bun', args, ...(env && { env }) } } }, null, 2);
 }

@@ -33,8 +33,9 @@ describe('buildClientConfigSnippet', () => {
 
   it('Zed 使用 context_servers 结构', () => {
     const json = JSON.parse(buildClientConfigSnippet('zed', 19000, false));
-    expect(json.context_servers.picpocket.command).toEqual({
-      path: 'bun',
+    // 与 mcp:install 写入 Zed 的扁平形态一致：command / args / env 同级
+    expect(json.context_servers.picpocket).toEqual({
+      command: 'bun',
       args: ['run', bridge, '--port', '19000'],
     });
   });
@@ -68,7 +69,7 @@ describe('专属 Token 透传给 bridge', () => {
       const json = JSON.parse(buildClientConfigSnippet('cursor', 18088, false, token));
       expect(json.mcpServers.picpocket.env).toBeUndefined();
       const zed = JSON.parse(buildClientConfigSnippet('zed', 18088, false, token));
-      expect(zed.context_servers.picpocket.command.env).toBeUndefined();
+      expect(zed.context_servers.picpocket.env).toBeUndefined();
       expect(buildBridgeCommand(18088, token)).toBe('bun run mcp');
     }
   });
@@ -81,10 +82,10 @@ describe('专属 Token 透传给 bridge', () => {
     }
   });
 
-  it('Zed 的 env 位于 command 对象内', () => {
+  it('Zed 的 env 与 command / args 同级', () => {
     const json = JSON.parse(buildClientConfigSnippet('zed', 18088, false, TOKEN));
-    expect(json.context_servers.picpocket.command).toEqual({
-      path: 'bun',
+    expect(json.context_servers.picpocket).toEqual({
+      command: 'bun',
       args: ['run', bridge],
       env: { PICPOCKET_MCP_TOKEN: TOKEN },
     });

@@ -4,7 +4,7 @@ import type { InspirationItem, PromptItem, PromptResult, PromptSource, UserSetti
 import type { GenerationBatchTask } from '../types/imageGeneration';
 import { getUserSettings, saveUserSettings } from '../utils/storage';
 import { readZipArchive } from '../utils/zipReader';
-import { bytesToDataUrl, mergeSettings, sniffImageMime } from './backupFormat';
+import { bytesToDataUrl, mergeRestoredSettings, sniffImageMime } from './backupFormat';
 import { restoreFromBackupJson } from './storageBackup';
 
 export interface RestoreSummary {
@@ -128,7 +128,7 @@ async function restoreFromManifest(manifest: Manifest, files: Files): Promise<Re
 async function restoreSettings(settings: Record<string, unknown> | undefined): Promise<boolean> {
   if (!settings) return false;
   const current = (await getUserSettings()) as unknown as Record<string, unknown>;
-  await saveUserSettings(mergeSettings(current, settings) as unknown as Partial<UserSettings>);
+  await saveUserSettings(mergeRestoredSettings(current, settings) as unknown as Partial<UserSettings>);
   return true;
 }
 

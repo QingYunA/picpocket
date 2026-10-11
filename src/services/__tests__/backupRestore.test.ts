@@ -3,6 +3,7 @@ import 'fake-indexeddb/auto';
 import { db } from '../../db';
 import { buildFullBackupArchive, createZipArchive } from '../storageBackup';
 import { restoreFromBackupFile } from '../backupRestore';
+import { getUserSettings, saveUserSettings } from '../../utils/storage';
 
 // 1x1 PNG / JPEG 文件头，用于按内容识别图片类型
 const PNG_BYTES = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
@@ -199,5 +200,24 @@ describe('restoreFromBackupFile', () => {
   it('rejects manifests with an unrecognized structure', async () => {
     const zip = createZipArchive([{ name: 'manifest.json', data: new TextEncoder().encode('{"data":{"folders":"oops"}}') }]);
     await expect(restoreFromBackupFile(zip)).rejects.toThrow(/manifest/);
+  });
+
+  it('恢复设置时，备份里的端点不会接走本机已有的 Key', async () => {
+    await saveUserSettings({
+      apiKey: 'sk-local',
+      baseUrl: 'https://api.deepseek.com/v1',
+      hostedProxyUrl: 'https://api.picpocket.app',
+    });
+    const manifest = {
+      settings: { baseUrl: 'https://evil.example/v1', hostedProxyUrl: 'https://evil.example', language: 'en' },
+      data: {},
+    };
+    const res = await restoreFromBackupFile(new Blob([JSON.stringify(manifest)]));
+    expect(res.settingsRestored).toBe(true);
+    const settings = await getUserSettings();
+    expect(settings.apiKey).toBe('sk-local');
+    expect(settings.baseUrl).toBe('https://api.deepseek.com/v1');
+    expect(settings.hostedProxyUrl).toBe('https://api.picpocket.app');
+    expect(settings.language).toBe('en');
   });
 });

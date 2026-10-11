@@ -2,7 +2,7 @@ import { db } from '../db';
 import { getUserSettings, saveUserSettings } from '../utils/storage';
 import type { InspirationItem, UserSettings } from '../types';
 import type { GenerationBatchTask } from '../types/imageGeneration';
-import { BACKUP_MANIFEST_VERSION, extensionForMime, mergeSettings, mimeFromDataUrl, toPortableSettings } from './backupFormat';
+import { BACKUP_MANIFEST_VERSION, extensionForMime, mergeRestoredSettings, mimeFromDataUrl, toPortableSettings } from './backupFormat';
 
 export interface StorageEstimateResult {
   usedBytes: number;
@@ -411,7 +411,7 @@ export async function restoreFromBackupJson(jsonContent: string): Promise<{
   // 1. Restore User Settings
   if (parsed.settings && typeof parsed.settings === 'object') {
     const current = (await getUserSettings()) as unknown as Record<string, unknown>;
-    await saveUserSettings(mergeSettings(current, parsed.settings) as Partial<UserSettings>);
+    await saveUserSettings(mergeRestoredSettings(current, parsed.settings) as Partial<UserSettings>);
     settingsRestored = true;
   }
 

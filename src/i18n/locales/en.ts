@@ -895,6 +895,8 @@ export const en: Translations = {
       ratioPortrait: '9:16 Mobile Portrait',
       ratioClassicWide: '4:3 Classic Wide',
       ratioClassicTall: '3:4 Classic Tall',
+      ratioUltrawide: '21:9 Ultrawide',
+      ratioPoster: '2:3 Poster',
     },
     storage: {
       dbStatsTitle: 'IndexedDB Local Storage Stats',

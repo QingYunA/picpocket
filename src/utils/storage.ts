@@ -247,7 +247,8 @@ export async function saveActiveTab(tab: SidepanelTab): Promise<SidepanelTab> {
 
 export interface GeneratorDraftState {
   prompt: string;
-  aspectRatio: ImageAspectRatio;
+  /** 未保存过画幅时为 undefined，此时由设置里的 defaultImageAspectRatio 决定（见 resolveAspectRatio） */
+  aspectRatio?: ImageAspectRatio;
   count: number;
   negativePrompt: string;
   referenceImage: string | null;
@@ -260,7 +261,6 @@ export interface GeneratorDraftState {
 
 export const DEFAULT_GENERATOR_DRAFT: GeneratorDraftState = {
   prompt: '',
-  aspectRatio: '1:1',
   count: 1,
   negativePrompt: '',
   referenceImage: null,

@@ -67,6 +67,7 @@ import {
   clearActiveGeneration,
 } from '@/utils/storage';
 import { readFileAsDataUrl, toPngBlob } from '@/utils/file';
+import { resolveAspectRatio } from '@/utils/aspectRatio';
 import { downloadBlobOrUrl } from '@/services/storageBackup';
 import { openInfiniteCanvasPage } from '@/utils/navigation';
 import { hostedImageSupportsEdit } from '@/config/hostedModels';
@@ -136,7 +137,13 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
   const initialDraft = useRef<GeneratorDraftState>(getInitialGeneratorDraft()).current;
 
   const [prompt, setPromptState] = useState(initialPrompt || initialDraft.prompt);
-  const [aspectRatio, setAspectRatioState] = useState<ImageAspectRatio>(initialDraft.aspectRatio);
+  const [aspectRatio, setAspectRatioState] = useState<ImageAspectRatio>(() =>
+    resolveAspectRatio(initialDraft.aspectRatio, settings.defaultImageAspectRatio)
+  );
+  // 草稿已有画幅（或用户已手动选择）后，设置里的默认画幅不再介入
+  const aspectRatioLockedRef = useRef(initialDraft.aspectRatio !== undefined);
+  // 异步草稿读取完成前不应用默认画幅，避免先闪默认值再被草稿覆盖
+  const [draftChecked, setDraftChecked] = useState(false);
   const [count, setCountState] = useState(initialDraft.count || 1);
   // 张数在设置里可调，每张是独立请求，总消耗按张数折算
   const perImageCost = creditBalance === null ? null : imageCreditCost(creditPricing, currentModel);
@@ -174,6 +181,7 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
   };
 
   const setAspectRatio = (ratio: ImageAspectRatio) => {
+    aspectRatioLockedRef.current = true;
     setAspectRatioState(ratio);
     updateDraft({ aspectRatio: ratio });
   };
@@ -568,6 +576,7 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
   // Asynchronously catch up with chrome.storage.local draft if present
   useEffect(() => {
     getGeneratorDraft().then((stored) => {
+      setDraftChecked(true);
       if (!stored) return;
       if (!initialPrompt && stored.prompt) {
         setPromptState((curr) => curr || stored.prompt);
@@ -575,7 +584,8 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
       if (stored.count && stored.count > 1) {
         setCountState(stored.count);
       }
-      if (stored.aspectRatio && stored.aspectRatio !== '1:1') {
+      if (stored.aspectRatio) {
+        aspectRatioLockedRef.current = true;
         setAspectRatioState(stored.aspectRatio);
       }
       if (stored.negativePrompt) {
@@ -605,8 +615,14 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
           setReferenceImagesState([stored.referenceImage]);
         }
       }
-    });
+    }).catch(() => setDraftChecked(true));
   }, []);
+
+  // 草稿没有保存过画幅时，起始画幅跟随设置里的默认画幅（只改界面状态，不写入草稿）
+  useEffect(() => {
+    if (!draftChecked || aspectRatioLockedRef.current) return;
+    setAspectRatioState(resolveAspectRatio(undefined, settings.defaultImageAspectRatio));
+  }, [draftChecked, settings.defaultImageAspectRatio]);
 
   // 生成中的耗时：每秒按起始时间戳重新推导，不累加
   useEffect(() => {

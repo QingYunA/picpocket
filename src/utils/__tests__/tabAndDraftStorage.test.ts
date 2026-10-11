@@ -81,7 +81,15 @@ describe('Tab and Draft Storage', () => {
       const draft = await getGeneratorDraft();
       expect(draft).toEqual(DEFAULT_GENERATOR_DRAFT);
       expect(draft.count).toBe(1);
-      expect(draft.aspectRatio).toBe('1:1');
+      // 未保存过画幅：留空，交给设置里的默认画幅决定
+      expect(draft.aspectRatio).toBeUndefined();
+    });
+
+    it('保存其他字段不会把画幅写成默认值', async () => {
+      await saveGeneratorDraft({ prompt: 'only prompt' });
+      const raw = JSON.parse(localStorage.getItem('promptsnap_generator_draft')!);
+      expect(raw.aspectRatio).toBeUndefined();
+      expect((await getGeneratorDraft()).aspectRatio).toBeUndefined();
     });
 
     it('should persist and retrieve modified draft fields (e.g. Type 4 count and custom prompt)', async () => {

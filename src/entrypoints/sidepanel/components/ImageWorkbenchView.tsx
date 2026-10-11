@@ -23,12 +23,18 @@ import type {
   GenerationBatchTask,
   ImageGenerationParams,
   GenerationFinishedMessage,
+  ReferenceAnalysisFinishedMessage,
 } from '@/types';
 import {
   runForegroundGenerationTask,
   ratioToDimension,
 } from '@/services/imageGenerator';
-import { analyzeImageWithAI } from '@/services/ai';
+import { requestReferenceAnalysis, probeReferenceAnalysis } from '@/services/referenceAnalysisClient';
+import {
+  REFERENCE_ANALYSIS_WINDOW_MS,
+  resolveReferenceAnalysisOnMount,
+  shouldApplyRecoveredPrompt,
+} from '@/utils/referenceAnalysisRecovery';
 import { useForegroundGeneration } from '@/hooks/useForegroundGeneration';
 import { useGenerationLivenessProbe } from '@/hooks/useGenerationLivenessProbe';
 import {
@@ -65,6 +71,8 @@ import {
   getActiveGeneration,
   setActiveGeneration,
   clearActiveGeneration,
+  getActiveReferenceAnalysis,
+  clearActiveReferenceAnalysis,
 } from '@/utils/storage';
 import { readFileAsDataUrl, toPngBlob } from '@/utils/file';
 import { resolveAspectRatio } from '@/utils/aspectRatio';
@@ -375,29 +383,133 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
       setErrorMsg(t(visionBlock.key, visionBlock.params));
       return;
     }
+    if (reverseRequestIdRef.current) return;
+    const requestId = crypto.randomUUID();
+    const startTime = Date.now();
+    reverseRequestIdRef.current = requestId;
     setIsReversingRef(true);
     setErrorMsg(null);
+    armReverseDeadline(startTime);
     try {
-      let blob: Blob;
-      if (refUrl.startsWith('data:')) {
-        blob = await dataUrlToBlob(refUrl);
-      } else {
-        const resp = await fetch(refUrl);
-        blob = await resp.blob();
-      }
-      const res = await analyzeImageWithAI(blob, settings);
-      if (res.masterPrompt) {
-        setPrompt(res.masterPrompt);
-        flashFeedback(t('generator.reverseRefSuccess'));
-      } else {
-        setErrorMsg(t('inspector.analyzeFailed'));
+      // blob: URL 只在当前页面上下文有效，Service Worker 读不到，需先转成 data URL 再外发
+      const imageUrl = refUrl.startsWith('blob:')
+        ? await fetch(refUrl).then((r) => r.blob()).then(readFileAsDataUrl)
+        : refUrl;
+      // 长请求交给 Service Worker 托管：侧边栏收起或切换页面都不会打断，结果经广播 / 持久化状态回到这里
+      const resp = await requestReferenceAnalysis({ requestId, imageUrl, startTime, promptSnapshot: prompt });
+      if (!resp.success && reverseRequestIdRef.current === requestId) {
+        finishReverse();
+        setErrorMsg(resp.error || t('inspector.analyzeFailed'));
       }
     } catch (err: any) {
-      setErrorMsg(err?.message || t('inspector.analyzeFailed'));
-    } finally {
-      setIsReversingRef(false);
+      if (reverseRequestIdRef.current === requestId) {
+        finishReverse();
+        setErrorMsg(err?.message || t('inspector.analyzeFailed'));
+      }
     }
   };
+
+  // 参考图反推的前台状态：请求 id 与截止定时器放 ref，监听器与恢复逻辑不依赖任何高频 state
+  const reverseRequestIdRef = useRef<string | null>(null);
+  const reverseDeadlineTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reverseResultHandlerRef = useRef<(msg: ReferenceAnalysisFinishedMessage) => void>(() => {});
+
+  const clearReverseDeadline = () => {
+    if (reverseDeadlineTimerRef.current) clearTimeout(reverseDeadlineTimerRef.current);
+    reverseDeadlineTimerRef.current = null;
+  };
+
+  const finishReverse = () => {
+    reverseRequestIdRef.current = null;
+    clearReverseDeadline();
+    setIsReversingRef(false);
+  };
+
+  // 兜底：由起始时间戳推导截止点，后台若始终没有回音（广播丢失等），到点后收敛并提示失败，避免永久转圈
+  const armReverseDeadline = (startTime: number) => {
+    clearReverseDeadline();
+    const remaining = Math.max(0, startTime + REFERENCE_ANALYSIS_WINDOW_MS - Date.now());
+    reverseDeadlineTimerRef.current = setTimeout(() => {
+      const requestId = reverseRequestIdRef.current;
+      if (!requestId) return;
+      finishReverse();
+      clearActiveReferenceAnalysis(requestId).catch(() => {});
+      setErrorMsg(t('inspector.analyzeFailed'));
+    }, remaining);
+  };
+
+  // 侧边栏开着时由后台广播送达结果；每次渲染刷新处理函数，监听器本身只注册一次
+  useEffect(() => {
+    reverseResultHandlerRef.current = (msg) => {
+      if (!msg.requestId || msg.requestId !== reverseRequestIdRef.current) return;
+      finishReverse();
+      clearActiveReferenceAnalysis(msg.requestId).catch(() => {});
+      if (msg.status === 'success' && msg.masterPrompt) {
+        setPrompt(msg.masterPrompt);
+        flashFeedback(t('generator.reverseRefSuccess'));
+      } else if (msg.status === 'failed') {
+        setErrorMsg(msg.error || t('inspector.analyzeFailed'));
+      }
+    };
+  });
+
+  useEffect(() => {
+    if (!chrome.runtime?.onMessage) return;
+    const listener = (msg: any) => {
+      if (msg?.action === 'REFERENCE_ANALYSIS_FINISHED') reverseResultHandlerRef.current(msg);
+    };
+    chrome.runtime.onMessage.addListener(listener);
+    return () => {
+      chrome.runtime.onMessage.removeListener(listener);
+      clearReverseDeadline();
+    };
+  }, []);
+
+  // 断点续连：挂载时对齐持久化的参考图反推状态（侧边栏关闭期间后台可能已完成 / 失败 / 丢失）
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function recoverReferenceAnalysis() {
+      try {
+        const stored = await getActiveReferenceAnalysis();
+        if (!stored || isCancelled) return;
+        const probe = await probeReferenceAnalysis(stored.requestId);
+        if (isCancelled) return;
+
+        const { verdict, state } = resolveReferenceAnalysisOnMount(stored, probe, Date.now());
+        if (verdict === 'running' && state) {
+          reverseRequestIdRef.current = state.requestId;
+          setIsReversingRef(true);
+          armReverseDeadline(state.startTime);
+          return;
+        }
+
+        await clearActiveReferenceAnalysis(stored.requestId);
+        if (verdict === 'completed' && state?.masterPrompt) {
+          // 以持久化的草稿为准判断用户是否改过提示词（组件内 state 此时可能尚未完成水合）
+          const draft = await getGeneratorDraft();
+          if (isCancelled) return;
+          if (shouldApplyRecoveredPrompt(state.promptSnapshot, draft.prompt)) {
+            setPrompt(state.masterPrompt);
+            flashFeedback(t('generator.reverseRefSuccess'));
+          } else {
+            flashFeedback(t('generator.reverseRefKeptEdited'), 5000);
+          }
+        } else if (verdict === 'completed' || verdict === 'failed' || verdict === 'interrupted' || verdict === 'timed-out') {
+          setErrorMsg(state?.error || t('inspector.analyzeFailed'));
+        }
+      } catch (err) {
+        console.warn('Failed to recover reference analysis on mount:', err);
+      }
+    }
+
+    recoverReferenceAnalysis();
+
+    return () => {
+      isCancelled = true;
+    };
+    // 仅挂载时执行一次：恢复只依赖持久化状态，不随语言等变化重复回填
+  }, []);
 
   // Sync settings when external changes happen
   useEffect(() => {

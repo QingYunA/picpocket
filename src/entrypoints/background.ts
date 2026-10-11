@@ -18,6 +18,9 @@ import {
   setActiveAnalysis,
   clearActiveAnalysis,
   getActiveAnalysis,
+  getActiveReferenceAnalysis,
+  setActiveReferenceAnalysis,
+  clearActiveReferenceAnalysis,
   getActiveFolder,
   setPendingAutoAnalyzeItemId,
 } from '../utils/storage';
@@ -43,6 +46,14 @@ import type {
 import { CAPTURE_TAGS, withAnalyzedTag } from '../utils/itemHelpers';
 import { isLikelyImageBlob } from '../utils/file';
 import { classifyGeneratingTask, GENERATION_ACTIVE_WINDOW_MS } from '../utils/generationRecovery';
+import {
+  startReferenceAnalysis,
+  cancelReferenceAnalysis,
+  checkReferenceAnalysisStatus,
+  reconcileReferenceAnalysis,
+  loadReferenceImageBlob,
+  type ReferenceAnalysisDeps,
+} from '../services/referenceAnalysis';
 
 export default defineBackground(() => {
   // 串行化菜单重建：顶层启动、onInstalled 与设置变更可能同时触发，
@@ -415,15 +426,64 @@ export default defineBackground(() => {
         return false;
       }
     }
+
+    // 工作台参考图反推：参考图不在画廊库内，以前台生成的 requestId 标识任务，
+    // 长请求由 SW 托管（侧边栏关闭后继续执行，结果持久化 + 广播）
+    if (message.action === 'START_REFERENCE_ANALYSIS') {
+      startReferenceAnalysis(message, referenceAnalysisDeps)
+        .then(({ response }) => sendResponse(response))
+        .catch((err) => sendResponse({ success: false, error: String(err) }));
+      return true;
+    }
+
+    if (message.action === 'CANCEL_REFERENCE_ANALYSIS') {
+      cancelReferenceAnalysis(message, referenceAnalysisDeps)
+        .then(sendResponse)
+        .catch((err) => sendResponse({ success: false, error: String(err) }));
+      return true;
+    }
+
+    if (message.action === 'CHECK_REFERENCE_ANALYSIS_STATUS') {
+      checkReferenceAnalysisStatus(message, referenceAnalysisDeps)
+        .then(sendResponse)
+        .catch(() => sendResponse({ isRunning: false, state: null }));
+      return true;
+    }
   });
 
   // 启动时自动纠正历史上因扩展关闭而卡死在 analyzing 的悬挂任务
   reconcileStaleAnalyzingItems().catch(() => {});
+  // 冷启动意味着内存中的参考图反推已全部丢失，把遗留的 running 状态收敛为 failed
+  reconcileReferenceAnalysis(referenceAnalysisDeps).catch(() => {});
   reconcileStaleGeneratingTasks().catch(() => {});
 });
 
 // 内存中维护正在运行中的反推任务 Controller
 const activeAnalyses = new Map<number, AbortController>();
+// 工作台参考图反推任务（以前台 requestId 为键），逻辑见 services/referenceAnalysis.ts
+const referenceAnalysisDeps: ReferenceAnalysisDeps = {
+  active: new Map<string, AbortController>(),
+  now: () => Date.now(),
+  getSettings: getUserSettings,
+  loadImage: (imageUrl, signal) => loadReferenceImageBlob(imageUrl, signal),
+  // 与画廊反推一致：外发边界的瞬态压缩与渠道解析都在 analyzeImageWithAI 内完成
+  analyze: (blob, settings, signal) => analyzeImageWithAI(blob, settings, undefined, undefined, signal),
+  readState: getActiveReferenceAnalysis,
+  writeState: setActiveReferenceAnalysis,
+  clearState: clearActiveReferenceAnalysis,
+  broadcast: (message) => {
+    chrome.runtime.sendMessage(message).catch(() => {});
+  },
+  // MV3 Service Worker 异步保活心跳：每 10 秒调用一次轻量级 API 维持 SW 活跃状态
+  startKeepAlive: () => {
+    const timer = setInterval(() => {
+      if (typeof chrome !== 'undefined' && chrome.runtime?.getPlatformInfo) {
+        chrome.runtime.getPlatformInfo().catch(() => {});
+      }
+    }, 10000);
+    return () => clearInterval(timer);
+  },
+};
 const BACKGROUND_BOOT_TIME = Date.now();
 /** 采集时下载原图的超时 */
 const CAPTURE_FETCH_TIMEOUT_MS = 30_000;

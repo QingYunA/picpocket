@@ -198,6 +198,46 @@ export interface ActiveAnalysisState {
   model?: string;
 }
 
+/** 工作台「参考图反推」的持久化状态：参考图不在画廊库内，故与按 itemId 绑定的 ActiveAnalysisState 分开存放 */
+export interface ActiveReferenceAnalysisState {
+  requestId: string;
+  startTime: number;
+  /** running：后台执行中；done / failed：后台已收敛，等待前台（可能刚重新打开）消费 */
+  status: 'running' | 'done' | 'failed';
+  /** 发起时的提示词快照，前台恢复时据此判断用户之后是否又改过提示词 */
+  promptSnapshot?: string;
+  masterPrompt?: string;
+  error?: string;
+}
+
+export interface StartReferenceAnalysisMessage {
+  action: 'START_REFERENCE_ANALYSIS';
+  requestId: string;
+  /** data: URL（或 http(s) 图片地址）；Blob 无法跨 chrome.runtime.sendMessage 结构化克隆 */
+  imageUrl: string;
+  startTime?: number;
+  promptSnapshot?: string;
+}
+
+export interface CancelReferenceAnalysisMessage {
+  action: 'CANCEL_REFERENCE_ANALYSIS';
+  requestId: string;
+}
+
+export interface CheckReferenceAnalysisStatusMessage {
+  action: 'CHECK_REFERENCE_ANALYSIS_STATUS';
+  requestId: string;
+}
+
+/** 后台收敛后向前台广播的结果（前台已关闭时广播无人接收，结果以持久化状态为准） */
+export interface ReferenceAnalysisFinishedMessage {
+  action: 'REFERENCE_ANALYSIS_FINISHED';
+  requestId: string;
+  status: 'success' | 'failed' | 'cancelled';
+  masterPrompt?: string;
+  error?: string;
+}
+
 export interface StartImageAnalysisMessage {
   action: 'START_IMAGE_ANALYSIS';
   itemId: number;

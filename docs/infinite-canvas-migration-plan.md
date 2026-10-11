@@ -39,3 +39,10 @@ bundle. Remote JavaScript plugins are not supported in the MV3 extension build.
 Pin and build upstream in parallel with the current workbench. Discover MV3
 incompatibilities before changing navigation or persistent data. Work through
 the gates in order and report any gate not yet met explicitly.
+
+## Status
+
+Gate 6 is done: the side-panel launcher opens `canvas/index.html`, and the legacy
+`workbench.html` entrypoint (`src/entrypoints/workbench/`) and `openWorkbenchPage`
+have been removed. Legacy projects stay readable through the one-time migration
+in `vendor/infinite-canvas/web/src/integrations/picpocket/canvas-project-migration.ts`.

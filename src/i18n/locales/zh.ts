@@ -893,6 +893,8 @@ export const zh = {
       ratioPortrait: '9:16 移动竖屏',
       ratioClassicWide: '4:3 经典横幅',
       ratioClassicTall: '3:4 经典竖幅',
+      ratioUltrawide: '21:9 超宽银幕',
+      ratioPoster: '2:3 海报竖幅',
     },
     storage: {
       dbStatsTitle: 'IndexedDB 本地存储空间统计',

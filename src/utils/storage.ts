@@ -1,5 +1,6 @@
 import type { UserSettings, Language, ImageAspectRatio, McpSettings, ActiveGenerationState, ActiveAnalysisState } from '../types';
 import { sanitizeHttpHeaderToken, sanitizeHttpUrl } from './sanitize';
+import { LEGACY_MCP_AUTH_TOKEN } from './mcpToken';
 
 export function getDefaultLanguage(): Language {
   if (typeof navigator !== 'undefined' && navigator.language) {
@@ -11,7 +12,8 @@ export function getDefaultLanguage(): Language {
 export const DEFAULT_MCP_SETTINGS: McpSettings = {
   enabled: true,
   port: 18088,
-  authToken: 'promptsnap-local-token',
+  // 旧版公开默认值，仅作存量用户兼容回退；新安装会在 onInstalled 时换成随机 Token（见 mcpInstallToken）
+  authToken: LEGACY_MCP_AUTH_TOKEN,
   permissions: {
     read: true,
     write: true,

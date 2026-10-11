@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { openInfiniteCanvasPage, openOptionsPage, openWorkbenchPage } from '../navigation';
+import { openInfiniteCanvasPage, openOptionsPage } from '../navigation';
 
 describe('openOptionsPage', () => {
   beforeEach(() => {
@@ -104,85 +104,6 @@ describe('openOptionsPage', () => {
     await openOptionsPage();
 
     expect(fakeOpen).toHaveBeenCalled();
-  });
-});
-
-describe('openWorkbenchPage', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it('should create new workbench tab with handoff draft stashed in storage', async () => {
-    const fakeQuery = vi.fn().mockResolvedValue([]);
-    const fakeCreate = vi.fn().mockResolvedValue({});
-    const fakeStorageSet = vi.fn().mockResolvedValue({});
-
-    (globalThis as any).chrome = {
-      runtime: {
-        getURL: (path: string) => `chrome-extension://test-id/${path}`,
-      },
-      tabs: {
-        query: fakeQuery,
-        update: vi.fn(),
-        create: fakeCreate,
-      },
-      storage: {
-        local: {
-          set: fakeStorageSet,
-        },
-      },
-    };
-
-    await openWorkbenchPage({
-      prompt: 'cyberpunk cat',
-      model: 'grok-imagine',
-      aspectRatio: '16:9',
-    });
-
-    expect(fakeStorageSet).toHaveBeenCalledWith({
-      pending_workbench_handoff: expect.objectContaining({
-        prompt: 'cyberpunk cat',
-        model: 'grok-imagine',
-        aspectRatio: '16:9',
-      }),
-    });
-    expect(fakeCreate).toHaveBeenCalledWith({
-      active: true,
-      url: expect.stringMatching(/chrome-extension:\/\/test-id\/workbench\.html#handoff=/),
-    });
-  });
-
-  it('should activate existing workbench tab when already open', async () => {
-    const fakeQuery = vi.fn().mockResolvedValue([{ id: 88, windowId: 99 }]);
-    const fakeUpdate = vi.fn().mockResolvedValue({});
-    const fakeWindowUpdate = vi.fn().mockResolvedValue({});
-
-    (globalThis as any).chrome = {
-      runtime: {
-        getURL: (path: string) => `chrome-extension://test-id/${path}`,
-      },
-      tabs: {
-        query: fakeQuery,
-        update: fakeUpdate,
-        create: vi.fn(),
-      },
-      windows: {
-        update: fakeWindowUpdate,
-      },
-      storage: {
-        local: {
-          set: vi.fn().mockResolvedValue({}),
-        },
-      },
-    };
-
-    await openWorkbenchPage();
-
-    expect(fakeQuery).toHaveBeenCalledWith({
-      url: 'chrome-extension://test-id/workbench.html*',
-    });
-    expect(fakeUpdate).toHaveBeenCalledWith(88, { active: true });
-    expect(fakeWindowUpdate).toHaveBeenCalledWith(99, { focused: true });
   });
 });
 

@@ -1,7 +1,7 @@
 # 0010: 无限画布深度吸收与纯净台面资产抽屉架构
 
 ## 状态
-已通过 (Accepted)
+已通过 (Accepted)；**其所基于的自研画布工作台已被 Infinite Canvas 取代（Superseded by the Infinite Canvas, see `docs/infinite-canvas-migration-plan.md`）**，下文保留为历史决策记录。
 
 ## 上下文与问题陈述
 在第一阶段（ADR 0009）独立全屏无限画布工作台上线后，收到了深入的用户实战反馈与需求痛点：

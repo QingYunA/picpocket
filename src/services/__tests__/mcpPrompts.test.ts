@@ -91,3 +91,19 @@ describe('mcpPrompts', () => {
     });
   });
 });
+
+describe('Token 插值转义', () => {
+  const weird = 'pp_a"b\'c $(x)';
+  const config = { ...DEFAULT_MCP_SETTINGS, authToken: weird };
+
+  it('JSON 片段里的 Token 经过 JSON 转义', () => {
+    const prompt = buildTargetedPrompt('cursor', config);
+    expect(prompt).toContain(`"PICPOCKET_MCP_TOKEN": ${JSON.stringify(weird)}`);
+    expect(prompt).not.toContain(`"PICPOCKET_MCP_TOKEN": "${weird}"`);
+  });
+
+  it('Claude Code 命令里的 Token 经过 shell 单引号转义', () => {
+    const prompt = buildTargetedPrompt('claude', config);
+    expect(prompt).toContain(`-e PICPOCKET_MCP_TOKEN='pp_a"b'\\''c $(x)'`);
+  });
+});

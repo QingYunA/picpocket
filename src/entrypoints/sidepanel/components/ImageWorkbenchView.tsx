@@ -32,6 +32,7 @@ import {
 import { requestReferenceAnalysis, probeReferenceAnalysis } from '@/services/referenceAnalysisClient';
 import {
   REFERENCE_ANALYSIS_WINDOW_MS,
+  referenceAnalysisErrorKey,
   resolveReferenceAnalysisOnMount,
   shouldApplyRecoveredPrompt,
 } from '@/utils/referenceAnalysisRecovery';
@@ -132,6 +133,11 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
   onOpenSettings,
 }) => {
   const { t, language } = useI18n();
+  // 后台自身的错误以错误码回传，在这里按界面语言翻译；上游接口的原始错误原样展示
+  const describeReverseError = (error?: string) => {
+    const key = referenceAnalysisErrorKey(error);
+    return key ? t(key) : error || t('inspector.analyzeFailed');
+  };
   const { user: accountUser } = useAuth();
 
   // 当前生图渠道与模型（含 PicPocket 官方渠道），在「模型」一行的选择器里切换并即时持久化
@@ -399,7 +405,7 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
       const resp = await requestReferenceAnalysis({ requestId, imageUrl, startTime, promptSnapshot: prompt });
       if (!resp.success && reverseRequestIdRef.current === requestId) {
         finishReverse();
-        setErrorMsg(resp.error || t('inspector.analyzeFailed'));
+        setErrorMsg(describeReverseError(resp.error));
       }
     } catch (err: any) {
       if (reverseRequestIdRef.current === requestId) {
@@ -448,7 +454,7 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
         setPrompt(msg.masterPrompt);
         flashFeedback(t('generator.reverseRefSuccess'));
       } else if (msg.status === 'failed') {
-        setErrorMsg(msg.error || t('inspector.analyzeFailed'));
+        setErrorMsg(describeReverseError(msg.error));
       }
     };
   });
@@ -496,7 +502,7 @@ export const ImageWorkbenchView: React.FC<ImageWorkbenchViewProps> = ({
             flashFeedback(t('generator.reverseRefKeptEdited'), 5000);
           }
         } else if (verdict === 'completed' || verdict === 'failed' || verdict === 'interrupted' || verdict === 'timed-out') {
-          setErrorMsg(state?.error || t('inspector.analyzeFailed'));
+          setErrorMsg(describeReverseError(state?.error));
         }
       } catch (err) {
         console.warn('Failed to recover reference analysis on mount:', err);

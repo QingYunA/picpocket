@@ -1,4 +1,5 @@
 import type { ActiveReferenceAnalysisState } from '../types';
+import type { TranslationKey } from '../i18n';
 
 /** 参考图反推的有效执行窗口，与反推请求超时（170s）及 180s 悬挂判定窗口保持一致 */
 export const REFERENCE_ANALYSIS_WINDOW_MS = 180_000;
@@ -66,4 +67,24 @@ export function shouldApplyRecoveredPrompt(
   currentPrompt: string
 ): boolean {
   return (promptSnapshot ?? '') === currentPrompt;
+}
+
+/** 后台自身产生的错误只回传错误码，由前台按界面语言翻译（Service Worker 不知道侧边栏当前语言） */
+export const REFERENCE_ANALYSIS_ERROR = {
+  interrupted: 'reference-analysis:interrupted',
+  timedOut: 'reference-analysis:timed-out',
+  busy: 'reference-analysis:busy',
+  invalidImage: 'reference-analysis:invalid-image',
+} as const;
+
+const ERROR_KEYS: Record<string, TranslationKey> = {
+  [REFERENCE_ANALYSIS_ERROR.interrupted]: 'generator.reverseRefInterrupted',
+  [REFERENCE_ANALYSIS_ERROR.timedOut]: 'generator.reverseRefTimedOut',
+  [REFERENCE_ANALYSIS_ERROR.busy]: 'generator.reverseRefBusy',
+  [REFERENCE_ANALYSIS_ERROR.invalidImage]: 'generator.reverseRefInvalidImage',
+};
+
+/** 错误码对应的文案键；上游接口返回的原始错误不在此列，原样展示 */
+export function referenceAnalysisErrorKey(error: string | undefined): TranslationKey | undefined {
+  return error ? ERROR_KEYS[error] : undefined;
 }

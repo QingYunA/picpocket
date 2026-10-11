@@ -1,6 +1,6 @@
 import type { McpSettings } from '@/types';
 import { DEFAULT_MCP_SETTINGS } from '@/utils/storage';
-import { isLegacyMcpToken } from '@/utils/mcpToken';
+import { isLegacyMcpToken, quotePosixShellArg } from '@/utils/mcpToken';
 
 export type McpClientTarget = 'auto' | 'cursor' | 'claude' | 'antigravity' | 'windsurf' | 'zed';
 
@@ -36,8 +36,10 @@ export function buildTargetedPrompt(target: McpClientTarget, mcpConfig: McpSetti
   const token = mcpConfig.authToken || DEFAULT_MCP_SETTINGS.authToken;
   // 专属 Token 必须交给 bridge（环境变量），否则握手会因 Token 不一致被拒；旧版默认值 bridge 自带回退，保持原提示词不变
   const needsToken = !isLegacyMcpToken(token);
-  const envJson = needsToken ? `,\n      "env": { "PICPOCKET_MCP_TOKEN": "${token}" }` : '';
-  const claudeEnvFlag = needsToken ? ` -e PICPOCKET_MCP_TOKEN=${token}` : '';
+  // Token 写进 JSON 片段与 shell 命令前必须转义，否则含引号或 $() 的值会破坏结构或被 shell 执行
+  const tokenJson = JSON.stringify(token);
+  const envJson = needsToken ? `,\n      "env": { "PICPOCKET_MCP_TOKEN": ${tokenJson} }` : '';
+  const claudeEnvFlag = needsToken ? ` -e PICPOCKET_MCP_TOKEN=${quotePosixShellArg(token)}` : '';
 
   if (target === 'cursor') {
     return `${ANTI_DRIFT_NOTICE}
@@ -49,7 +51,7 @@ You are an expert AI assistant running inside Cursor. Configure the PicPocket lo
 - Config Root Key: \`"mcpServers.picpocket"\`
 - Server Command: \`bun\` (resolve full absolute path via \`which bun || which node\`)
 - Script Entry: absolute path to \`packages/mcp-bridge/src/index.ts\` in this project
-- Optional Args/Env: pass \`"--port", "${port}"\` in args, or env \`{"PICPOCKET_MCP_PORT": "${port}", "PICPOCKET_MCP_TOKEN": "${token}"}\`
+- Optional Args/Env: pass \`"--port", "${port}"\` in args, or env \`{"PICPOCKET_MCP_PORT": "${port}", "PICPOCKET_MCP_TOKEN": ${tokenJson}}\`
 
 ### Strict Non-Destructive Rules:
 - If \`.cursor/mcp.json\` already exists, backup to \`.cursor/mcp.json.bak\` first.
@@ -90,7 +92,7 @@ You are an expert AI assistant running inside Google Antigravity / Gemini CLI. C
       "args": ["<absolute-path-to-project>/packages/mcp-bridge/src/index.ts", "--port", "${port}"],
       "env": {
         "PICPOCKET_MCP_PORT": "${port}",
-        "PICPOCKET_MCP_TOKEN": "${token}"
+        "PICPOCKET_MCP_TOKEN": ${tokenJson}
       }
     }
   }
@@ -165,7 +167,7 @@ You are an expert AI development assistant. Safely configure the PicPocket local
 - Executable Command: "bun" (Fallback: "node")
 - Script Entry: "packages/mcp-bridge/src/index.ts" (relative to project root)
 - Port: "${port}"
-- Token: "${token}"
+- Token: ${tokenJson}
 
 ### Target Decision Matrix (Pick YOUR host only):
 1. **If you are Cursor**: Target workspace \`.cursor/mcp.json\` -> key \`mcpServers.picpocket\`.

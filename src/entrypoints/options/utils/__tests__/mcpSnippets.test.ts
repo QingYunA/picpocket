@@ -117,4 +117,10 @@ describe('专属 Token 透传给 bridge', () => {
     expect(buildBridgeCommand(19000, TOKEN)).toBe(`PICPOCKET_MCP_TOKEN=${TOKEN} bun run mcp --port 19000`);
     expect(buildBridgeCommand(19000)).toBe('bun run mcp --port 19000');
   });
+
+  it('Windows 下改用 PowerShell 的 $env: 写法（POSIX 前缀在 cmd / PowerShell 中无效）', () => {
+    expect(buildBridgeCommand(18088, TOKEN, true)).toBe(`$env:PICPOCKET_MCP_TOKEN='${TOKEN}'; bun run mcp`);
+    expect(buildBridgeCommand(19000, "a'b", true)).toBe(`$env:PICPOCKET_MCP_TOKEN='a''b'; bun run mcp --port 19000`);
+    expect(buildBridgeCommand(18088, LEGACY_MCP_AUTH_TOKEN, true)).toBe('bun run mcp');
+  });
 });

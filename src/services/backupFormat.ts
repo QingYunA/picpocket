@@ -1,3 +1,5 @@
+import { PICPOCKET_CHANNEL_ID } from '../config/hostedModels';
+
 /** ZIP 完整备份的清单版本：v1 缺少图库元数据与设置，v2 起完整可恢复 */
 export const BACKUP_MANIFEST_VERSION = 2;
 
@@ -121,7 +123,10 @@ export function protectLocalEndpoints(
       keptCount++;
     }
   };
-  protectUrl('baseUrl', hasText(local.apiKey));
+  // 视觉请求用当前视觉渠道的 Key 发往顶层 baseUrl；生图未设 imageBaseUrl 时也回落到这里
+  const visionChannelKeyed =
+    Array.isArray(local.visionChannels) && local.visionChannels.some((c) => isPlainObject(c) && hasText(c.apiKey));
+  protectUrl('baseUrl', hasText(local.apiKey) || hasText(local.imageApiKey) || visionChannelKeyed);
   protectUrl('imageBaseUrl', hasText(local.imageApiKey) || hasText(local.apiKey));
 
   const protectChannels = (field: 'visionChannels' | 'imageChannels', inheritsMainKey: boolean) => {
@@ -156,7 +161,7 @@ export function protectLocalEndpoints(
   const keepActiveChannel = (activeField: string, listField: string) => {
     const active = settings[activeField];
     const channels = settings[listField];
-    if (active === undefined || !Array.isArray(channels)) return;
+    if (active === undefined || active === PICPOCKET_CHANNEL_ID || !Array.isArray(channels)) return;
     if (channels.some((c) => isPlainObject(c) && c.id === active)) return;
     if (local[activeField] === undefined) delete settings[activeField];
     else settings[activeField] = local[activeField];

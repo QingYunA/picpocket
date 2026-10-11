@@ -37,9 +37,7 @@
       if (l === 'zh') document.title = '服务条款 — PicPocket';
     })();
   </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap">
+  <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/site.css">
   <style>
     /* ---------- Doc hero ---------- */
@@ -529,8 +527,8 @@
             <span data-l="zh"><strong>自备 Key：</strong>请求直接从浏览器发往你配置的 AI 服务商，适用该服务商的条款，费用由其收取。<strong>官方托管：</strong>请求经过 PicPocket 的服务器，用积分付费（见第 03 节）。</span>
           </div>
           <p>
-            <span data-l="en">The extension's local features (saving, organizing and exporting your library) work without an account and without an internet connection to us.</span>
-            <span data-l="zh">扩展的本地功能（收藏、整理和导出你的图库）无需账号，也不依赖与我们的网络连接。</span>
+            <span data-l="en">The extension's local features (saving, organizing and exporting your Pocket) work without an account and without an internet connection to us.</span>
+            <span data-l="zh">扩展的本地功能（收藏、整理和导出你的口袋）无需账号，也不依赖与我们的网络连接。</span>
           </p>
         </section>
 
@@ -607,8 +605,8 @@
           </ul>
           <h3><span data-l="en">Content moderation</span><span data-l="zh">内容审核</span></h3>
           <p>
-            <span data-l="en">Hosted requests are sent to third-party AI providers, which apply their own safety filters and may refuse or block a request; credits for a blocked request are returned. We do not scan your local library, which never leaves your device. We review hosted usage that is reported to us or that triggers abuse signals such as unusual request volume, and we may refuse requests, warn you, suspend or close accounts and void unused credits where these rules are broken.</span>
-            <span data-l="zh">托管请求会发送给第三方 AI 服务商，它们有各自的安全过滤，可能拒绝或拦截请求；被拦截请求的积分会退回。我们不会扫描你的本地图库，它不会离开你的设备。对于被举报或触发滥用信号（如异常请求量）的托管使用，我们会进行核查；违反上述规定时，我们可能拒绝请求、警告、暂停或关闭账号，并作废未使用的积分。</span>
+            <span data-l="en">Hosted requests are sent to third-party AI providers, which apply their own safety filters and may refuse or block a request; credits for a blocked request are returned. We do not scan your local Pocket, which never leaves your device. We review hosted usage that is reported to us or that triggers abuse signals such as unusual request volume, and we may refuse requests, warn you, suspend or close accounts and void unused credits where these rules are broken.</span>
+            <span data-l="zh">托管请求会发送给第三方 AI 服务商，它们有各自的安全过滤，可能拒绝或拦截请求；被拦截请求的积分会退回。我们不会扫描你的本地口袋，它不会离开你的设备。对于被举报或触发滥用信号（如异常请求量）的托管使用，我们会进行核查；违反上述规定时，我们可能拒绝请求、警告、暂停或关闭账号，并作废未使用的积分。</span>
           </p>
           <h3><span data-l="en">Reporting violations</span><span data-l="zh">举报违规</span></h3>
           <p>
@@ -633,8 +631,8 @@
           <div class="sec-num">SECTION 08</div>
           <h2><span data-l="en">Disclaimers &amp; liability</span><span data-l="zh">免责与责任限制</span></h2>
           <p>
-            <span data-l="en">PicPocket is provided <strong>"as is" and "as available"</strong>. We do not promise that it will be uninterrupted or error-free, that AI providers will stay available, or that any output will meet your needs. Because your library lives in your browser, please export backups of anything important; we cannot recover data stored only on your device.</span>
-            <span data-l="zh">PicPocket 按<strong>“现状”和“可用”</strong>提供。我们不保证服务不中断或无错误，不保证 AI 服务商持续可用，也不保证任何输出满足你的需求。由于你的图库保存在浏览器本地，请对重要内容自行导出备份；仅存于你设备上的数据我们无法找回。</span>
+            <span data-l="en">PicPocket is provided <strong>"as is" and "as available"</strong>. We do not promise that it will be uninterrupted or error-free, that AI providers will stay available, or that any output will meet your needs. Because your Pocket lives in your browser, please export backups of anything important; we cannot recover data stored only on your device.</span>
+            <span data-l="zh">PicPocket 按<strong>“现状”和“可用”</strong>提供。我们不保证服务不中断或无错误，不保证 AI 服务商持续可用，也不保证任何输出满足你的需求。由于你的口袋保存在浏览器本地，请对重要内容自行导出备份；仅存于你设备上的数据我们无法找回。</span>
           </p>
           <p>
             <span data-l="en">To the maximum extent permitted by law, we are not liable for indirect, incidental, special or consequential damages, or for loss of data, profits or business. Our total liability for any claim relating to the service is limited to the greater of (a) the amount you paid us in the 12 months before the claim arose and (b) USD 50. Nothing in these terms limits liability that cannot be limited by law, including for fraud or for death or personal injury caused by negligence, or removes rights you have as a consumer under mandatory law.</span>

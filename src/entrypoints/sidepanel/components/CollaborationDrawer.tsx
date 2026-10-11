@@ -29,6 +29,7 @@ import {
 } from '@/services/mcpPrompts';
 import { getUserSettings, saveUserSettings, DEFAULT_MCP_SETTINGS } from '@/utils/storage';
 import { openOptionsPage } from '@/utils/navigation';
+import { buildBridgeCommand, buildClientConfigSnippet, buildInstallCommand } from '@/entrypoints/options/utils/mcpSnippets';
 
 interface CollaborationDrawerProps {
   isOpen: boolean;
@@ -110,29 +111,12 @@ export const CollaborationDrawer: React.FC<CollaborationDrawerProps> = ({
 
   const currentPrompt = buildTargetedPrompt(selectedTarget, mcpConfig);
 
-  const installCliCommand =
-    selectedTarget === 'auto'
-      ? `bun run mcp:install${mcpConfig.port !== 18088 ? ` --port ${mcpConfig.port}` : ''}`
-      : `bun run mcp:install ${selectedTarget}${mcpConfig.port !== 18088 ? ` --port ${mcpConfig.port}` : ''}`;
-
-  const bridgeCommand =
-    mcpConfig.port !== 18088 ? `bun run mcp --port ${mcpConfig.port}` : 'bun run mcp';
-
-  const mcpConfigJson = JSON.stringify(
-    {
-      mcpServers: {
-        picpocket: {
-          command: 'bun',
-          args:
-            mcpConfig.port !== 18088
-              ? ['packages/mcp-bridge/src/index.ts', '--port', String(mcpConfig.port)]
-              : ['packages/mcp-bridge/src/index.ts'],
-        },
-      },
-    },
-    null,
-    2
-  );
+  const isWindows = typeof navigator !== 'undefined' && navigator.userAgent.includes('Win');
+  const currentPort = mcpConfig.port || 18088;
+  const installCliCommand = buildInstallCommand(selectedTarget, currentPort, mcpConfig.authToken);
+  const bridgeCommand = buildBridgeCommand(currentPort, mcpConfig.authToken, isWindows);
+  // 手动配置片段为通用的 mcpServers 结构，与 cursor 目标一致
+  const mcpConfigJson = buildClientConfigSnippet('cursor', currentPort, isWindows, mcpConfig.authToken);
 
   // 写入剪贴板成功后才显示「已复制」，被浏览器拒绝时不误导用户
   const copyText = async (text: string, markCopied: (copied: boolean) => void, resetMs = 2000) => {

@@ -73,6 +73,7 @@ import { CanvasMinimap, type MinimapNode } from './components/CanvasMinimap';
 import { CanvasProjectDropdown } from './components/CanvasProjectDropdown';
 import { rotateDataUrl90, upscaleDataUrlToTarget, type ImageUpscaleAlgorithm } from './utils/canvasImageUtils';
 import { formatSafeErrorMessage } from '@/utils/errorMessage';
+import { resolveAspectRatio } from '@/utils/aspectRatio';
 import { normalizeSelectionBox, isBoxIntersecting } from './utils/canvasGeometry';
 import {
   CANVAS_PROJECTS_STORAGE_KEY,
@@ -854,6 +855,8 @@ export const App: React.FC = () => {
       setSettings(fresh);
       if (fresh.imageChannels) setModel(fresh.imageModel || '');
       else if (fresh.imageModel) setModel(fresh.imageModel);
+      // 画布生成卡没有持久化草稿：仅在首次加载设置时，以默认画幅作为起始值
+      setAspectRatio(resolveAspectRatio(undefined, fresh.defaultImageAspectRatio));
     });
 
     if (chrome.storage?.onChanged) {

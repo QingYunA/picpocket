@@ -1,3 +1,5 @@
+import { PICPOCKET_CHANNEL_ID } from '../config/hostedModels';
+
 /** ZIP 完整备份的清单版本：v1 缺少图库元数据与设置，v2 起完整可恢复 */
 export const BACKUP_MANIFEST_VERSION = 2;
 
@@ -88,4 +90,90 @@ export function mergeSettings(current: PlainObject, incoming: PlainObject): Plai
     else merged[key] = value;
   }
   return merged;
+}
+
+const hasText = (value: unknown): boolean => typeof value === 'string' && value.trim() !== '';
+
+/**
+ * 备份不含凭据，恢复后本机已有的 Key 会被发往备份里指定的端点——恶意备份可借此窃取 Key。
+ * 因此：恢复时备份里的端点，绝不能替换「会收到本机已有凭据」的本机端点。
+ * - hostedProxyUrl（PicPocket 自有服务端点）：永不从备份恢复
+ * - baseUrl / imageBaseUrl：本机有对应 Key 且备份值不同则保留本机值（生图未单独配 Key 时继承 apiKey）
+ * - 渠道按 id 对齐：本机已存在且有 Key（生图渠道自身无 Key 时继承 apiKey）则保留本机 baseUrl；
+ *   本机不存在或无 Key 的渠道原样恢复（用户之后需主动填 Key）
+ * 纯函数，不修改入参；keptCount 为被保留的本机端点个数。
+ */
+export function protectLocalEndpoints(
+  local: PlainObject,
+  restored: PlainObject
+): { settings: PlainObject; keptCount: number } {
+  const settings: PlainObject = { ...restored };
+  let keptCount = 0;
+
+  if (settings.hostedProxyUrl !== local.hostedProxyUrl) {
+    if (local.hostedProxyUrl === undefined) delete settings.hostedProxyUrl;
+    else settings.hostedProxyUrl = local.hostedProxyUrl;
+    keptCount++;
+  }
+
+  const protectUrl = (urlField: string, keyed: boolean) => {
+    if (keyed && settings[urlField] !== local[urlField]) {
+      if (local[urlField] === undefined) delete settings[urlField];
+      else settings[urlField] = local[urlField];
+      keptCount++;
+    }
+  };
+  // 视觉请求用当前视觉渠道的 Key 发往顶层 baseUrl；生图未设 imageBaseUrl 时也回落到这里
+  const visionChannelKeyed =
+    Array.isArray(local.visionChannels) && local.visionChannels.some((c) => isPlainObject(c) && hasText(c.apiKey));
+  protectUrl('baseUrl', hasText(local.apiKey) || hasText(local.imageApiKey) || visionChannelKeyed);
+  protectUrl('imageBaseUrl', hasText(local.imageApiKey) || hasText(local.apiKey));
+
+  const protectChannels = (field: 'visionChannels' | 'imageChannels', inheritsMainKey: boolean) => {
+    const channels = settings[field];
+    const localChannels = local[field];
+    if (!Array.isArray(channels) || !Array.isArray(localChannels)) return;
+    settings[field] = channels.map((channel) => {
+      if (!isPlainObject(channel)) return channel;
+      const existing = localChannels.find((c) => isPlainObject(c) && c.id === channel.id);
+      if (!isPlainObject(existing)) return channel;
+      const keyed = hasText(existing.apiKey) || (inheritsMainKey && hasText(local.apiKey));
+      if (!keyed || channel.baseUrl === existing.baseUrl) return channel;
+      keptCount++;
+      return { ...channel, baseUrl: existing.baseUrl };
+    });
+  };
+  protectChannels('visionChannels', false);
+  protectChannels('imageChannels', true);
+
+  // 生图渠道自身没填 Key 时会继承本机 apiKey：备份带来的本机不存在、无 Key 的渠道同样会把它发出去，直接丢弃
+  if (hasText(local.apiKey) && Array.isArray(settings.imageChannels)) {
+    const localImageChannels = Array.isArray(local.imageChannels) ? local.imageChannels : [];
+    const isLocal = (id: unknown) => localImageChannels.some((c) => isPlainObject(c) && c.id === id);
+    const kept = settings.imageChannels.filter(
+      (channel) => !isPlainObject(channel) || isLocal(channel.id) || hasText(channel.apiKey)
+    );
+    keptCount += settings.imageChannels.length - kept.length;
+    settings.imageChannels = kept;
+  }
+
+  // 当前渠道必须指向恢复后仍存在的渠道，否则沿用本机值
+  const keepActiveChannel = (activeField: string, listField: string) => {
+    const active = settings[activeField];
+    const channels = settings[listField];
+    if (active === undefined || active === PICPOCKET_CHANNEL_ID || !Array.isArray(channels)) return;
+    if (channels.some((c) => isPlainObject(c) && c.id === active)) return;
+    if (local[activeField] === undefined) delete settings[activeField];
+    else settings[activeField] = local[activeField];
+    keptCount++;
+  };
+  keepActiveChannel('activeVisionChannelId', 'visionChannels');
+  keepActiveChannel('activeImageChannelId', 'imageChannels');
+
+  return { settings, keptCount };
+}
+
+/** 导入用：先合并备份设置，再确保备份端点不会接走本机已有的凭据 */
+export function mergeRestoredSettings(current: PlainObject, incoming: PlainObject): PlainObject {
+  return protectLocalEndpoints(current, mergeSettings(current, incoming)).settings;
 }

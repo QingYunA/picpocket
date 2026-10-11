@@ -1,5 +1,6 @@
-import type { UserSettings, Language, ImageAspectRatio, McpSettings, ActiveGenerationState, ActiveAnalysisState } from '../types';
+import type { UserSettings, Language, ImageAspectRatio, McpSettings, ActiveGenerationState, ActiveAnalysisState, ActiveReferenceAnalysisState } from '../types';
 import { sanitizeHttpHeaderToken, sanitizeHttpUrl } from './sanitize';
+import { LEGACY_MCP_AUTH_TOKEN } from './mcpToken';
 
 export function getDefaultLanguage(): Language {
   if (typeof navigator !== 'undefined' && navigator.language) {
@@ -11,7 +12,8 @@ export function getDefaultLanguage(): Language {
 export const DEFAULT_MCP_SETTINGS: McpSettings = {
   enabled: true,
   port: 18088,
-  authToken: 'promptsnap-local-token',
+  // 旧版公开默认值，仅作存量用户兼容回退；新安装会在 onInstalled 时换成随机 Token（见 mcpInstallToken）
+  authToken: LEGACY_MCP_AUTH_TOKEN,
   permissions: {
     read: true,
     write: true,
@@ -245,7 +247,8 @@ export async function saveActiveTab(tab: SidepanelTab): Promise<SidepanelTab> {
 
 export interface GeneratorDraftState {
   prompt: string;
-  aspectRatio: ImageAspectRatio;
+  /** 未保存过画幅时为 undefined，此时由设置里的 defaultImageAspectRatio 决定（见 resolveAspectRatio） */
+  aspectRatio?: ImageAspectRatio;
   count: number;
   negativePrompt: string;
   referenceImage: string | null;
@@ -258,7 +261,6 @@ export interface GeneratorDraftState {
 
 export const DEFAULT_GENERATOR_DRAFT: GeneratorDraftState = {
   prompt: '',
-  aspectRatio: '1:1',
   count: 1,
   negativePrompt: '',
   referenceImage: null,
@@ -433,6 +435,49 @@ export async function clearActiveAnalysis(itemId?: number): Promise<void> {
   }
   if (inMemoryStorage) {
     delete inMemoryStorage.promptsnap_active_analysis;
+  }
+}
+
+export async function getActiveReferenceAnalysis(): Promise<ActiveReferenceAnalysisState | null> {
+  const stored = (await readChromeLocal('promptsnap_active_reference_analysis'))?.value;
+  if (stored) {
+    return stored as ActiveReferenceAnalysisState;
+  }
+  if (typeof localStorage !== 'undefined') {
+    const raw = localStorage.getItem('promptsnap_active_reference_analysis');
+    if (raw) {
+      try {
+        return JSON.parse(raw);
+      } catch {
+        // ignore
+      }
+    }
+  }
+  if (inMemoryStorage && inMemoryStorage.promptsnap_active_reference_analysis) {
+    return inMemoryStorage.promptsnap_active_reference_analysis;
+  }
+  return null;
+}
+
+export async function setActiveReferenceAnalysis(state: ActiveReferenceAnalysisState): Promise<void> {
+  await persistStorageEntry('promptsnap_active_reference_analysis', state);
+}
+
+export async function clearActiveReferenceAnalysis(requestId?: string): Promise<void> {
+  if (requestId) {
+    const current = await getActiveReferenceAnalysis();
+    if (current && current.requestId !== requestId) {
+      return;
+    }
+  }
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+    await chrome.storage.local.remove('promptsnap_active_reference_analysis');
+  }
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('promptsnap_active_reference_analysis');
+  }
+  if (inMemoryStorage) {
+    delete inMemoryStorage.promptsnap_active_reference_analysis;
   }
 }
 

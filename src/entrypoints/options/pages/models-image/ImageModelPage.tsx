@@ -15,6 +15,7 @@ import { useHostedCatalog } from '@/hooks/useHostedCatalog';
 import { PicPocketChannelPanel } from '../../components/picpocket-channel-panel';
 import type { UserSettings, ImageAspectRatio, ImageChannel } from '@/types';
 import { sanitizeHttpHeaderToken, sanitizeHttpUrl } from '@/utils/sanitize';
+import { ASPECT_RATIO_LIST, formatRatioDimensions } from '@/utils/aspectRatio';
 import { testApiEndpoint } from '../../utils/connectionTest';
 import {
   Check,
@@ -38,13 +39,22 @@ interface ImageModelPageProps {
   highlightField?: string;
 }
 
-const ASPECT_RATIO_OPTIONS: Array<{ value: ImageAspectRatio; labelKey: TranslationKey; sub: string }> = [
-  { value: '1:1', labelKey: 'options.models.ratioSquare', sub: '1024×1024' },
-  { value: '16:9', labelKey: 'options.models.ratioLandscape', sub: '1344×768' },
-  { value: '9:16', labelKey: 'options.models.ratioPortrait', sub: '768×1344' },
-  { value: '4:3', labelKey: 'options.models.ratioClassicWide', sub: '1152×864' },
-  { value: '3:4', labelKey: 'options.models.ratioClassicTall', sub: '864×1152' },
-];
+// 文案键必须覆盖全部画幅（Record 穷举），像素标签由 ASPECT_RATIO_CONFIGS 推导
+const RATIO_LABEL_KEYS: Record<ImageAspectRatio, TranslationKey> = {
+  '1:1': 'options.models.ratioSquare',
+  '16:9': 'options.models.ratioLandscape',
+  '9:16': 'options.models.ratioPortrait',
+  '4:3': 'options.models.ratioClassicWide',
+  '3:4': 'options.models.ratioClassicTall',
+  '21:9': 'options.models.ratioUltrawide',
+  '2:3': 'options.models.ratioPoster',
+};
+
+const ASPECT_RATIO_OPTIONS = ASPECT_RATIO_LIST.map((value) => ({
+  value,
+  labelKey: RATIO_LABEL_KEYS[value],
+  sub: formatRatioDimensions(value),
+}));
 
 export const ImageModelPage: React.FC<ImageModelPageProps> = ({
   settings,

@@ -141,6 +141,30 @@ export function protectLocalEndpoints(
   protectChannels('visionChannels', false);
   protectChannels('imageChannels', true);
 
+  // 生图渠道自身没填 Key 时会继承本机 apiKey：备份带来的本机不存在、无 Key 的渠道同样会把它发出去，直接丢弃
+  if (hasText(local.apiKey) && Array.isArray(settings.imageChannels)) {
+    const localImageChannels = Array.isArray(local.imageChannels) ? local.imageChannels : [];
+    const isLocal = (id: unknown) => localImageChannels.some((c) => isPlainObject(c) && c.id === id);
+    const kept = settings.imageChannels.filter(
+      (channel) => !isPlainObject(channel) || isLocal(channel.id) || hasText(channel.apiKey)
+    );
+    keptCount += settings.imageChannels.length - kept.length;
+    settings.imageChannels = kept;
+  }
+
+  // 当前渠道必须指向恢复后仍存在的渠道，否则沿用本机值
+  const keepActiveChannel = (activeField: string, listField: string) => {
+    const active = settings[activeField];
+    const channels = settings[listField];
+    if (active === undefined || !Array.isArray(channels)) return;
+    if (channels.some((c) => isPlainObject(c) && c.id === active)) return;
+    if (local[activeField] === undefined) delete settings[activeField];
+    else settings[activeField] = local[activeField];
+    keptCount++;
+  };
+  keepActiveChannel('activeVisionChannelId', 'visionChannels');
+  keepActiveChannel('activeImageChannelId', 'imageChannels');
+
   return { settings, keptCount };
 }
 

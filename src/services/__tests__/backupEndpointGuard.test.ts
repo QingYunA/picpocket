@@ -98,6 +98,54 @@ describe('protectLocalEndpoints', () => {
     expect((settings.imageChannels as Array<{ baseUrl: string }>)[0]!.baseUrl).toBe('https://i1.local');
   });
 
+  it('本机没有、自身无 Key 的生图渠道会继承本机 apiKey：恢复时丢弃，并不让当前渠道指向它', () => {
+    const local = {
+      apiKey: 'sk-main',
+      activeImageChannelId: 'i1',
+      imageChannels: [{ id: 'i1', name: 'I', providerId: 'p', apiKey: '', baseUrl: 'https://i1.local', model: 'm' }],
+    };
+    const restored = {
+      apiKey: 'sk-main',
+      activeImageChannelId: 'i-evil',
+      imageChannels: [
+        { id: 'i1', name: 'I', providerId: 'p', apiKey: '', baseUrl: 'https://i1.local', model: 'm' },
+        { id: 'i-evil', name: 'E', providerId: 'p', apiKey: '', baseUrl: EVIL, model: 'm' },
+      ],
+    };
+    const { settings, keptCount } = protectLocalEndpoints(local, restored);
+    expect((settings.imageChannels as Array<{ id: string }>).map((c) => c.id)).toEqual(['i1']);
+    expect(settings.activeImageChannelId).toBe('i1');
+    expect(keptCount).toBe(2);
+  });
+
+  it('本机没有但自带 Key 的生图渠道照常恢复（不会接走本机 Key）', () => {
+    const local = { apiKey: 'sk-main', imageChannels: [] };
+    const restored = {
+      apiKey: 'sk-main',
+      activeImageChannelId: 'i-own',
+      imageChannels: [{ id: 'i-own', name: 'O', providerId: 'p', apiKey: 'sk-own', baseUrl: 'https://own/v1', model: 'm' }],
+    };
+    const { settings, keptCount } = protectLocalEndpoints(local, restored);
+    expect(settings.imageChannels).toEqual(restored.imageChannels);
+    expect(settings.activeImageChannelId).toBe('i-own');
+    expect(keptCount).toBe(0);
+  });
+
+  it('本机无 apiKey 时，无 Key 的新生图渠道没有可继承的 Key，照常恢复', () => {
+    const restored = {
+      imageChannels: [{ id: 'i-new', name: 'N', providerId: 'p', apiKey: '', baseUrl: 'https://new/v1', model: 'm' }],
+    };
+    expect(protectLocalEndpoints({ imageChannels: [] }, restored).settings.imageChannels).toEqual(restored.imageChannels);
+  });
+
+  it('当前视觉渠道指向不存在的渠道时，回退为本机值', () => {
+    const { settings } = protectLocalEndpoints(
+      { activeVisionChannelId: 'v1', visionChannels: [{ id: 'v1', apiKey: 'k', baseUrl: 'https://v1' }] },
+      { activeVisionChannelId: 'ghost', visionChannels: [{ id: 'v1', apiKey: '', baseUrl: 'https://v1' }] }
+    );
+    expect(settings.activeVisionChannelId).toBe('v1');
+  });
+
   it('其余字段原样恢复，且不修改入参', () => {
     const local = Object.freeze({ apiKey: 'sk', baseUrl: 'https://a', language: 'en' });
     const restored = Object.freeze({ apiKey: 'sk', baseUrl: EVIL, language: 'zh', defaultImageAspectRatio: '16:9' });

@@ -282,7 +282,7 @@ export async function saveGeneratedImageToGallery(
 ): Promise<number> {
   const blob = dataUrlToBlob(image.dataUrl);
   // 图片地址下载失败时 dataUrl 会保留为原始 http 链接，解码出空 Blob；直接入库只会得到一张打不开的空白素材
-  if (blob.size === 0) throw new Error('图片数据不可用（原链接可能已过期），无法保存到图库');
+  if (blob.size === 0) throw new Error('图片数据不可用（原链接可能已过期），无法存入口袋');
   const { thumbnailBlob, width, height, aspectRatio } = await createThumbnail(blob);
 
   const id = await db.items.add({

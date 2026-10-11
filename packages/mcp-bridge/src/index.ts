@@ -6,6 +6,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { WebSocketServer, WebSocket } from 'ws';
 import { isAllowedBridgeOrigin } from './origin';
+import { resolveAuthToken, DEFAULT_TOKEN_WARNING } from './token';
 
 function resolvePort(): number {
   const args = process.argv.slice(2);
@@ -25,10 +26,8 @@ function resolvePort(): number {
 }
 
 const PORT = resolvePort();
-const AUTH_TOKEN =
-  process.env.PICPOCKET_MCP_TOKEN ||
-  process.env.PROMPTSNAP_MCP_TOKEN ||
-  'promptsnap-local-token';
+const { token: AUTH_TOKEN, isLegacyDefault } = resolveAuthToken(process.env);
+if (isLegacyDefault) console.error(DEFAULT_TOKEN_WARNING);
 
 let activeExtensionSocket: WebSocket | null = null;
 const pendingCalls = new Map<

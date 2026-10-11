@@ -12,6 +12,16 @@ It includes or depends on the following third-party software.
 - The original license text is kept unmodified in [`vendor/infinite-canvas/LICENSE`](./vendor/infinite-canvas/LICENSE).
 - PicPocket's modifications to this code are distributed under GPL-3.0-only (see [`vendor/infinite-canvas/UPSTREAM.md`](./vendor/infinite-canvas/UPSTREAM.md)).
 
+## Website fonts (self-hosted)
+
+The marketing website under [`website/`](./website/) serves these fonts from `website/assets/fonts/`
+(WOFF2, `latin` and `latin-ext` subsets) instead of loading them from a third-party CDN.
+
+- Geist and Geist Mono — Copyright 2024 The Geist Project Authors ([vercel/geist-font](https://github.com/vercel/geist-font)). SIL Open Font License 1.1: [`website/assets/fonts/OFL-Geist.txt`](./website/assets/fonts/OFL-Geist.txt)
+- Instrument Serif (italic) — Copyright 2022 The Instrument Serif Project Authors ([Instrument/instrument-serif](https://github.com/Instrument/instrument-serif)). SIL Open Font License 1.1: [`website/assets/fonts/OFL-InstrumentSerif.txt`](./website/assets/fonts/OFL-InstrumentSerif.txt)
+
+The files were obtained from the Google Fonts distribution (`fonts.gstatic.com`) and are unmodified.
+
 ## npm dependencies
 
 The extension and the bundled canvas depend on open source packages installed through `bun`.

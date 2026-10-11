@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   classifyReferenceAnalysis,
   REFERENCE_ANALYSIS_WINDOW_MS,
+  resolveReferenceAnalysisOnMount,
   shouldApplyRecoveredPrompt,
 } from '../referenceAnalysisRecovery';
 import type { ActiveReferenceAnalysisState } from '@/types';
@@ -51,6 +52,41 @@ describe('classifyReferenceAnalysis', () => {
       classifyReferenceAnalysis(running({ status: 'done', masterPrompt: 'x' }), { now: NOW, isActiveInMemory: false })
     ).toBe('completed');
     expect(classifyReferenceAnalysis(running({ status: 'failed' }), { now: NOW, isActiveInMemory: false })).toBe('failed');
+  });
+});
+
+describe('resolveReferenceAnalysisOnMount', () => {
+  const stored = running();
+
+  it('prefers the service worker state and liveness when it can be reached', () => {
+    expect(resolveReferenceAnalysisOnMount(stored, { isRunning: true, state: stored }, NOW)).toEqual({
+      verdict: 'running',
+      state: stored,
+    });
+    const settled = { ...stored, status: 'failed' as const, error: 'restarted' };
+    expect(resolveReferenceAnalysisOnMount(stored, { isRunning: false, state: settled }, NOW)).toEqual({
+      verdict: 'failed',
+      state: settled,
+    });
+  });
+
+  it('finds a result that landed while the panel was closed', () => {
+    const done = { ...stored, status: 'done' as const, masterPrompt: 'x' };
+    expect(resolveReferenceAnalysisOnMount(stored, { isRunning: false, state: done }, NOW).verdict).toBe('completed');
+  });
+
+  it('treats a state the service worker no longer knows about as gone', () => {
+    expect(resolveReferenceAnalysisOnMount(stored, { isRunning: false, state: null }, NOW).verdict).toBe('none');
+  });
+
+  it('falls back to the persisted state and the time window when the service worker is unreachable', () => {
+    expect(resolveReferenceAnalysisOnMount(stored, null, NOW)).toEqual({ verdict: 'running', state: stored });
+    const old = running({ startTime: NOW - REFERENCE_ANALYSIS_WINDOW_MS - 1 });
+    expect(resolveReferenceAnalysisOnMount(old, null, NOW).verdict).toBe('timed-out');
+  });
+
+  it('returns none when nothing is persisted', () => {
+    expect(resolveReferenceAnalysisOnMount(null, null, NOW).verdict).toBe('none');
   });
 });
 

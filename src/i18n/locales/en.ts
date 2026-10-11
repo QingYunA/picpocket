@@ -354,6 +354,7 @@ export const en: Translations = {
     reverseFromRef: 'Reverse Prompt',
     reversingRef: 'Analyzing...',
     reverseRefSuccess: 'Prompt extracted and populated',
+    reverseRefKeptEdited: 'Reverse finished in the background, but your prompt was edited, so it was not overwritten',
   },
   prompts: {
     allSources: 'All Sources',

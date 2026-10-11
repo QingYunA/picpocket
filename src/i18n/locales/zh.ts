@@ -352,6 +352,7 @@ export const zh = {
     reverseFromRef: '一键反推',
     reversingRef: '正在反推...',
     reverseRefSuccess: '已反推并填入提示词',
+    reverseRefKeptEdited: '参考图反推已在后台完成，但提示词已被修改，未覆盖你的内容',
   },
   prompts: {
     allSources: '全部来源',

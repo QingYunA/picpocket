@@ -31,6 +31,32 @@ export function classifyReferenceAnalysis(
   return 'running';
 }
 
+/** 前台向后台发起存活探针的应答；null 表示后台不可达 */
+export type ReferenceAnalysisProbe = {
+  isRunning: boolean;
+  state: ActiveReferenceAnalysisState | null;
+} | null;
+
+/**
+ * 侧边栏挂载时对齐持久化状态与后台实况：
+ * 后台可达则以其纠偏后的状态与内存存活为准（后台已不认识该任务即视为已清理）；
+ * 不可达则退回本地持久化状态 + 时间窗口兜底
+ */
+export function resolveReferenceAnalysisOnMount(
+  stored: ActiveReferenceAnalysisState | null,
+  probe: ReferenceAnalysisProbe,
+  now: number
+): { verdict: ReferenceAnalysisVerdict; state: ActiveReferenceAnalysisState | null } {
+  if (!stored) return { verdict: 'none', state: null };
+  if (probe && probe.state === null) return { verdict: 'none', state: null };
+  const state = probe?.state ?? stored;
+  const verdict = classifyReferenceAnalysis(state, {
+    now,
+    isActiveInMemory: probe ? probe.isRunning : undefined,
+  });
+  return { verdict, state };
+}
+
 /**
  * 侧边栏关闭期间完成的反推：仅当提示词框自发起后未被用户改动时才回填，
  * 避免静默覆盖用户后来输入的内容

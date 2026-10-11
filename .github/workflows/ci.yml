@@ -14,6 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      # 画布用 Vite 8，要求 Node ≥ 20.19；固定版本，不随 runner 镜像变化
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - name: Tests (i18n scan, extension, canvas)

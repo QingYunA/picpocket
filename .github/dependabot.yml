@@ -16,6 +16,14 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+      # plugin-react 新大版本通常要求新版 Vite，必须一起升
+      vite:
+        patterns: [vite, "@vitejs/*"]
+        update-types: [major]
+    ignore:
+      # TypeScript 7（Go 原生编译器）暂无编程 API，等生态跟上再升
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
   - package-ecosystem: github-actions
     directory: /
     schedule:

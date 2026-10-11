@@ -257,7 +257,7 @@
   3. **Full Access (完全控制)**：允许 Agent 自主调度生图引擎（指定画幅如 16:9、模型）、生成并自动沉淀资产入库。
 
 - **Local MCP Bridge (本地桥接进程)**
-  运行在用户操作系统本地的轻量级中继进程（`picpocket-mcp`）。对外遵循标准 MCP `stdio` 协议与 Agent 通信，对内通过受保护的本地回环 WebSocket（`127.0.0.1` + 动态 Token 握手）与插件双向协同。
+  运行在用户操作系统本地的轻量级中继进程（`picpocket-mcp`）。对外遵循标准 MCP `stdio` 协议与 Agent 通信，对内通过受保护的本地回环 WebSocket（`127.0.0.1` + 每次安装独有的随机配对 Token 握手，经环境变量 `PICPOCKET_MCP_TOKEN` 传给 Bridge）与插件双向协同。
 
 - **In-Situ Ingestion Flywheel (Agent 生图沉淀飞轮)**
   Agent 依据外部创意任务，先检索插件中积累的优质 Prompt 与风格积木，构造目标参数并调度生图工作台生成图片，成品自动归档至指定的文件夹（如 16:9 比例电影级场景），实现“知识复用 ➔ Agent 生成 ➔ 资产自动回流”的自动化闭环。

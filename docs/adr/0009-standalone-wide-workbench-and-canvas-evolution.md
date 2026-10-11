@@ -1,7 +1,7 @@
 # 0009: 独立全屏生图工作台与无限画布演进架构
 
 ## 状态
-已通过 (Accepted)
+已通过 (Accepted)；**已被 Infinite Canvas 取代（Superseded by the Infinite Canvas, see `docs/infinite-canvas-migration-plan.md`）**——`src/entrypoints/workbench/` 与 `workbench.html` 已移除，全屏创作入口改为 `canvas/index.html`，下文保留为历史决策记录。
 
 ## 上下文与问题陈述
 随着 PicPocket AI 生图工作台能力的持续演进，用户在日常创作中面临严重的视口与交互瓶颈：

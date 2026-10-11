@@ -266,6 +266,8 @@
 
 ### 15. 独立全屏生图工作台与画布演进 (Standalone Workbench & Canvas Evolution)
 
+> **已被取代（Superseded）**：本节描述的独立 `workbench.html` 入口及其自研画布已随 Infinite Canvas 切换（见 `docs/infinite-canvas-migration-plan.md`）整体移除，全屏创作统一由 `canvas/index.html` 承载。以下条目仅作历史术语保留。
+
 - **Standalone Workbench (独立全屏生图工作台)**
   基于 WXT 独立 Entrypoint（`workbench.html`）构建的宽屏创作空间。彻底摆脱侧边栏 380px 的物理挤压，赋予用户在大屏幕上自由漫游与创作的完整视野。
 

@@ -60,13 +60,6 @@ export async function openOptionsPage(options?: OpenOptionsPageOptions): Promise
   }
 }
 
-export interface OpenWorkbenchPageOptions {
-  prompt?: string;
-  model?: string;
-  aspectRatio?: string;
-  referenceImage?: string;
-}
-
 export interface OpenInfiniteCanvasPageOptions {
   assetId?: number;
   prompt?: string;
@@ -117,74 +110,4 @@ export async function openInfiniteCanvasPage(
   }
 
   if (typeof window !== 'undefined') window.open(targetUrl, '_blank');
-}
-
-/**
- * 智能打开并激活 PicPocket 独立全屏创作工作台 (workbench.html)
- * 
- * 1. 单例复用：先检索是否已存在 workbench.html 标签页，若存在则激活并聚焦该窗口，避免重复开多个标签页
- * 2. 草稿接力：若携带 prompt / referenceImage 等参数，通过 chrome.storage / URL Hash 进行无损接力
- * 3. 兜底优雅降级：受限环境中使用 window.open 回退
- */
-export async function openWorkbenchPage(options?: OpenWorkbenchPageOptions): Promise<void> {
-  const hasParams = Boolean(
-    options && (options.prompt || options.model || options.aspectRatio || options.referenceImage)
-  );
-
-  // 若携带草稿参数，写入 storage.local 进行安全接力
-  if (hasParams && typeof chrome !== 'undefined' && chrome.storage?.local) {
-    try {
-      await chrome.storage.local.set({
-        pending_workbench_handoff: {
-          ...options,
-          timestamp: Date.now(),
-        },
-      });
-    } catch (err) {
-      console.warn('[PicPocket navigation] Failed to stash workbench handoff draft:', err);
-    }
-  }
-
-  const hash = hasParams ? `#handoff=${Date.now()}` : '';
-  const targetUrl = typeof chrome !== 'undefined' && chrome.runtime?.getURL
-    ? chrome.runtime.getURL(`workbench.html${hash}`)
-    : `workbench.html${hash}`;
-
-  try {
-    if (typeof chrome !== 'undefined' && chrome.tabs?.query && chrome.tabs?.update) {
-      const pattern = chrome.runtime.getURL('workbench.html*');
-      const existingTabs = await chrome.tabs.query({ url: pattern });
-
-      if (existingTabs.length > 0 && existingTabs[0]) {
-        const tab = existingTabs[0];
-        const updateProps: chrome.tabs.UpdateProperties = { active: true };
-        if (hasParams) {
-          updateProps.url = targetUrl;
-        }
-        if (tab.id !== undefined) {
-          await chrome.tabs.update(tab.id, updateProps);
-        }
-        if (tab.windowId !== undefined && chrome.windows?.update) {
-          try {
-            await chrome.windows.update(tab.windowId, { focused: true });
-          } catch {
-            // ignore window focus error
-          }
-        }
-        return;
-      }
-
-      if (chrome.tabs.create) {
-        await chrome.tabs.create({ active: true, url: targetUrl });
-        return;
-      }
-    }
-  } catch (error) {
-    console.warn('[PicPocket navigation] Failed to open workbench via chrome.tabs, falling back:', error);
-  }
-
-  // 兜底回退
-  if (typeof window !== 'undefined') {
-    window.open(targetUrl, '_blank');
-  }
 }

@@ -19,3 +19,13 @@ export function generateMcpAuthToken(fill: RandomFill = (bytes) => crypto.getRan
 export function isLegacyMcpToken(token: string | undefined): boolean {
   return !token || token === LEGACY_MCP_AUTH_TOKEN;
 }
+
+/** POSIX shell 单引号转义；随机 Token 只含安全字符，原样输出 */
+export function quotePosixShellArg(value: string): string {
+  return /^[A-Za-z0-9_.@%+=:,/-]+$/.test(value) ? value : `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+/** PowerShell 单引号字符串：内部单引号写成两个 */
+export function quotePowerShellArg(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
+}

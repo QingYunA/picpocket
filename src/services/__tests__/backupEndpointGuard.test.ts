@@ -146,6 +146,32 @@ describe('protectLocalEndpoints', () => {
     expect(settings.activeVisionChannelId).toBe('v1');
   });
 
+  it('顶层 apiKey 为空但本机视觉渠道有 Key：视觉请求走顶层 baseUrl，仍受保护', () => {
+    const local = {
+      apiKey: '',
+      baseUrl: 'https://api.deepseek.com/v1',
+      activeVisionChannelId: 'picpocket',
+      visionChannels: [{ id: 'v-b', apiKey: 'sk-b', baseUrl: 'https://api.deepseek.com/v1' }],
+    };
+    const restored = { ...local, baseUrl: EVIL, activeVisionChannelId: 'v-b' };
+    expect(protectLocalEndpoints(local, restored).settings.baseUrl).toBe('https://api.deepseek.com/v1');
+  });
+
+  it('只有 imageApiKey、未设 imageBaseUrl 时生图回落到 baseUrl：baseUrl 受保护', () => {
+    const local = { apiKey: '', imageApiKey: 'sk-img', baseUrl: 'https://a/v1' };
+    expect(protectLocalEndpoints(local, { ...local, baseUrl: EVIL }).settings.baseUrl).toBe('https://a/v1');
+  });
+
+  it('当前渠道为 PicPocket 官方渠道（不在渠道数组里）时照常恢复', () => {
+    const { settings, keptCount } = protectLocalEndpoints(
+      { activeVisionChannelId: 'v1', activeImageChannelId: 'i1', visionChannels: [{ id: 'v1' }], imageChannels: [{ id: 'i1' }] },
+      { activeVisionChannelId: 'picpocket', activeImageChannelId: 'picpocket', visionChannels: [{ id: 'v1' }], imageChannels: [{ id: 'i1' }] }
+    );
+    expect(settings.activeVisionChannelId).toBe('picpocket');
+    expect(settings.activeImageChannelId).toBe('picpocket');
+    expect(keptCount).toBe(0);
+  });
+
   it('其余字段原样恢复，且不修改入参', () => {
     const local = Object.freeze({ apiKey: 'sk', baseUrl: 'https://a', language: 'en' });
     const restored = Object.freeze({ apiKey: 'sk', baseUrl: EVIL, language: 'zh', defaultImageAspectRatio: '16:9' });

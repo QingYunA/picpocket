@@ -1,5 +1,5 @@
 import type { McpClientTarget } from '@/services/mcpPrompts';
-import { isLegacyMcpToken } from '@/utils/mcpToken';
+import { isLegacyMcpToken, quotePosixShellArg as shellQuote, quotePowerShellArg } from '@/utils/mcpToken';
 
 const DEFAULT_MCP_PORT = 18088;
 
@@ -8,11 +8,6 @@ const portArgs = (port: number): string[] => (port === DEFAULT_MCP_PORT ? [] : [
 
 /** bridge 通过环境变量 PICPOCKET_MCP_TOKEN 读取配对 Token */
 const TOKEN_ENV_KEY = 'PICPOCKET_MCP_TOKEN';
-
-/** POSIX shell 单引号转义；随机 Token 只含安全字符，原样输出 */
-function shellQuote(value: string): string {
-  return /^[A-Za-z0-9_.@%+=:,/-]+$/.test(value) ? value : `'${value.replace(/'/g, `'\\''`)}'`;
-}
 
 /** 仅当 Token 不是旧版公开默认值时才需要显式传给 bridge（默认值 bridge 自带回退，保持旧版片段不变） */
 const explicitToken = (token?: string): string | undefined => (isLegacyMcpToken(token) ? undefined : token);
@@ -28,10 +23,12 @@ export function buildInstallCommand(target: McpClientTarget, port: number, token
   ].join(' ');
 }
 
-/** 手动启动 bridge 的终端命令；专属 Token 用环境变量前缀传递（POSIX shell） */
-export function buildBridgeCommand(port: number, token?: string): string {
+/** 手动启动 bridge 的终端命令；专属 Token 用环境变量传递（POSIX 前缀写法 / Windows PowerShell 的 $env:） */
+export function buildBridgeCommand(port: number, token?: string, isWindows = false): string {
   const t = explicitToken(token);
-  return [...(t ? [`${TOKEN_ENV_KEY}=${shellQuote(t)}`] : []), 'bun run mcp', ...portArgs(port)].join(' ');
+  const run = ['bun run mcp', ...portArgs(port)].join(' ');
+  if (!t) return run;
+  return isWindows ? `$env:${TOKEN_ENV_KEY}=${quotePowerShellArg(t)}; ${run}` : `${TOKEN_ENV_KEY}=${shellQuote(t)} ${run}`;
 }
 
 /** 各客户端的手动配置片段；路径只是示例，需要用户替换为本机仓库位置 */

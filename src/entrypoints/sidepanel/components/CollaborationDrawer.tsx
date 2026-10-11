@@ -114,7 +114,7 @@ export const CollaborationDrawer: React.FC<CollaborationDrawerProps> = ({
   const isWindows = typeof navigator !== 'undefined' && navigator.userAgent.includes('Win');
   const currentPort = mcpConfig.port || 18088;
   const installCliCommand = buildInstallCommand(selectedTarget, currentPort, mcpConfig.authToken);
-  const bridgeCommand = buildBridgeCommand(currentPort, mcpConfig.authToken);
+  const bridgeCommand = buildBridgeCommand(currentPort, mcpConfig.authToken, isWindows);
   // 手动配置片段为通用的 mcpServers 结构，与 cursor 目标一致
   const mcpConfigJson = buildClientConfigSnippet('cursor', currentPort, isWindows, mcpConfig.authToken);
 

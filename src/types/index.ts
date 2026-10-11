@@ -219,11 +219,6 @@ export interface StartReferenceAnalysisMessage {
   promptSnapshot?: string;
 }
 
-export interface CancelReferenceAnalysisMessage {
-  action: 'CANCEL_REFERENCE_ANALYSIS';
-  requestId: string;
-}
-
 export interface CheckReferenceAnalysisStatusMessage {
   action: 'CHECK_REFERENCE_ANALYSIS_STATUS';
   requestId: string;
@@ -233,7 +228,7 @@ export interface CheckReferenceAnalysisStatusMessage {
 export interface ReferenceAnalysisFinishedMessage {
   action: 'REFERENCE_ANALYSIS_FINISHED';
   requestId: string;
-  status: 'success' | 'failed' | 'cancelled';
+  status: 'success' | 'failed';
   masterPrompt?: string;
   error?: string;
 }

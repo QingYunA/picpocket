@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   parseStartReferenceAnalysisMessage,
   startReferenceAnalysis,
-  cancelReferenceAnalysis,
   checkReferenceAnalysisStatus,
   reconcileReferenceAnalysis,
   loadReferenceImageBlob,
@@ -178,45 +177,6 @@ describe('startReferenceAnalysis', () => {
     expect(response.success).toBe(true);
     await completion;
     expect(ctx.broadcasts[0]).toMatchObject({ status: 'success' });
-  });
-
-  it('swallows a cancellation: no failed state is persisted and no failure is broadcast by the run', async () => {
-    let release!: () => void;
-    const gate = new Promise<void>((r) => (release = r));
-    ctx = makeDeps({
-      analyze: vi.fn(async (_b, _s, signal) => {
-        await gate;
-        if (signal.aborted) throw new DOMException('aborted', 'AbortError');
-        return { masterPrompt: 'late' };
-      }),
-    });
-    const { completion } = await startReferenceAnalysis({ requestId: 'r1', imageUrl: PNG_DATA_URL }, ctx.deps);
-    await cancelReferenceAnalysis({ requestId: 'r1' }, ctx.deps);
-    release();
-    await completion;
-    expect(ctx.getPersisted()).toBeNull();
-    expect(ctx.broadcasts).toEqual([{ action: 'REFERENCE_ANALYSIS_FINISHED', requestId: 'r1', status: 'cancelled' }]);
-    expect(ctx.deps.active.size).toBe(0);
-    expect(ctx.stopKeepAlive).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe('cancelReferenceAnalysis', () => {
-  it('aborts the controller, clears the state and broadcasts cancelled', async () => {
-    const ctx = makeDeps();
-    const controller = new AbortController();
-    ctx.deps.active.set('r1', controller);
-    ctx.setPersisted({ requestId: 'r1', startTime: NOW, status: 'running' });
-    const res = await cancelReferenceAnalysis({ requestId: 'r1' }, ctx.deps);
-    expect(res).toEqual({ success: true });
-    expect(controller.signal.aborted).toBe(true);
-    expect(ctx.getPersisted()).toBeNull();
-    expect(ctx.broadcasts).toEqual([{ action: 'REFERENCE_ANALYSIS_FINISHED', requestId: 'r1', status: 'cancelled' }]);
-  });
-
-  it('rejects a missing request id', async () => {
-    const ctx = makeDeps();
-    expect((await cancelReferenceAnalysis({}, ctx.deps)).success).toBe(false);
   });
 });
 

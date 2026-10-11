@@ -1,6 +1,6 @@
 import { dataUrlToBlob } from '../db';
 import { isLikelyImageBlob } from '../utils/file';
-import { classifyReferenceAnalysis } from '../utils/referenceAnalysisRecovery';
+import { classifyReferenceAnalysis, REFERENCE_ANALYSIS_ERROR } from '../utils/referenceAnalysisRecovery';
 import type {
   ActiveReferenceAnalysisState,
   ReferenceAnalysisFinishedMessage,
@@ -18,10 +18,6 @@ import type {
 /** 拉取远程参考图的超时 */
 const REFERENCE_FETCH_TIMEOUT_MS = 30_000;
 
-const INTERRUPTED_ERROR = '后台进程已重启，反推任务中断，请重新反推';
-const TIMED_OUT_ERROR = '反推任务超时未完成，请重新反推';
-const BUSY_ERROR = '已有参考图反推任务正在进行，请稍候';
-const INVALID_IMAGE_ERROR = '参考图数据无效或不是图片';
 
 export interface ReferenceAnalysisDeps {
   /** 内存中正在运行的任务，SW 冷启动后为空；是「仍在运行」的唯一事实来源 */
@@ -100,7 +96,7 @@ export async function loadReferenceImageBlob(
     if (!res.ok) throw new Error(`Fetch failed: HTTP ${res.status}`);
     blob = await res.blob();
   }
-  if (!isLikelyImageBlob(blob)) throw new Error(INVALID_IMAGE_ERROR);
+  if (!isLikelyImageBlob(blob)) throw new Error(REFERENCE_ANALYSIS_ERROR.invalidImage);
   return blob;
 }
 
@@ -109,6 +105,11 @@ export interface StartReferenceAnalysisResponse {
   requestId?: string;
   alreadyRunning?: boolean;
   error?: string;
+}
+
+/** 持久化失败不阻断任务，但侧边栏关闭后将无法恢复结果，必须留下记录 */
+function warnPersistFailed(requestId: string, err: unknown): void {
+  console.warn(`[Background Reference Analysis ${requestId}] failed to persist state:`, err);
 }
 
 function errorText(err: unknown): string {
@@ -134,7 +135,7 @@ export async function startReferenceAnalysis(
   }
   // 持久化只有一个槽位，同一时刻只托管一个参考图反推
   if (deps.active.size > 0) {
-    return { response: { success: false, error: BUSY_ERROR } };
+    return { response: { success: false, error: REFERENCE_ANALYSIS_ERROR.busy } };
   }
 
   const controller = new AbortController();
@@ -154,9 +155,9 @@ export async function startReferenceAnalysis(
     status: 'running',
     ...(promptSnapshot === undefined ? {} : { promptSnapshot }),
   };
-  await deps.writeState(runningState).catch(() => {});
+  await deps.writeState(runningState).catch((err) => warnPersistFailed(requestId, err));
 
-  // 等待设置与落盘期间用户已取消：不再启动请求
+  // 等待设置与落盘期间任务已被纠偏扫描中止：不再启动请求
   if (controller.signal.aborted) {
     return { response: { success: true, requestId } };
   }
@@ -179,14 +180,14 @@ async function runReferenceAnalysis(
     message: ReferenceAnalysisFinishedMessage
   ) => {
     // 先落盘再广播：前台已关闭时广播无人接收，重新打开后靠持久化状态恢复
-    await deps.writeState(state).catch(() => {});
+    await deps.writeState(state).catch((err) => warnPersistFailed(requestId, err));
     deps.broadcast(message);
   };
 
   try {
     const blob = await deps.loadImage(imageUrl, controller.signal);
     const result = await deps.analyze(blob, settings, controller.signal);
-    // 取消已由 cancelReferenceAnalysis 收敛，此处不得再覆盖
+    // 已被纠偏扫描中止（超时或判定悬挂）并收敛为 failed，此处不得再覆盖
     if (controller.signal.aborted) return;
 
     const masterPrompt = result.masterPrompt;
@@ -216,24 +217,6 @@ async function runReferenceAnalysis(
   }
 }
 
-/** 处理 CANCEL_REFERENCE_ANALYSIS：中止请求、清除持久化状态并广播 cancelled */
-export async function cancelReferenceAnalysis(
-  raw: { requestId?: unknown },
-  deps: ReferenceAnalysisDeps
-): Promise<{ success: boolean; error?: string }> {
-  const requestId = raw?.requestId;
-  if (typeof requestId !== 'string' || !requestId) return { success: false, error: 'Invalid requestId' };
-
-  const controller = deps.active.get(requestId);
-  if (controller) {
-    controller.abort();
-    deps.active.delete(requestId);
-  }
-  await deps.clearState(requestId).catch(() => {});
-  deps.broadcast({ action: 'REFERENCE_ANALYSIS_FINISHED', requestId, status: 'cancelled' });
-  return { success: true };
-}
-
 /**
  * 读取并纠偏持久化状态（SW 冷启动自愈与前台存活探针共用）：
  * running 但内存已无任务（SW 重启）或超出有效窗口的状态，收敛为 failed 供前台消费，杜绝永久悬挂
@@ -255,9 +238,9 @@ export async function reconcileReferenceAnalysis(
   const settled: ActiveReferenceAnalysisState = {
     ...state,
     status: 'failed',
-    error: verdict === 'interrupted' ? INTERRUPTED_ERROR : TIMED_OUT_ERROR,
+    error: verdict === 'interrupted' ? REFERENCE_ANALYSIS_ERROR.interrupted : REFERENCE_ANALYSIS_ERROR.timedOut,
   };
-  await deps.writeState(settled).catch(() => {});
+  await deps.writeState(settled).catch((err) => warnPersistFailed(state.requestId, err));
   return settled;
 }
 

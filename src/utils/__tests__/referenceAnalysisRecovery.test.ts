@@ -5,6 +5,7 @@ import {
   resolveReferenceAnalysisOnMount,
   shouldApplyRecoveredPrompt,
 } from '../referenceAnalysisRecovery';
+import { REFERENCE_ANALYSIS_ERROR, referenceAnalysisErrorKey } from '../referenceAnalysisRecovery';
 import type { ActiveReferenceAnalysisState } from '@/types';
 
 const NOW = 1_700_000_000_000;
@@ -102,5 +103,19 @@ describe('shouldApplyRecoveredPrompt', () => {
   it('refuses to overwrite text the user typed after the request started', () => {
     expect(shouldApplyRecoveredPrompt('old text', 'old text edited')).toBe(false);
     expect(shouldApplyRecoveredPrompt(undefined, 'typed')).toBe(false);
+  });
+});
+
+describe('referenceAnalysisErrorKey', () => {
+  it('后台错误码映射到双语文案键，界面语言不受 Service Worker 影响', () => {
+    expect(referenceAnalysisErrorKey(REFERENCE_ANALYSIS_ERROR.interrupted)).toBe('generator.reverseRefInterrupted');
+    expect(referenceAnalysisErrorKey(REFERENCE_ANALYSIS_ERROR.timedOut)).toBe('generator.reverseRefTimedOut');
+    expect(referenceAnalysisErrorKey(REFERENCE_ANALYSIS_ERROR.busy)).toBe('generator.reverseRefBusy');
+    expect(referenceAnalysisErrorKey(REFERENCE_ANALYSIS_ERROR.invalidImage)).toBe('generator.reverseRefInvalidImage');
+  });
+
+  it('上游返回的原始错误文案不映射，原样展示', () => {
+    expect(referenceAnalysisErrorKey('HTTP 401 Unauthorized')).toBeUndefined();
+    expect(referenceAnalysisErrorKey(undefined)).toBeUndefined();
   });
 });

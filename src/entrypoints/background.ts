@@ -48,7 +48,6 @@ import { isLikelyImageBlob } from '../utils/file';
 import { classifyGeneratingTask, GENERATION_ACTIVE_WINDOW_MS } from '../utils/generationRecovery';
 import {
   startReferenceAnalysis,
-  cancelReferenceAnalysis,
   checkReferenceAnalysisStatus,
   reconcileReferenceAnalysis,
   loadReferenceImageBlob,
@@ -432,13 +431,6 @@ export default defineBackground(() => {
     if (message.action === 'START_REFERENCE_ANALYSIS') {
       startReferenceAnalysis(message, referenceAnalysisDeps)
         .then(({ response }) => sendResponse(response))
-        .catch((err) => sendResponse({ success: false, error: String(err) }));
-      return true;
-    }
-
-    if (message.action === 'CANCEL_REFERENCE_ANALYSIS') {
-      cancelReferenceAnalysis(message, referenceAnalysisDeps)
-        .then(sendResponse)
         .catch((err) => sendResponse({ success: false, error: String(err) }));
       return true;
     }

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ConfigLayout } from '../../components/config-layout';
 import { ConfigSection } from '../../components/config-section';
 import { ConfigItem } from '../../components/config-item';
+import { ToggleSwitch } from '../../components/toggle-switch';
 import { useI18n } from '@/i18n';
 import type { UserSettings } from '@/types';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -34,6 +35,7 @@ export const PromptsPage: React.FC<PromptsPageProps> = ({
 
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
+  const [syncFailed, setSyncFailed] = useState(false);
 
   const sources = useLiveQuery(() => db.promptSources.toArray()) || [];
   const currentPresetId = settings.reversePromptPresetId || BUILTIN_REVERSE_PROMPT_PRESETS[0]?.id || 'pure_aesthetics';
@@ -68,13 +70,16 @@ export const PromptsPage: React.FC<PromptsPageProps> = ({
 
   const handleSyncAll = async () => {
     setIsSyncing(true);
+    setSyncFailed(false);
     setSyncStatusMsg(t('settings.syncingSources'));
     try {
       await refreshAllPromptSources();
       setSyncStatusMsg(t('settings.syncComplete'));
       setTimeout(() => setSyncStatusMsg(null), 3000);
     } catch (err) {
-      setSyncStatusMsg(`${t('options.prompts.syncFailed')}${String(err)}`);
+      setSyncFailed(true);
+      setSyncStatusMsg(`${t('options.prompts.syncFailed')}${err instanceof Error ? err.message : String(err)}`);
+      setTimeout(() => setSyncStatusMsg(null), 6000);
     } finally {
       setIsSyncing(false);
     }
@@ -175,9 +180,12 @@ export const PromptsPage: React.FC<PromptsPageProps> = ({
         icon={<Layers className="h-4 w-4 text-sky-500" />}
         actions={
           syncStatusMsg && (
-            <span className="text-xs font-medium text-emerald-600 flex items-center gap-1">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              <span>{syncStatusMsg}</span>
+            <span
+              role={syncFailed ? 'alert' : 'status'}
+              className={`flex max-w-md items-center gap-1 text-xs font-medium ${syncFailed ? 'text-red-600' : 'text-emerald-600'}`}
+            >
+              {syncFailed ? <AlertCircle className="h-3.5 w-3.5 shrink-0" /> : <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />}
+              <span className="break-words">{syncStatusMsg}</span>
             </span>
           )
         }
@@ -202,15 +210,12 @@ export const PromptsPage: React.FC<PromptsPageProps> = ({
                       </span>
                     )}
                   </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={source.enabled}
-                      onChange={() => handleToggleSource(source.id, source.enabled)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-8 h-4 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-zinc-900" />
-                  </label>
+                  <ToggleSwitch
+                    checked={source.enabled}
+                    onChange={() => handleToggleSource(source.id, source.enabled)}
+                    label={source.name}
+                    size="sm"
+                  />
                 </div>
                 {source.homepage && (
                   <p className="text-[11px] text-zinc-500 line-clamp-1 leading-relaxed mb-3 truncate">

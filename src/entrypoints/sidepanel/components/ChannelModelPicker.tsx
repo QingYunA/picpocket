@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, Check, ChevronDown, ExternalLink, Globe } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 import { useHostedCatalog } from '@/hooks/useHostedCatalog';
@@ -55,6 +55,10 @@ export const ChannelModelPicker: React.FC<ChannelModelPickerProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [pending, setPending] = useState<ChannelModelSelection | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  // 浮层相对触发器定位，触发器右侧还有积分胶囊时会偏出窄侧栏：打开后测量并平移回视口内
+  const [shiftX, setShiftX] = useState(0);
 
   const hostedCatalog = useHostedCatalog();
   const groups = useMemo(() => channelModelGroups(settings, capability), [settings, capability, hostedCatalog]);
@@ -67,14 +71,44 @@ export const ChannelModelPicker: React.FC<ChannelModelPickerProps> = ({
     setPending(null);
   }, [saved.channelId, saved.model]);
 
+  useLayoutEffect(() => {
+    const menu = menuRef.current;
+    if (!isOpen || !menu) {
+      setShiftX(0);
+      return;
+    }
+    const margin = 12;
+    const rect = menu.getBoundingClientRect();
+    if (rect.left < margin) setShiftX(margin - rect.left);
+    else if (rect.right > window.innerWidth - margin) setShiftX(window.innerWidth - margin - rect.right);
+    // 键盘用户打开后直接落在当前选中的模型上
+    const target = menu.querySelector<HTMLElement>('[aria-selected="true"]') ?? menu.querySelector<HTMLElement>('[role="option"]');
+    target?.focus({ preventScroll: true });
+    target?.scrollIntoView({ block: 'nearest' });
+  }, [isOpen]);
+
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsOpen(false);
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+        triggerRef.current?.focus();
+      }
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
+
+  const handleMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    const options = Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="option"]') ?? []);
+    if (options.length === 0) return;
+    e.preventDefault();
+    const index = options.indexOf(document.activeElement as HTMLElement);
+    const next = e.key === 'ArrowDown' ? (index + 1) % options.length : (index <= 0 ? options.length - 1 : index - 1);
+    options[next]?.focus();
+    options[next]?.scrollIntoView({ block: 'nearest' });
+  };
 
   const channelName = (group: ChannelModelGroup | undefined) =>
     !group || group.channelId === PICPOCKET_CHANNEL_ID ? t('channels.picpocketName') : group.name;
@@ -100,6 +134,7 @@ export const ChannelModelPicker: React.FC<ChannelModelPickerProps> = ({
   return (
     <div ref={containerRef} className={`relative min-w-0 ${className}`}>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setIsOpen((open) => !open)}
         className="flex h-8 w-full min-w-0 items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2.5 text-xs text-zinc-800 shadow-2xs transition-colors hover:border-zinc-300 hover:bg-zinc-50 cursor-pointer"
@@ -118,7 +153,11 @@ export const ChannelModelPicker: React.FC<ChannelModelPickerProps> = ({
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
           <div
+            ref={menuRef}
             role="listbox"
+            aria-label={t('generator.modelLabel')}
+            onKeyDown={handleMenuKeyDown}
+            style={shiftX ? { transform: `translateX(${shiftX}px)` } : undefined}
             className={`absolute ${align === 'left' ? 'left-0' : 'right-0'} top-full z-50 mt-1.5 w-[280px] max-w-[calc(100vw-24px)] rounded-2xl border border-zinc-200/90 bg-white p-2 text-zinc-900 shadow-xl`}
           >
             <div className="max-h-80 overflow-y-auto">
@@ -150,7 +189,7 @@ export const ChannelModelPicker: React.FC<ChannelModelPickerProps> = ({
                           role="option"
                           aria-selected={isSelected}
                           onClick={() => handleSelect({ channelId: group.channelId, model })}
-                          className={`flex w-full items-center justify-between gap-2 rounded-lg py-1.5 pl-7 pr-2 text-left transition-colors cursor-pointer ${
+                          className={`flex w-full items-center justify-between gap-2 rounded-lg py-1.5 pl-7 pr-2 text-left transition-colors cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-zinc-900 ${
                             isSelected ? 'bg-zinc-100 font-semibold text-zinc-900' : 'text-zinc-700 hover:bg-zinc-50'
                           } ${group.missingKey ? 'opacity-60' : ''}`}
                         >

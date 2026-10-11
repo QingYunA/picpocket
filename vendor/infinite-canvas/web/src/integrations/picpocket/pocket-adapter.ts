@@ -2,6 +2,7 @@ import {
     batchDeleteItems,
     batchMoveItemsToFolder,
     createFolder,
+    createThumbnail,
     db,
     deleteFolder,
     moveItemToFolder,
@@ -34,6 +35,8 @@ export type PocketAssetSummary = {
     id: number;
     title: string;
     previewDataUrl: string;
+    width: number;
+    height: number;
     folderId: number | null;
     tags: string[];
 };
@@ -101,6 +104,8 @@ export async function listPocketAssetSummaries(): Promise<PocketAssetSummary[]> 
                     id,
                     title: item.pageTitle || "Untitled",
                     previewDataUrl,
+                    width: item.width || 1024,
+                    height: item.height || 1024,
                     folderId: item.folderId ?? null,
                     tags: item.tags || [],
                 })),
@@ -132,6 +137,27 @@ export async function saveCanvasBlobToPocket(
     input: Omit<SaveCanvasImageInput, "dataUrl">,
 ): Promise<number> {
     return saveCanvasImageToPocket({ ...input, dataUrl: await readFileAsDataUrl(blob) });
+}
+
+/**
+ * 把本地图片文件原样入库（拖进资产面板时用）。它不是 AI 生成物：不带「AI生图」标签与原始提示词，
+ * 状态为待反推，和侧边栏里网页采集的图片一样可以继续反推提示词。
+ */
+export async function importLocalImageToPocket(file: File, folderId: number | null): Promise<number> {
+    const blob = file.slice(0, file.size, file.type);
+    const { thumbnailBlob, width, height, aspectRatio } = await createThumbnail(blob);
+    return (await db.items.add({
+        originalBlob: blob,
+        thumbnailBlob,
+        pageTitle: file.name.replace(/\.[^/.]+$/, "") || "Untitled",
+        width,
+        height,
+        aspectRatio,
+        createdAt: Date.now(),
+        tags: [],
+        status: "pending",
+        folderId,
+    })) as number;
 }
 
 export async function saveReversePromptToPocket(

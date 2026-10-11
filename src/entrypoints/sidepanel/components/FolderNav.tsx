@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   Folder,
@@ -15,16 +15,19 @@ import {
   CheckSquare,
   Search,
 } from 'lucide-react';
-import { db, createFolder, renameFolder, deleteFolder, moveItemToFolder, batchMoveItemsToFolder } from '@/db';
-import type { FolderItem, FolderFilter } from '@/types';
+import { db, createFolder, renameFolder, deleteFolder, batchMoveItemsToFolder } from '@/db';
+import type { FolderItem, FolderFilter, InspirationItem } from '@/types';
 import { useI18n } from '@/i18n';
 import { ConfirmModal } from './ConfirmModal';
+import { parseDraggedItemIds } from './folderDrag';
 
 export interface FolderTreeNode extends FolderItem {
   children: FolderTreeNode[];
 }
 
 interface FolderNavProps {
+  /** 全部素材（仅用于统计各文件夹数量，由父级的 liveQuery 提供，避免重复读取整张素材表） */
+  items: Pick<InspirationItem, 'folderId'>[];
   selectedFolderId: FolderFilter;
   onSelectFolder: (id: FolderFilter) => void;
   isOpen: boolean;
@@ -89,6 +92,8 @@ const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
   const isExpanded = expandedFolderIds.has(node.id!);
   const count = folderCounts[node.id!] || 0;
   const isDragOver = dragOverFolderId === node.id;
+  // Esc 取消重命名时输入框随即卸载，浏览器可能补发 blur；用标记避免 blur 把已取消的改名提交
+  const renameCancelledRef = useRef(false);
 
   return (
     <div className="space-y-0.5">
@@ -114,6 +119,7 @@ const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
             <button
               onClick={(e) => toggleExpand(node.id!, e)}
               className="text-zinc-400 hover:text-zinc-700 p-0.5 cursor-pointer"
+              aria-expanded={isExpanded}
             >
               {isExpanded ? (
                 <ChevronDown className="h-3 w-3" />
@@ -139,9 +145,18 @@ const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
               onChange={(e) => setEditName(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleRename(node.id!);
-                if (e.key === 'Escape') setEditingFolderId(null);
+                if (e.key === 'Escape') {
+                  renameCancelledRef.current = true;
+                  setEditingFolderId(null);
+                }
               }}
-              onBlur={() => handleRename(node.id!)}
+              onBlur={() => {
+                if (renameCancelledRef.current) {
+                  renameCancelledRef.current = false;
+                  return;
+                }
+                handleRename(node.id!);
+              }}
               className="flex-1 bg-white text-zinc-900 text-xs px-1 rounded border border-amber-400 outline-none"
             />
           ) : (
@@ -173,6 +188,7 @@ const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
             <button
               onClick={(e) => {
                 e.stopPropagation();
+                renameCancelledRef.current = false;
                 setEditingFolderId(node.id!);
                 setEditName(node.name);
               }}
@@ -214,12 +230,16 @@ const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
           <button
             onClick={() => handleCreateSub(node.id!)}
             className="text-emerald-600 hover:text-emerald-700 cursor-pointer p-0.5"
+            title={t('common.ok')}
+            aria-label={t('common.ok')}
           >
             <Check className="h-3 w-3" />
           </button>
           <button
             onClick={() => setCreatingSubParentId(null)}
             className="text-zinc-400 hover:text-zinc-600 cursor-pointer p-0.5"
+            title={t('common.cancel')}
+            aria-label={t('common.cancel')}
           >
             <X className="h-3 w-3" />
           </button>
@@ -263,6 +283,7 @@ const FolderTreeItem: React.FC<FolderTreeItemProps> = ({
 };
 
 export const FolderNav: React.FC<FolderNavProps> = ({
+  items,
   selectedFolderId,
   onSelectFolder,
   isOpen,
@@ -276,7 +297,6 @@ export const FolderNav: React.FC<FolderNavProps> = ({
   const { t } = useI18n();
 
   const folders = useLiveQuery(() => db.folders.orderBy('order').toArray()) || [];
-  const items = useLiveQuery(() => db.items.toArray()) || [];
 
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<number>>(new Set());
   const [isCreatingRoot, setIsCreatingRoot] = useState(false);
@@ -390,8 +410,14 @@ export const FolderNav: React.FC<FolderNavProps> = ({
   const handleConfirmDeleteFolder = async () => {
     if (!folderToDelete) return;
     try {
+      // 删除会连带删除子文件夹：当前选中的若在被删子树内，也要回到「全部」
+      const collectSubtree = (id: number): number[] => [
+        id,
+        ...folders.filter((f) => f.parentId === id && f.id != null).flatMap((f) => collectSubtree(f.id!)),
+      ];
+      const doomedIds = new Set(collectSubtree(folderToDelete));
       await deleteFolder(folderToDelete);
-      if (selectedFolderId === folderToDelete) {
+      if (typeof selectedFolderId === 'number' && doomedIds.has(selectedFolderId)) {
         onSelectFolder('all');
       }
     } catch (err) {
@@ -404,23 +430,14 @@ export const FolderNav: React.FC<FolderNavProps> = ({
   const handleDropOnFolder = async (e: React.DragEvent, targetFolderId: number | null) => {
     e.preventDefault();
     setDragOverFolderId(null);
-    const dataStr = e.dataTransfer.getData('text/plain');
-    if (!dataStr) return;
+    const ids = parseDraggedItemIds(e.dataTransfer.getData('text/plain'));
+    if (ids.length === 0) return;
 
     try {
-      if (dataStr.startsWith('[') && dataStr.endsWith(']')) {
-        const ids: number[] = JSON.parse(dataStr);
-        if (Array.isArray(ids) && ids.length > 0) {
-          await batchMoveItemsToFolder(ids, targetFolderId);
-          onBatchMoved?.();
-          return;
-        }
-      }
-    } catch {}
-
-    const itemId = parseInt(dataStr, 10);
-    if (!isNaN(itemId)) {
-      await moveItemToFolder(itemId, targetFolderId);
+      await batchMoveItemsToFolder(ids, targetFolderId);
+      if (ids.length > 1) onBatchMoved?.();
+    } catch (err) {
+      console.error('Failed to move dropped items:', err);
     }
   };
 
@@ -430,7 +447,8 @@ export const FolderNav: React.FC<FolderNavProps> = ({
       <div className="flex items-center justify-between px-3 py-1.5 text-xs">
         <button
           onClick={onToggleOpen}
-          className="flex items-center gap-1.5 font-semibold text-zinc-700 hover:text-zinc-950 transition-colors cursor-pointer"
+          aria-expanded={isOpen}
+          className="flex shrink-0 items-center gap-1.5 whitespace-nowrap font-semibold text-zinc-700 hover:text-zinc-950 transition-colors cursor-pointer"
         >
           {isOpen ? (
             <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
@@ -448,6 +466,7 @@ export const FolderNav: React.FC<FolderNavProps> = ({
           {onToggleSearch && (
             <button
               onClick={onToggleSearch}
+              aria-pressed={showSearch}
               className={`flex h-6 w-6 items-center justify-center rounded border transition-colors cursor-pointer shrink-0 ${
                 showSearch
                   ? 'border-zinc-300 bg-zinc-200/90 text-zinc-900 shadow-2xs font-semibold'
@@ -462,6 +481,7 @@ export const FolderNav: React.FC<FolderNavProps> = ({
           {onToggleBatchMode && (
             <button
               onClick={onToggleBatchMode}
+              aria-pressed={isBatchMode}
               className={`flex h-6 w-6 items-center justify-center rounded border transition-colors cursor-pointer shrink-0 ${
                 isBatchMode
                   ? 'border-zinc-900 bg-zinc-900 text-white shadow-2xs'
@@ -557,12 +577,16 @@ export const FolderNav: React.FC<FolderNavProps> = ({
               <button
                 onClick={handleCreateRoot}
                 className="text-emerald-600 hover:text-emerald-700 cursor-pointer p-0.5"
+                title={t('common.ok')}
+                aria-label={t('common.ok')}
               >
                 <Check className="h-3.5 w-3.5" />
               </button>
               <button
                 onClick={() => setIsCreatingRoot(false)}
                 className="text-zinc-400 hover:text-zinc-600 cursor-pointer p-0.5"
+                title={t('common.cancel')}
+                aria-label={t('common.cancel')}
               >
                 <X className="h-3.5 w-3.5" />
               </button>

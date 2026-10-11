@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ChevronDown, Check, Search, AlertCircle, X, Loader2, CloudDownload } from 'lucide-react';
 import { fetchAvailableModels } from '@/services/modelFetcher';
+import { useI18n } from '@/i18n';
 
 interface ModelComboboxProps {
   label: string;
@@ -23,6 +24,7 @@ export function ModelCombobox({
   apiKey,
   hint,
 }: ModelComboboxProps) {
+  const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -44,14 +46,24 @@ export function ModelCombobox({
 
   // Focus search input when dropdown opens
   useEffect(() => {
-    if (isOpen && searchInputRef.current) {
-      setTimeout(() => searchInputRef.current?.focus(), 50);
-    }
+    if (!isOpen) return;
+    const timer = setTimeout(() => searchInputRef.current?.focus(), 50);
+    return () => clearTimeout(timer);
+  }, [isOpen]);
+
+  // Esc 收起下拉
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
   }, [isOpen]);
 
   const handleFetchModels = async () => {
     if (!baseUrl?.trim()) {
-      setError('请先输入有效的 Base URL 接口基地址');
+      setError(t('modelCombobox.baseUrlRequired'));
       return;
     }
 
@@ -66,7 +78,7 @@ export function ModelCombobox({
       setIsOpen(true);
       setSearchQuery('');
     } catch (err: any) {
-      setError(err.message || '获取模型列表失败');
+      setError(err.message || t('modelCombobox.fetchFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -98,14 +110,14 @@ export function ModelCombobox({
                 ? 'text-zinc-300 cursor-not-allowed'
                 : 'text-sky-600 hover:text-sky-700 hover:bg-sky-50 active:scale-95'
           }`}
-          title={!baseUrl?.trim() ? '请先输入 Base URL' : '向接口获取所有可用模型列表'}
+          title={!baseUrl?.trim() ? t('modelCombobox.needBaseUrlTooltip') : t('modelCombobox.fetchTooltip')}
         >
           {isLoading ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin text-sky-600" />
           ) : (
             <CloudDownload className="h-3.5 w-3.5" />
           )}
-          <span>{isLoading ? '正在获取...' : '获取可用模型'}</span>
+          <span>{isLoading ? t('modelCombobox.fetching') : t('modelCombobox.fetchBtn')}</span>
         </button>
       </div>
 
@@ -128,7 +140,8 @@ export function ModelCombobox({
               type="button"
               onClick={() => onChange('')}
               className="p-1 text-zinc-400 hover:text-zinc-600 rounded cursor-pointer"
-              title="清空模型名称"
+              title={t('modelCombobox.clear')}
+              aria-label={t('modelCombobox.clear')}
             >
               <X className="h-3 w-3" />
             </button>
@@ -141,7 +154,9 @@ export function ModelCombobox({
               className={`p-1 rounded text-zinc-500 hover:bg-zinc-200/60 hover:text-zinc-900 transition-colors cursor-pointer ${
                 isOpen ? 'bg-zinc-200 text-zinc-900' : ''
               }`}
-              title={isOpen ? '收起模型列表' : `展开模型列表 (${fetchedModels.length})`}
+              title={isOpen ? t('modelCombobox.collapse') : t('modelCombobox.expand', { count: fetchedModels.length })}
+              aria-label={isOpen ? t('modelCombobox.collapse') : t('modelCombobox.expand', { count: fetchedModels.length })}
+              aria-expanded={isOpen}
             >
               <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
@@ -161,14 +176,14 @@ export function ModelCombobox({
         <div className="flex items-center justify-between text-[10px] text-zinc-400">
           <span className="flex items-center gap-1 text-emerald-600 font-medium">
             <Check className="h-3 w-3" />
-            已成功获取 {fetchedModels.length} 个可用模型
+            {t('modelCombobox.fetched', { count: fetchedModels.length })}
           </span>
           <button
             type="button"
             onClick={() => setIsOpen(!isOpen)}
             className="text-sky-600 hover:underline cursor-pointer"
           >
-            {isOpen ? '收起下拉' : '点此查看下拉'}
+            {isOpen ? t('modelCombobox.hideList') : t('modelCombobox.showList')}
           </button>
         </div>
       )}
@@ -188,7 +203,17 @@ export function ModelCombobox({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="搜索模型名称（如 flux、qwen、gpt...）"
+              onKeyDown={(e) => {
+                // 回车直接选中第一个匹配项
+                const first = filteredModels[0];
+                if (e.key === 'Enter' && first) {
+                  e.preventDefault();
+                  onChange(first);
+                  setIsOpen(false);
+                }
+              }}
+              placeholder={t('modelCombobox.searchPlaceholder')}
+              aria-label={t('modelCombobox.searchPlaceholder')}
               className="w-full rounded-md border border-zinc-200 bg-zinc-50 pl-7 pr-2 py-1 text-xs text-zinc-800 placeholder:text-zinc-400 focus:border-zinc-900 focus:bg-white focus:outline-none font-mono"
             />
           </div>
@@ -196,7 +221,7 @@ export function ModelCombobox({
           {/* Model Items List */}
           <div className="max-h-48 overflow-y-auto space-y-0.5 no-scrollbar">
             {filteredModels.length === 0 ? (
-              <div className="py-4 text-center text-xs text-zinc-400">未找到匹配的模型</div>
+              <div className="py-4 text-center text-xs text-zinc-400">{t('modelCombobox.noMatch')}</div>
             ) : (
               filteredModels.map((m) => {
                 const isSelected = value === m;

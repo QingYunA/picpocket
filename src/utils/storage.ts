@@ -35,15 +35,35 @@ export const DEFAULT_SETTINGS: UserSettings = {
 
 let inMemoryStorage: Record<string, any> | null = null;
 
+/**
+ * 读取 chrome.storage.local 的单个键。宿主存储不可用或读取抛错（如扩展上下文已失效）时返回 null，
+ * 由调用方继续降级到 localStorage / 内存；读取成功则返回 { value }（键不存在时 value 为 undefined）。
+ */
+async function readChromeLocal(key: string): Promise<{ value: unknown } | null> {
+  if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) return null;
+  try {
+    const data = await chrome.storage.local.get(key);
+    return { value: data?.[key] };
+  } catch (e) {
+    console.warn(`Failed to read ${key} from chrome.storage.local:`, e);
+    return null;
+  }
+}
+
 export async function getUserSettings(): Promise<UserSettings> {
   const fallbackSettings: UserSettings = {
     ...DEFAULT_SETTINGS,
     language: getDefaultLanguage(),
   };
 
-  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-    const data = await chrome.storage.local.get('promptsnap_settings');
-    return { ...fallbackSettings, ...(data.promptsnap_settings || {}) };
+  // 本会话 chrome.storage 写入失败时的内存副本比 chrome.storage 里的旧值新，优先返回
+  if (inMemoryStorage?.promptsnap_settings) {
+    return { ...fallbackSettings, ...inMemoryStorage.promptsnap_settings };
+  }
+
+  const chromeRead = await readChromeLocal('promptsnap_settings');
+  if (chromeRead) {
+    return { ...fallbackSettings, ...((chromeRead.value as Partial<UserSettings> | undefined) || {}) };
   }
 
   if (typeof localStorage !== 'undefined') {
@@ -64,7 +84,16 @@ export async function getUserSettings(): Promise<UserSettings> {
   return fallbackSettings;
 }
 
-export async function saveUserSettings(settings: Partial<UserSettings>): Promise<UserSettings> {
+// 同一上下文内串行化「读-改-写」：并发调用（如后台额度同步与界面改设置）否则会各自基于旧快照覆盖对方的字段
+let settingsWriteQueue: Promise<unknown> = Promise.resolve();
+
+export function saveUserSettings(settings: Partial<UserSettings>): Promise<UserSettings> {
+  const run = settingsWriteQueue.then(() => writeUserSettings(settings));
+  settingsWriteQueue = run.catch(() => undefined);
+  return run;
+}
+
+async function writeUserSettings(settings: Partial<UserSettings>): Promise<UserSettings> {
   const current = await getUserSettings();
   const updated = { ...current, ...settings };
 
@@ -98,17 +127,30 @@ export async function saveUserSettings(settings: Partial<UserSettings>): Promise
     updated.imageBaseUrl = sanitizeHttpUrl(updated.imageBaseUrl);
   }
 
+  // 三层容错：任一层写入失败（配额溢出、宿主存储不可用）只告警，不让设置保存抛出异常；
+  // chrome.storage 没写进去时在内存留一份，保证本会话读回的是最新值而不是 chrome.storage 里的旧值
+  let chromePersisted = false;
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-    await chrome.storage.local.set({ promptsnap_settings: updated });
+    try {
+      await chrome.storage.local.set({ promptsnap_settings: updated });
+      chromePersisted = true;
+    } catch (e) {
+      console.warn('Failed to persist settings to chrome.storage.local:', e);
+    }
   }
 
   if (typeof localStorage !== 'undefined') {
-    localStorage.setItem('promptsnap_settings', JSON.stringify(updated));
+    try {
+      localStorage.setItem('promptsnap_settings', JSON.stringify(updated));
+    } catch (e) {
+      console.warn('Failed to persist settings to localStorage:', e);
+    }
   }
 
-  if (typeof chrome === 'undefined' && typeof localStorage === 'undefined') {
-    if (!inMemoryStorage) inMemoryStorage = {};
-    inMemoryStorage.promptsnap_settings = updated;
+  if (chromePersisted) {
+    if (inMemoryStorage) delete inMemoryStorage.promptsnap_settings;
+  } else {
+    inMemoryStorage = { ...(inMemoryStorage || {}), promptsnap_settings: updated };
   }
 
   return updated;
@@ -156,12 +198,9 @@ export function getInitialActiveTab(): SidepanelTab {
 }
 
 export async function getActiveTab(): Promise<SidepanelTab> {
-  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-    const data = await chrome.storage.local.get('promptsnap_active_tab');
-    const val = data?.promptsnap_active_tab;
-    if (typeof val === 'string' && (VALID_TABS as string[]).includes(val)) {
-      return val as SidepanelTab;
-    }
+  const val = (await readChromeLocal('promptsnap_active_tab'))?.value;
+  if (typeof val === 'string' && (VALID_TABS as string[]).includes(val)) {
+    return val as SidepanelTab;
   }
   return getInitialActiveTab();
 }
@@ -262,16 +301,14 @@ export function getInitialGeneratorDraft(): GeneratorDraftState {
 }
 
 export async function getGeneratorDraft(): Promise<GeneratorDraftState> {
-  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-    const data = await chrome.storage.local.get('promptsnap_generator_draft');
-    if (data?.promptsnap_generator_draft) {
-      const draft: GeneratorDraftState = {
-        ...DEFAULT_GENERATOR_DRAFT,
-        ...data.promptsnap_generator_draft,
-      };
-      currentGeneratorDraftCache = draft;
-      return draft;
-    }
+  const stored = (await readChromeLocal('promptsnap_generator_draft'))?.value;
+  if (stored) {
+    const draft: GeneratorDraftState = {
+      ...DEFAULT_GENERATOR_DRAFT,
+      ...(stored as Partial<GeneratorDraftState>),
+    };
+    currentGeneratorDraftCache = draft;
+    return draft;
   }
   return getInitialGeneratorDraft();
 }
@@ -314,11 +351,9 @@ export async function saveGeneratorDraft(
 export type { ActiveGenerationState, ActiveAnalysisState };
 
 export async function getActiveGeneration(): Promise<ActiveGenerationState | null> {
-  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-    const data = await chrome.storage.local.get('promptsnap_active_generation');
-    if (data?.promptsnap_active_generation) {
-      return data.promptsnap_active_generation as ActiveGenerationState;
-    }
+  const stored = (await readChromeLocal('promptsnap_active_generation'))?.value;
+  if (stored) {
+    return stored as ActiveGenerationState;
   }
   if (typeof localStorage !== 'undefined') {
     const raw = localStorage.getItem('promptsnap_active_generation');
@@ -359,11 +394,9 @@ export async function clearActiveGeneration(taskId?: string): Promise<void> {
 }
 
 export async function getActiveAnalysis(): Promise<ActiveAnalysisState | null> {
-  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-    const data = await chrome.storage.local.get('promptsnap_active_analysis');
-    if (data?.promptsnap_active_analysis) {
-      return data.promptsnap_active_analysis as ActiveAnalysisState;
-    }
+  const stored = (await readChromeLocal('promptsnap_active_analysis'))?.value;
+  if (stored) {
+    return stored as ActiveAnalysisState;
   }
   if (typeof localStorage !== 'undefined') {
     const raw = localStorage.getItem('promptsnap_active_analysis');
@@ -408,11 +441,9 @@ export type ActiveFolderState = {
 };
 
 export async function getActiveFolder(): Promise<ActiveFolderState | null> {
-  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-    const data = await chrome.storage.local.get('promptsnap_active_folder');
-    if (data?.promptsnap_active_folder) {
-      return data.promptsnap_active_folder as ActiveFolderState;
-    }
+  const stored = (await readChromeLocal('promptsnap_active_folder'))?.value;
+  if (stored) {
+    return stored as ActiveFolderState;
   }
   if (typeof localStorage !== 'undefined') {
     const raw = localStorage.getItem('promptsnap_active_folder');
@@ -453,10 +484,9 @@ export function onActiveFolderChange(callback: (folderState: ActiveFolderState |
 }
 
 export async function getPendingAutoAnalyzeItemId(): Promise<number | null> {
-  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-    const data = await chrome.storage.local.get('promptsnap_pending_auto_analyze_item_id');
-    const val = data?.promptsnap_pending_auto_analyze_item_id;
-    return typeof val === 'number' ? val : null;
+  const chromeRead = await readChromeLocal('promptsnap_pending_auto_analyze_item_id');
+  if (chromeRead) {
+    return typeof chromeRead.value === 'number' ? chromeRead.value : null;
   }
   if (typeof localStorage !== 'undefined') {
     const raw = localStorage.getItem('promptsnap_pending_auto_analyze_item_id');

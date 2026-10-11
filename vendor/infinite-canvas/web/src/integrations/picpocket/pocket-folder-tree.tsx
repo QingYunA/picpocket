@@ -171,12 +171,13 @@ export function PocketFolderTree({
                                 <button
                                     type="button"
                                     onClick={(e) => e.stopPropagation()}
-                                    className={`mr-0.5 grid size-5 shrink-0 place-items-center rounded opacity-0 transition-opacity group-hover/folder:opacity-100 ${
+                                    className={`mr-0.5 grid size-5 shrink-0 place-items-center rounded opacity-0 transition-opacity focus-visible:opacity-100 group-hover/folder:opacity-100 ${
                                         active
                                             ? "text-white hover:bg-white/20"
                                             : "text-stone-400 hover:bg-stone-300/60 dark:hover:bg-stone-700"
                                     }`}
                                     title={t("canvas.imageTools.more")}
+                                    aria-label={t("canvas.imageTools.more")}
                                 >
                                     <MoreHorizontal className="size-3" />
                                 </button>

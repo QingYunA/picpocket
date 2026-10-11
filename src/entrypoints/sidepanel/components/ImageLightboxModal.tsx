@@ -1,9 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Copy, Download, Check, Sparkles, Maximize2 } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import type { InspirationItem } from '@/types';
 import { db } from '@/db';
 import { isAiGeneratedItem, isAgentCollabItem } from '@/utils/itemHelpers';
+import { toPngBlob } from '@/utils/file';
+
+const EXTENSION_BY_MIME: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+  'image/avif': 'avif',
+  'image/svg+xml': 'svg',
+};
 
 export interface ImageLightboxModalProps {
   isOpen: boolean;
@@ -23,6 +33,12 @@ export const ImageLightboxModal: React.FC<ImageLightboxModalProps> = ({
   const [resolvedPrompt, setResolvedPrompt] = useState<string>(masterPrompt || '');
   const [copiedImage, setCopiedImage] = useState(false);
   const [copiedPrompt, setCopiedPrompt] = useState(false);
+
+  // 父组件每次渲染都会传入新的 onClose；放进 ref，避免大图 URL 与监听器随父组件渲染反复重建而闪烁
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!isOpen || !item) {
@@ -59,7 +75,7 @@ export const ImageLightboxModal: React.FC<ImageLightboxModalProps> = ({
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') onCloseRef.current();
     };
     window.addEventListener('keydown', handleKeyDown);
 
@@ -67,7 +83,7 @@ export const ImageLightboxModal: React.FC<ImageLightboxModalProps> = ({
       if (url) URL.revokeObjectURL(url);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, item, masterPrompt, onClose]);
+  }, [isOpen, item, masterPrompt]);
 
   if (!isOpen || !item) return null;
 
@@ -76,8 +92,8 @@ export const ImageLightboxModal: React.FC<ImageLightboxModalProps> = ({
       const blob = item.originalBlob || item.thumbnailBlob;
       if (!blob) return;
 
-      // Ensure blob is PNG or supported image type for clipboard
-      const clipboardItem = new ClipboardItem({ [blob.type || 'image/png']: blob });
+      // 传入 Promise 以保留用户手势，转码期间不会被浏览器拒绝
+      const clipboardItem = new ClipboardItem({ 'image/png': toPngBlob(blob) });
       await navigator.clipboard.write([clipboardItem]);
       setCopiedImage(true);
       setTimeout(() => setCopiedImage(false), 2000);
@@ -100,18 +116,23 @@ export const ImageLightboxModal: React.FC<ImageLightboxModalProps> = ({
     if (!imageUrl) return;
     const a = document.createElement('a');
     a.href = imageUrl;
-    a.download = `picpocket-${item.id || Date.now()}.png`;
+    const blobType = (item.originalBlob || item.thumbnailBlob)?.type ?? '';
+    a.download = `picpocket-${item.id || Date.now()}.${EXTENSION_BY_MIME[blobType] ?? 'png'}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
   };
 
-  const handleCopyPrompt = () => {
+  const handleCopyPrompt = async () => {
     const text = resolvedPrompt || item.pageTitle || '';
     if (!text) return;
-    navigator.clipboard.writeText(text);
-    setCopiedPrompt(true);
-    setTimeout(() => setCopiedPrompt(false), 2000);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedPrompt(true);
+      setTimeout(() => setCopiedPrompt(false), 2000);
+    } catch (err) {
+      console.warn('Failed to copy prompt:', err);
+    }
   };
 
   const displayPrompt = resolvedPrompt.trim();

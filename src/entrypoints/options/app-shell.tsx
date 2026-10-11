@@ -11,6 +11,9 @@ interface AppShellProps {
   children: React.ReactNode;
 }
 
+/** 版本号取自 manifest，避免与发布版本脱节 */
+const APP_VERSION = typeof chrome !== 'undefined' && chrome.runtime?.getManifest ? chrome.runtime.getManifest().version : '';
+
 export const AppShell: React.FC<AppShellProps> = ({
   currentPath,
   onNavigate,
@@ -56,7 +59,8 @@ export const AppShell: React.FC<AppShellProps> = ({
                         key={item.id}
                         type="button"
                         onClick={() => onNavigate(item.path)}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                        aria-current={isActive ? 'page' : undefined}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 ${
                           isActive
                             ? 'bg-zinc-900 text-white shadow-2xs font-semibold'
                             : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
@@ -89,7 +93,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         {/* Footer Info */}
         <div className="p-4 border-t border-zinc-100 space-y-3">
           <div className="flex items-center justify-between text-[11px] text-zinc-400">
-            <span>PicPocket v1.0.0</span>
+            <span>{APP_VERSION ? `PicPocket v${APP_VERSION}` : 'PicPocket'}</span>
             <a
               href="https://github.com/QingYunA/picpocket"
               target="_blank"
@@ -125,6 +129,7 @@ export const AppShell: React.FC<AppShellProps> = ({
               <button
                 type="button"
                 onClick={() => handleLanguageChange('zh')}
+                aria-pressed={language === 'zh'}
                 className={`px-2.5 py-1 text-[11px] rounded-md transition-all cursor-pointer ${
                   language === 'zh'
                     ? 'bg-white text-zinc-900 font-bold shadow-2xs'
@@ -136,6 +141,7 @@ export const AppShell: React.FC<AppShellProps> = ({
               <button
                 type="button"
                 onClick={() => handleLanguageChange('en')}
+                aria-pressed={language === 'en'}
                 className={`px-2.5 py-1 text-[11px] rounded-md transition-all cursor-pointer ${
                   language === 'en'
                     ? 'bg-white text-zinc-900 font-bold shadow-2xs'

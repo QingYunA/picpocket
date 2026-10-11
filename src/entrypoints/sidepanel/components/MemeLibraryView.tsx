@@ -16,7 +16,7 @@ import {
   X,
 } from 'lucide-react';
 import { db } from '@/db';
-import type { MemeItem } from '@/types';
+import type { MemeItem, MemeSource } from '@/types';
 import { useI18n } from '@/i18n';
 import { matchesMemeQuery } from '@/services/memeAdapters';
 import {
@@ -30,6 +30,7 @@ import {
   toggleMemeFavorite,
 } from '@/services/memeRuntime';
 import { openInfiniteCanvasPage } from '@/utils/navigation';
+import { ConfirmModal } from './ConfirmModal';
 
 const ALL_SOURCES = '__ALL__';
 const PAGE_SIZE = 60;
@@ -93,7 +94,7 @@ const MemeCard: React.FC<{
         <Heart className={`h-3.5 w-3.5 ${meme.isFavorite ? 'fill-current' : ''}`} />
       </button>
 
-      <div className="absolute inset-x-0 bottom-10 flex justify-center gap-1 px-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+      <div className="absolute inset-x-0 bottom-10 flex flex-wrap justify-center gap-1 px-1.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
         <button
           onClick={() => onSave(meme)}
           disabled={busy}
@@ -130,10 +131,16 @@ export const MemeLibraryView: React.FC = () => {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [newUrl, setNewUrl] = useState('');
+  const [sourceToRemove, setSourceToRemove] = useState<MemeSource | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  const memes = useLiveQuery(() => db.memes.toArray()) ?? [];
-  const sources = useLiveQuery(() => db.memeSources.toArray()) ?? [];
+  // undefined 表示首次读取尚未完成，此时不显示「还没有表情包」空态
+  const liveMemes = useLiveQuery(() => db.memes.toArray());
+  const isLoading = liveMemes === undefined;
+  const memes = useMemo(() => liveMemes ?? [], [liveMemes]);
+  const liveSources = useLiveQuery(() => db.memeSources.toArray());
+  const sources = useMemo(() => liveSources ?? [], [liveSources]);
 
   useEffect(() => {
     ensureDefaultMemeSources().catch((err) => console.warn('Failed to init meme sources:', err));
@@ -194,7 +201,11 @@ export const MemeLibraryView: React.FC = () => {
     [candidates, activeCategory]
   );
 
-  useEffect(() => setVisible(PAGE_SIZE), [activeSource, favoritesOnly, activeCategory, query]);
+  // 切换筛选条件后回到列表顶部，避免停在旧结果的滚动位置
+  useEffect(() => {
+    setVisible(PAGE_SIZE);
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [activeSource, favoritesOnly, activeCategory, query]);
 
   useEffect(() => {
     const node = sentinelRef.current;
@@ -272,6 +283,13 @@ export const MemeLibraryView: React.FC = () => {
 
   const sourceName = (id: string) => sources.find((s) => s.id === id)?.name || id;
 
+  const handleConfirmRemoveSource = () => {
+    if (!sourceToRemove) return;
+    const { id } = sourceToRemove;
+    if (activeSource === id) setActiveSource(ALL_SOURCES);
+    guard(() => removeMemeSource(id));
+  };
+
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-white text-zinc-900">
       <div className="space-y-2 border-b border-zinc-100 bg-zinc-50/50 px-3 py-2">
@@ -285,7 +303,7 @@ export const MemeLibraryView: React.FC = () => {
             className="w-full rounded-md border border-zinc-200 bg-white py-1 pl-8 pr-7 text-xs text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-900 focus:outline-none"
           />
           {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="absolute right-2 cursor-pointer text-zinc-400 hover:text-zinc-600" aria-label={t('common.close')}>
+            <button onClick={() => setSearchQuery('')} className="absolute right-2 cursor-pointer text-zinc-400 hover:text-zinc-600" title={t('common.clear')} aria-label={t('common.clear')}>
               <X className="h-3.5 w-3.5" />
             </button>
           )}
@@ -345,7 +363,7 @@ export const MemeLibraryView: React.FC = () => {
                 </a>
                 <span className="shrink-0 text-[10px] text-zinc-400">{s.lastSuccessAt ? t('memes.sourceCount', { count: s.count ?? 0 }) : t('memes.neverSynced')}</span>
                 {!s.builtIn && (
-                  <button onClick={() => guard(() => removeMemeSource(s.id))} title={t('memes.remove')} className="shrink-0 cursor-pointer text-zinc-400 hover:text-red-500">
+                  <button onClick={() => setSourceToRemove(s)} title={t('memes.remove')} aria-label={t('memes.remove')} className="shrink-0 cursor-pointer text-zinc-400 hover:text-red-500">
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
                 )}
@@ -356,8 +374,8 @@ export const MemeLibraryView: React.FC = () => {
           <div className="space-y-1.5 rounded-md border border-dashed border-zinc-300 p-2">
             <div className="text-[11px] font-medium text-zinc-600">{t('memes.addSourceTitle')}</div>
             <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={t('memes.sourceNamePlaceholder')} className="w-full rounded border border-zinc-200 bg-white px-2 py-1 text-xs focus:border-zinc-900 focus:outline-none" />
-            <input value={newUrl} onChange={(e) => setNewUrl(e.target.value)} placeholder={t('memes.sourceUrlPlaceholder')} className="w-full rounded border border-zinc-200 bg-white px-2 py-1 text-xs focus:border-zinc-900 focus:outline-none" />
-            <button onClick={handleAddSource} className="flex items-center gap-1 rounded bg-zinc-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-zinc-800 cursor-pointer">
+            <input value={newUrl} onChange={(e) => setNewUrl(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleAddSource(); }} placeholder={t('memes.sourceUrlPlaceholder')} className="w-full rounded border border-zinc-200 bg-white px-2 py-1 text-xs focus:border-zinc-900 focus:outline-none" />
+            <button onClick={handleAddSource} disabled={isSyncing} className="flex items-center gap-1 rounded bg-zinc-900 px-2.5 py-1 text-xs font-semibold text-white hover:bg-zinc-800 disabled:opacity-60 cursor-pointer">
               <Plus className="h-3 w-3" />
               <span>{t('memes.addSource')}</span>
             </button>
@@ -397,8 +415,8 @@ export const MemeLibraryView: React.FC = () => {
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto px-3 py-3">
-        {filtered.length === 0 ? (
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-3">
+        {isLoading ? null : filtered.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-4 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 text-zinc-400">
               <Smile className="h-6 w-6" />
@@ -444,6 +462,15 @@ export const MemeLibraryView: React.FC = () => {
           <span>{isSyncing ? t('memes.syncing') : t('memes.syncAll')}</span>
         </button>
       </footer>
+
+      <ConfirmModal
+        isOpen={sourceToRemove !== null}
+        title={t('memes.remove')}
+        description={t('memes.removeConfirm', { name: sourceToRemove?.name ?? '' })}
+        confirmText={t('memes.remove')}
+        onConfirm={handleConfirmRemoveSource}
+        onClose={() => setSourceToRemove(null)}
+      />
     </div>
   );
 };

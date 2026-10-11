@@ -29,21 +29,32 @@ export const PromptDetailDrawer: React.FC<PromptDetailDrawerProps> = ({ item, on
     item.coverUrl || item.referenceImageUrls?.[0] || ''
   );
 
-  const handleCopyPrompt = () => {
-    navigator.clipboard.writeText(item.prompt);
-    setCopiedPrompt(true);
-    setTimeout(() => setCopiedPrompt(false), 2000);
+  const handleCopyPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(item.prompt);
+      setCopiedPrompt(true);
+      setTimeout(() => setCopiedPrompt(false), 2000);
+    } catch (err) {
+      console.warn('Failed to copy prompt:', err);
+    }
   };
 
-  const handleCopyBlock = (text: string, blockName: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedBlock(blockName);
-    setTimeout(() => setCopiedBlock(null), 1800);
+  const handleCopyBlock = async (text: string, blockName: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedBlock(blockName);
+      setTimeout(() => setCopiedBlock(null), 1800);
+    } catch (err) {
+      console.warn('Failed to copy block:', err);
+    }
   };
 
   const handleToggleFav = async () => {
-    const updated = await toggleFavoritePrompt(item.id);
-    setIsFav(updated);
+    try {
+      setIsFav(await toggleFavoritePrompt(item.id));
+    } catch (err) {
+      console.warn('Failed to toggle favorite:', err);
+    }
   };
 
   const allImages = Array.from(
@@ -59,7 +70,7 @@ export const PromptDetailDrawer: React.FC<PromptDetailDrawerProps> = ({ item, on
           className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 transition-colors cursor-pointer"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          <span>{t('inspector.galleryBack')}</span>
+          <span>{t('common.back')}</span>
         </button>
 
         <div className="flex items-center gap-1.5">
@@ -98,13 +109,17 @@ export const PromptDetailDrawer: React.FC<PromptDetailDrawerProps> = ({ item, on
               <img
                 src={activeImage}
                 alt={item.title}
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.visibility = 'hidden';
+                }}
                 className="h-full w-full object-contain"
               />
             </div>
 
             {/* Multiple Reference Images Thumbnails */}
             {allImages.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+              <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
                 {allImages.map((img, idx) => (
                   <button
                     key={idx}
@@ -115,7 +130,15 @@ export const PromptDetailDrawer: React.FC<PromptDetailDrawerProps> = ({ item, on
                         : 'border-zinc-200 opacity-70 hover:opacity-100'
                     }`}
                   >
-                    <img src={img} alt={`Ref ${idx}`} className="h-full w-full object-cover" />
+                    <img
+                      src={img}
+                      alt={`${t('prompts.referenceImages')} ${idx + 1}`}
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.visibility = 'hidden';
+                      }}
+                      className="h-full w-full object-cover"
+                    />
                   </button>
                 ))}
               </div>
@@ -272,9 +295,10 @@ function BlockRow({
   onCopySingle: (text: string) => void;
   copiedSingleKey: string | null;
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex items-start justify-between gap-2 rounded-lg bg-white border border-zinc-200/80 p-2 text-xs">
-      <div className="space-y-1 flex-1">
+      <div className="min-w-0 space-y-1 flex-1">
         <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">
           {label}
         </span>
@@ -291,7 +315,7 @@ function BlockRow({
                     ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
                     : 'border-zinc-200/60 bg-zinc-100/80 text-zinc-700 hover:border-zinc-300 hover:bg-zinc-200/80'
                 }`}
-                title={`点击复制: ${it}`}
+                title={t('prompts.copyItemTag', { tag: it })}
               >
                 <span>{it}</span>
                 {isCopied ? (
@@ -307,7 +331,7 @@ function BlockRow({
       <button
         onClick={onCopyRow}
         className="shrink-0 p-1 text-zinc-400 hover:text-zinc-800 transition-colors cursor-pointer rounded hover:bg-zinc-100"
-        title="复制整行"
+        title={t('prompts.copyRow')}
       >
         {copiedRow ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
       </button>

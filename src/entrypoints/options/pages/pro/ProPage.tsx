@@ -117,7 +117,7 @@ export const ProPage: React.FC<ProPageProps> = ({
                     / {proMembership.visionTotalQuota}
                   </span>
                 )}
-                <span className="text-xs text-zinc-500 ml-1">次</span>
+                <span className="text-xs text-zinc-500 ml-1">{t('subscription.timesUnit')}</span>
               </div>
             </div>
 
@@ -134,7 +134,7 @@ export const ProPage: React.FC<ProPageProps> = ({
                     / {proMembership.imageTotalQuota}
                   </span>
                 )}
-                <span className="text-xs text-zinc-500 ml-1">次</span>
+                <span className="text-xs text-zinc-500 ml-1">{t('subscription.timesUnit')}</span>
               </div>
             </div>
           </div>
@@ -158,7 +158,11 @@ export const ProPage: React.FC<ProPageProps> = ({
               type="text"
               value={licenseInput}
               onChange={(e) => setLicenseInput(e.target.value)}
-              placeholder="如 XIALINGUO666"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && licenseInput.trim() && !isActivating) handleActivate();
+              }}
+              placeholder={t('subscription.licensePlaceholder')}
+              aria-label={t('options.pro.inputCodeTitle')}
               className="flex-1 rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 py-2.5 text-xs font-mono text-zinc-900 focus:border-zinc-900 focus:bg-white focus:outline-none shadow-2xs transition-all"
             />
             <button
@@ -175,6 +179,7 @@ export const ProPage: React.FC<ProPageProps> = ({
         {activateResult && (
           <div className="py-2">
             <div
+              role={activateResult.success ? 'status' : 'alert'}
               className={`p-3 rounded-xl border text-xs flex items-center gap-2 ${
                 activateResult.success
                   ? 'bg-emerald-50 text-emerald-800 border-emerald-200'

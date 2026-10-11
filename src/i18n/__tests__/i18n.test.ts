@@ -98,10 +98,10 @@ describe('i18n Localization', () => {
 
   it('should support dynamic parameter interpolation', () => {
     expect(getTranslation('zh', 'footer.syncedItems', { count: 42 })).toBe(
-      '已收录 42 张 · Dexie 本地持久化'
+      '已收录 42 张 · 本地保存'
     );
     expect(getTranslation('en', 'footer.syncedItems', { count: 42 })).toBe(
-      '42 items in pocket · Local Dexie DB'
+      '42 items · stored locally'
     );
 
     expect(getTranslation('zh', 'inspector.latency', { ms: 120 })).toBe(

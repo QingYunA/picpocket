@@ -15,10 +15,15 @@ import type { UserSettings } from '@/types';
 export const App: React.FC = () => {
   const { path, params, navigate } = useHashRoute();
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
+  // 设置读出前不渲染页面：各页用初始 settings 决定默认选中的渠道等状态，直接用默认值会选错
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   // Initial load
   useEffect(() => {
-    getUserSettings().then(setSettings);
+    getUserSettings()
+      .then(setSettings)
+      .catch((err) => console.warn('Failed to load settings:', err))
+      .finally(() => setSettingsLoaded(true));
   }, []);
 
   // Multi-tab real-time sync via chrome.storage.onChanged
@@ -115,7 +120,7 @@ export const App: React.FC = () => {
 
   return (
     <AppShell currentPath={path} onNavigate={navigate}>
-      {renderCurrentPage()}
+      {settingsLoaded ? renderCurrentPage() : null}
     </AppShell>
   );
 };

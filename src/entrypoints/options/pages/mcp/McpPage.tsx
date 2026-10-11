@@ -11,6 +11,8 @@ import {
   type McpClientTarget,
 } from '@/services/mcpPrompts';
 import { DEFAULT_MCP_SETTINGS } from '@/utils/storage';
+import { ToggleSwitch } from '../../components/toggle-switch';
+import { buildClientConfigSnippet, buildInstallCommand } from '../../utils/mcpSnippets';
 import {
   Terminal,
   Copy,
@@ -20,10 +22,8 @@ import {
   XCircle,
   Shield,
   Activity,
-  Code2,
   Sparkles,
   Server,
-  KeyRound,
   FileCode,
 } from 'lucide-react';
 
@@ -51,7 +51,7 @@ export const McpPage: React.FC<McpPageProps> = ({
   const permissions = mcpConfig.permissions;
 
   const [portInput, setPortInput] = useState<string>(String(mcpConfig.port || 18088));
-  const [portSaveMsg, setPortSaveMsg] = useState<string>('');
+  const [portSaveMsg, setPortSaveMsg] = useState<{ text: string; isError: boolean } | null>(null);
 
   useEffect(() => {
     setPortInput(String(mcpConfig.port || 18088));
@@ -101,24 +101,24 @@ export const McpPage: React.FC<McpPageProps> = ({
   }, [mcpConfig.port]);
 
   const handleTogglePermission = async (key: 'read' | 'write' | 'generate') => {
-    const updatedPermissions = {
-      ...permissions,
-      [key]: !permissions[key],
-    };
-    await onUpdateSettings((prev) => ({
-      ...prev,
-      mcpSettings: {
-        ...(prev.mcpSettings || DEFAULT_MCP_SETTINGS),
-        permissions: updatedPermissions,
-      },
-    }));
+    // 基于最新设置翻转，连点两个不同权限时不会用旧快照互相覆盖
+    await onUpdateSettings((prev) => {
+      const latest = prev.mcpSettings || DEFAULT_MCP_SETTINGS;
+      return {
+        ...prev,
+        mcpSettings: {
+          ...latest,
+          permissions: { ...latest.permissions, [key]: !latest.permissions[key] },
+        },
+      };
+    });
   };
 
   const handleSavePort = async () => {
     const parsed = parseInt(portInput, 10);
     if (isNaN(parsed) || parsed < 1024 || parsed > 65535) {
-      setPortSaveMsg(t('mcp.portInvalid'));
-      setTimeout(() => setPortSaveMsg(''), 3000);
+      setPortSaveMsg({ text: t('mcp.portInvalid'), isError: true });
+      setTimeout(() => setPortSaveMsg(null), 3000);
       return;
     }
     await onUpdateSettings((prev) => ({
@@ -128,75 +128,15 @@ export const McpPage: React.FC<McpPageProps> = ({
         port: parsed,
       },
     }));
-    setPortSaveMsg(t('mcp.portSaved'));
-    setTimeout(() => setPortSaveMsg(''), 3000);
+    setPortSaveMsg({ text: t('mcp.portSaved'), isError: false });
+    setTimeout(() => setPortSaveMsg(null), 3000);
   };
 
   const currentPort = mcpConfig.port || 18088;
   const targetedPrompt = buildTargetedPrompt(selectedTarget, mcpConfig);
-  const installCliCmd = selectedTarget === 'auto'
-    ? 'bun run mcp:install'
-    : `bun run mcp:install ${selectedTarget}`;
-
-  // Client configuration snippet
-  const clientConfigSnippets: Record<McpClientTarget, string> = {
-    cursor: JSON.stringify(
-      {
-        mcpServers: {
-          picpocket: {
-            command: 'bun',
-            args: ['run', `${navigator?.userAgent?.includes('Win') ? 'C:\\path\\to' : '/path/to'}/picpocket/packages/mcp-bridge/src/index.ts`],
-            env: { PICPOCKET_PORT: String(currentPort) },
-          },
-        },
-      },
-      null,
-      2
-    ),
-    claude: `claude mcp add picpocket -- bun run /path/to/picpocket/packages/mcp-bridge/src/index.ts`,
-    antigravity: JSON.stringify(
-      {
-        mcpServers: {
-          picpocket: {
-            command: 'bun',
-            args: ['run', '/path/to/picpocket/packages/mcp-bridge/src/index.ts'],
-            env: { PICPOCKET_PORT: String(currentPort) },
-          },
-        },
-      },
-      null,
-      2
-    ),
-    windsurf: JSON.stringify(
-      {
-        mcpServers: {
-          picpocket: {
-            command: 'bun',
-            args: ['run', '/path/to/picpocket/packages/mcp-bridge/src/index.ts'],
-            env: { PICPOCKET_PORT: String(currentPort) },
-          },
-        },
-      },
-      null,
-      2
-    ),
-    zed: JSON.stringify(
-      {
-        context_servers: {
-          picpocket: {
-            command: {
-              path: 'bun',
-              args: ['run', '/path/to/picpocket/packages/mcp-bridge/src/index.ts'],
-              env: { PICPOCKET_PORT: String(currentPort) },
-            },
-          },
-        },
-      },
-      null,
-      2
-    ),
-    auto: `# Run automated MCP injection script:\n${installCliCmd}`,
-  };
+  const installCliCmd = buildInstallCommand(selectedTarget, currentPort);
+  const isWindows = typeof navigator !== 'undefined' && navigator.userAgent.includes('Win');
+  const clientConfigSnippet = buildClientConfigSnippet(selectedTarget, currentPort, isWindows);
 
   const handleCopyPrompt = () => {
     navigator.clipboard.writeText(targetedPrompt);
@@ -211,7 +151,7 @@ export const McpPage: React.FC<McpPageProps> = ({
   };
 
   const handleCopyJson = () => {
-    navigator.clipboard.writeText(clientConfigSnippets[selectedTarget]);
+    navigator.clipboard.writeText(clientConfigSnippet);
     setCopiedJson(true);
     setTimeout(() => setCopiedJson(false), 2000);
   };
@@ -257,6 +197,10 @@ export const McpPage: React.FC<McpPageProps> = ({
               type="number"
               value={portInput}
               onChange={(e) => setPortInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSavePort();
+              }}
+              aria-label={t('mcp.portLabel')}
               className="w-28 rounded-xl border border-zinc-200 bg-zinc-50/50 px-3 py-1.5 text-xs font-mono text-zinc-900 focus:border-zinc-900 focus:bg-white focus:outline-none"
             />
             <button
@@ -267,7 +211,12 @@ export const McpPage: React.FC<McpPageProps> = ({
               {t('common.save')}
             </button>
             {portSaveMsg && (
-              <span className="text-xs text-emerald-600 font-medium">{portSaveMsg}</span>
+              <span
+                role={portSaveMsg.isError ? 'alert' : 'status'}
+                className={`text-xs font-medium ${portSaveMsg.isError ? 'text-red-600' : 'text-emerald-600'}`}
+              >
+                {portSaveMsg.text}
+              </span>
             )}
           </div>
         </ConfigItem>
@@ -311,15 +260,12 @@ export const McpPage: React.FC<McpPageProps> = ({
               <div>
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <span className="text-xs font-bold text-zinc-900">{perm.title}</span>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={perm.enabled}
-                      onChange={() => handleTogglePermission(perm.key)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-9 h-5 bg-zinc-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600" />
-                  </label>
+                  <ToggleSwitch
+                    checked={perm.enabled}
+                    onChange={() => handleTogglePermission(perm.key)}
+                    label={perm.title}
+                    tone="emerald"
+                  />
                 </div>
                 <p className="text-[11px] text-zinc-500 leading-normal">{perm.desc}</p>
               </div>
@@ -401,7 +347,7 @@ export const McpPage: React.FC<McpPageProps> = ({
               </div>
             </div>
             <pre className="font-mono text-xs bg-white p-3 rounded-lg border border-zinc-200/80 text-zinc-800 overflow-x-auto max-h-56">
-              {clientConfigSnippets[selectedTarget]}
+              {clientConfigSnippet}
             </pre>
           </div>
         </div>

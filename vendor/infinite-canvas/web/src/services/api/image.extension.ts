@@ -9,7 +9,7 @@ import type { AiConfig, ModelChannel } from "@/stores/use-config-store";
 import { resolveCanvasImageSelection } from "@/integrations/picpocket/image-model-selection";
 import type { ReferenceImage } from "@/types/image";
 import { getImageBlob } from "@/services/image-storage";
-import { completeCanvasGeneration, registerCanvasGeneration } from "@/integrations/picpocket/generation-recovery";
+import { completeCanvasGeneration, registerCanvasGeneration, setCanvasGenerationLive } from "@/integrations/picpocket/generation-recovery";
 import {
     fetchChannelModels,
     fetchImageModels,
@@ -130,6 +130,7 @@ async function requestPicPocketImages(
         projectId: options?.canvasProjectId || "",
         nodeId: options?.canvasNodeId || "",
     });
+    setCanvasGenerationLive(taskId, true);
 
     const abort = () => {
         chrome.runtime.sendMessage({ action: "CANCEL_IMAGE_GENERATION", taskId }).catch(() => {});
@@ -151,7 +152,12 @@ async function requestPicPocketImages(
             void completeCanvasGeneration(taskId);
         }, 10_000);
         return images;
+    } catch (error) {
+        // 失败、取消或超时都已经由调用方把节点置为错误态，登记项不再需要，否则会一直留在存储里
+        void completeCanvasGeneration(taskId);
+        throw error;
     } finally {
+        setCanvasGenerationLive(taskId, false);
         options?.signal?.removeEventListener("abort", abort);
     }
 }

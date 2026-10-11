@@ -87,6 +87,7 @@ export const GenerationControlsBar: React.FC<GenerationControlsBarProps> = ({
                 key={item.ratio}
                 type="button"
                 disabled={disabled}
+                aria-pressed={active}
                 onClick={() => onChangeAspectRatio(item.ratio)}
                 title={`${item.label} (${item.desc})`}
                 className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-lg border text-center transition-all cursor-pointer min-w-0 ${
@@ -110,6 +111,7 @@ export const GenerationControlsBar: React.FC<GenerationControlsBarProps> = ({
         <button
           type="button"
           onClick={onToggleShowAdvanced}
+          aria-expanded={showAdvanced}
           className="flex items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-zinc-800 transition-colors cursor-pointer"
         >
           {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
@@ -127,6 +129,7 @@ export const GenerationControlsBar: React.FC<GenerationControlsBarProps> = ({
                     key={q}
                     type="button"
                     disabled={disabled}
+                    aria-pressed={quality === q}
                     onClick={() => onChangeQuality(q)}
                     className={`px-2 py-0.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
                       quality === q
@@ -162,6 +165,7 @@ export const GenerationControlsBar: React.FC<GenerationControlsBarProps> = ({
                       key={n}
                       type="button"
                       disabled={isCountDisabled}
+                      aria-pressed={count === n}
                       onClick={() => onChangeCount(n)}
                       title={n > maxCount ? t('generator.modelSingleImageOnly', { model: modelName || 'AI' }) : undefined}
                       className={`h-6 w-6 rounded-md text-xs font-semibold transition-all cursor-pointer ${

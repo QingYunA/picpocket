@@ -92,6 +92,27 @@ describe('imageGenerator resilience', () => {
   });
 });
 
+describe('convertImageUrlToDataUrl 取消语义', () => {
+  it('signal 已中断时抛出 AbortError，而不是悄悄退回原链接', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn((_url: string, init: RequestInit) =>
+      new Promise((_resolve, reject) => {
+        init.signal?.addEventListener('abort', () =>
+          reject(Object.assign(new Error('aborted'), { name: 'AbortError' }))
+        );
+      })
+    ) as any;
+    try {
+      const controller = new AbortController();
+      const pending = convertImageUrlToDataUrl('https://cdn.example.com/slow.png', controller.signal);
+      controller.abort();
+      await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
 describe('imageGenerator service', () => {
   const mockSettings: UserSettings = {
     apiKey: 'sk-test-chat-key',

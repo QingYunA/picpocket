@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useId } from 'react';
 import { Trash2, AlertCircle } from 'lucide-react';
 import { useI18n } from '@/i18n';
 
@@ -24,6 +24,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   onClose,
 }) => {
   const { t } = useI18n();
+  const titleId = useId();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -44,6 +45,9 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-150"
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
         onClick={(e) => e.stopPropagation()}
         className="flex flex-col w-full max-w-[300px] rounded-2xl border border-zinc-200 bg-white p-4 shadow-xl animate-in zoom-in-95 duration-150 space-y-3"
       >
@@ -62,7 +66,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             )}
           </div>
           <div className="space-y-1 min-w-0">
-            <h3 className="text-xs font-bold text-zinc-900 leading-tight">
+            <h3 id={titleId} className="text-xs font-bold text-zinc-900 leading-tight">
               {title}
             </h3>
             <p className="text-[11px] text-zinc-500 leading-relaxed break-words">
@@ -74,6 +78,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         <div className="flex items-center gap-2 pt-1">
           <button
             type="button"
+            autoFocus
             onClick={onClose}
             className="flex-1 rounded-lg border border-zinc-200 bg-white py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer text-center"
           >

@@ -6,11 +6,9 @@ import {
   Search,
   Check,
   X,
-  ChevronRight,
-  ChevronDown,
 } from 'lucide-react';
 import { db } from '@/db';
-import type { FolderItem } from '@/types';
+import type { FolderItem, InspirationItem } from '@/types';
 import { useI18n } from '@/i18n';
 
 interface FolderTreeNode extends FolderItem {
@@ -18,6 +16,9 @@ interface FolderTreeNode extends FolderItem {
 }
 
 interface CardActionPopoverProps {
+  /** 全部素材（仅用于统计各文件夹数量，由父级的 liveQuery 提供） */
+  items: Pick<InspirationItem, 'folderId'>[];
+  /** 素材当前所在文件夹；null 表示未归档，不传（批量移动）则不标记「当前位置」 */
   currentFolderId?: number | null;
   onSelectFolder: (folderId: number | null) => void;
   onClose: () => void;
@@ -25,6 +26,7 @@ interface CardActionPopoverProps {
 }
 
 export const CardActionPopover: React.FC<CardActionPopoverProps> = ({
+  items,
   currentFolderId,
   onSelectFolder,
   onClose,
@@ -35,7 +37,6 @@ export const CardActionPopover: React.FC<CardActionPopoverProps> = ({
   const popoverRef = useRef<HTMLDivElement>(null);
 
   const folders = useLiveQuery(() => db.folders.orderBy('order').toArray()) || [];
-  const items = useLiveQuery(() => db.items.toArray()) || [];
 
   // Count items per folder
   const { uncategorizedCount, folderCounts } = useMemo(() => {
@@ -145,6 +146,8 @@ export const CardActionPopover: React.FC<CardActionPopoverProps> = ({
         <button
           onClick={onClose}
           className="text-zinc-400 hover:text-zinc-700 p-0.5 cursor-pointer rounded"
+          title={t('common.close')}
+          aria-label={t('common.close')}
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -176,7 +179,7 @@ export const CardActionPopover: React.FC<CardActionPopoverProps> = ({
               onClose();
             }}
             className={`flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-xs transition-colors cursor-pointer text-left ${
-              currentFolderId == null
+              currentFolderId === null
                 ? 'bg-zinc-100 font-semibold text-zinc-900'
                 : 'text-zinc-700 hover:bg-zinc-100/80'
             }`}
@@ -187,7 +190,7 @@ export const CardActionPopover: React.FC<CardActionPopoverProps> = ({
             </div>
             <div className="flex items-center gap-1 shrink-0 ml-2">
               <span className="text-[10px] font-mono text-zinc-400">{uncategorizedCount}</span>
-              {currentFolderId == null && <Check className="h-3.5 w-3.5 text-emerald-600 ml-1" />}
+              {currentFolderId === null && <Check className="h-3.5 w-3.5 text-emerald-600 ml-1" />}
             </div>
           </button>
         )}

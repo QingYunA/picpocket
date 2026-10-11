@@ -150,9 +150,10 @@ export async function fetchSourcePrompts(
     throw new Error(`Prompt source "${source.name}" has no valid URL.`);
   }
 
+  // 无超时的 fetch 会让「刷新词库」按钮在源站挂起时一直转圈
   const response = await fetch(source.url, {
     cache: 'no-store',
-    signal,
+    signal: signal ?? AbortSignal.timeout(30_000),
   });
 
   if (!response.ok) {
@@ -213,10 +214,12 @@ export async function refreshSingleSource(source: PromptSource): Promise<PromptS
       };
     } catch (err) {
       const lastError = err instanceof Error ? err.message : String(err);
-      await db.promptSources.put({
-        ...source,
-        lastError,
-      });
+      await db.promptSources
+        .put({
+          ...source,
+          lastError,
+        })
+        .catch(() => {});
 
       return {
         sourceId: source.id,

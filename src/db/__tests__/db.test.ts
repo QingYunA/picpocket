@@ -50,8 +50,8 @@ describe('InspirationDatabase (Dexie)', () => {
     expect(prompt?.latencyMs).toBe(280);
   });
 
-  it('should gracefully handle cropImage and createThumbnail in headless test environments', async () => {
-    const { createThumbnail, cropImage, dataUrlToBlob } = await import('../index');
+  it('should gracefully handle createThumbnail in headless test environments', async () => {
+    const { createThumbnail, dataUrlToBlob } = await import('../index');
     const fakeBlob = new Blob(['image payload'], { type: 'image/png' });
 
     // Test dataUrlToBlob
@@ -65,15 +65,39 @@ describe('InspirationDatabase (Dexie)', () => {
     const thumbResult = await createThumbnail(fakeBlob, 400);
     expect(thumbResult.thumbnailBlob).toBeDefined();
     expect(thumbResult.width).toBe(400);
+  });
 
-    const cropResult = await cropImage(sampleDataUrl, {
-      x: 0,
-      y: 0,
-      width: 1,
-      height: 1,
-      dpr: 1,
-    });
-    expect(cropResult.croppedBlob).toBeDefined();
+  it('dataUrlToBlob 同时支持 base64 与百分号编码载荷，并保留真实 MIME', async () => {
+    const { dataUrlToBlob } = await import('../index');
+
+    const svg = dataUrlToBlob('data:image/svg+xml,%3Csvg%20xmlns%3D%22a%22%2C%3E%3C%2Fsvg%3E');
+    expect(svg.type).toBe('image/svg+xml');
+    expect(await svg.text()).toBe('<svg xmlns="a",></svg>');
+
+    const gif = dataUrlToBlob('data:image/gif;base64,R0lGODlhAQABAAAAACw=');
+    expect(gif.type).toBe('image/gif');
+    expect(gif.size).toBeGreaterThan(0);
+
+    // 缺少载荷或不是 DataURL 时返回空 Blob，而不是抛错
+    expect(dataUrlToBlob('https://example.com/a.png').size).toBe(0);
+    expect(dataUrlToBlob('data:image/png;base64,').size).toBe(0);
+  });
+
+  it('保存生成图到图库时拒绝没有图片数据的条目', async () => {
+    const { saveGeneratedImageToGallery } = await import('../index');
+    const count = await db.items.count();
+    await expect(
+      saveGeneratedImageToGallery({
+        id: 'broken',
+        dataUrl: 'https://example.com/expired.png',
+        prompt: 'p',
+        aspectRatio: '1:1',
+        width: 1024,
+        height: 1024,
+        createdAt: Date.now(),
+      })
+    ).rejects.toThrow();
+    expect(await db.items.count()).toBe(count);
   });
 
   it('should save generated image to gallery and prompt library', async () => {

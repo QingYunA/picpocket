@@ -1,6 +1,6 @@
 {
   "name": "picpocket",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "scripts": {
     "postinstall": "wxt prepare && cd vendor/infinite-canvas/web && bun install --frozen-lockfile",
     "dev": "wxt",

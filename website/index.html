@@ -111,7 +111,7 @@
             "name": "Why does Chrome say it can “read and change data on all websites”?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "That's Chrome's standard wording for extensions that work on any site. PicPocket needs it so the hover pill and snip tool work wherever you find inspiration. It doesn't inject ads, change page content or log where you go."
+              "text": "That's Chrome's standard wording for extensions that work on any site. PicPocket needs it so the hover pill and the right-click menu work wherever you find inspiration. It doesn't inject ads, change page content or log where you go."
             }
           },
           {
@@ -1142,8 +1142,8 @@
         </h1>
 
         <p class="lede reveal">
-          <span data-l="en">Snip or save any image you find, and PicPocket turns it into one complete, ready-to-use prompt. Copy it in one click, then paste it into Midjourney, Flux or Stable Diffusion.</span>
-          <span data-l="zh">看到喜欢的图，框选或一键收进口袋。PicPocket 会把它反推成一段完整、能直接复用的提示词，一点即复制，直接贴进 Midjourney、Flux 或 Stable Diffusion。</span>
+          <span data-l="en">Save any image you find with a hover or a right-click, and PicPocket turns it into one complete, ready-to-use prompt. Copy it in one click, then paste it into Midjourney, Flux or Stable Diffusion.</span>
+          <span data-l="zh">看到喜欢的图，悬停或右键就能收进口袋。PicPocket 会把它反推成一段完整、能直接复用的提示词，一点即复制，直接贴进 Midjourney、Flux 或 Stable Diffusion。</span>
         </p>
 
         <div class="hero-ctas reveal">
@@ -1218,7 +1218,7 @@
                     <div class="asset-meta">
                       <span class="status"><span data-l="en">Analyzed</span><span data-l="zh">已反推</span></span>
                       <b><span data-l="en">Dusk over the dunes</span><span data-l="zh">沙丘黄昏</span></b>
-                      <small>Snip · 1024×1280</small>
+                      <small>Hover · 1024×1280</small>
                     </div>
                   </div>
 
@@ -1361,16 +1361,14 @@
             </div>
           </article>
 
-          <!-- Snip -->
+          <!-- Local first -->
           <article class="card reveal">
-            <div class="card-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/></svg></div>
-            <h3><span data-l="en">Snip any part of a page</span><span data-l="zh">框选网页任意区域</span></h3>
-            <p><span data-l="en">Drag a box over any part of the page. Crops stay pixel-sharp on Retina screens.</span><span data-l="zh">按住鼠标拖动，框选网页任意区域。Retina 屏按物理像素无损裁剪。</span></p>
+            <div class="card-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/></svg></div>
+            <h3><span data-l="en">Stored on your device</span><span data-l="zh">存在你自己的设备上</span></h3>
+            <p><span data-l="en">Images, prompts, folders and tags live in the browser's own database. No account to start collecting, and uninstalling removes what it stored.</span><span data-l="zh">图片、提示词、文件夹和标签都存在浏览器自己的数据库里。开始收藏不需要账号，卸载会把存的东西一起清掉。</span></p>
             <div class="viz viz-snip" aria-hidden="true">
               <img class="case-img art" src="/assets/cases/peaks.webp" alt="" loading="lazy" decoding="async">
-              <div class="snip-shade"></div>
-              <div class="snip-box"></div>
-              <div class="snip-banner"><span data-l="en">Drag to select · Enter to capture</span><span data-l="zh">拖动框选 · 回车采集</span></div>
+              <div class="snip-banner"><span data-l="en">Local · IndexedDB</span><span data-l="zh">本地 · IndexedDB</span></div>
             </div>
           </article>
 
@@ -1472,7 +1470,7 @@
           <div class="step reveal">
             <div class="step-num">2</div>
             <h3><span data-l="en">Capture what inspires you</span><span data-l="zh">采集让你心动的画面</span></h3>
-            <p><span data-l="en">Use the hover pill, right-click, or snip a region. Press <span class="kbd">Enter</span> to confirm or <span class="kbd">Esc</span> to cancel.</span><span data-l="zh">用悬停胶囊、右键菜单或框选截图。按 <span class="kbd">Enter</span> 确认，<span class="kbd">Esc</span> 取消。</span></p>
+            <p><span data-l="en">Use the hover pill or the right-click menu. Both routes land in the same pocket, and both can reverse the image on the way in.</span><span data-l="zh">用悬停胶囊或右键菜单，两条路都收进同一个口袋，也都能顺手把图反推成提示词。</span></p>
           </div>
           <div class="step reveal">
             <div class="step-num">3</div>
@@ -1613,8 +1611,8 @@
           <details>
             <summary><span data-l="en">Why does Chrome say it can “read and change data on all websites”?</span><span data-l="zh">为什么 Chrome 提示它能“读取和更改所有网站上的数据”？</span><span class="plus" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
             <div class="answer">
-              <span data-l="en">That's Chrome's standard wording for extensions that work on any site. PicPocket needs it so the hover pill and snip tool work wherever you find inspiration. It doesn't inject ads, change page content or log where you go.</span>
-              <span data-l="zh">这是 Chrome 对可在任意网站运行的扩展使用的标准提示。PicPocket 需要它，悬停胶囊和框选工具才能在你浏览的任何网站上使用。它不会注入广告、篡改网页内容或记录你的浏览轨迹。</span>
+              <span data-l="en">That's Chrome's standard wording for extensions that work on any site. PicPocket needs it so the hover pill and the right-click menu work wherever you find inspiration. It doesn't inject ads, change page content or log where you go.</span>
+              <span data-l="zh">这是 Chrome 对可在任意网站运行的扩展使用的标准提示。PicPocket 需要它，悬停胶囊和右键菜单才能在你浏览的任何网站上使用。它不会注入广告、篡改网页内容或记录你的浏览轨迹。</span>
             </div>
           </details>
           <details>

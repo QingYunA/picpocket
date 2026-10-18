@@ -42,7 +42,9 @@
 - `save_asset`：接收外部 Agent 已生成的图片与提示词并归档入库；
 - `save_prompt`：沉淀提示词草稿与风格积木到本地词库；
 - `manage_folders`：列出或创建目标分类文件夹；
-- `update_tags`：支持对已有画廊资产或提示词进行标签追加或替换更新。
+- `update_tags`：支持对已有画廊资产或提示词进行标签追加或替换更新；
+- `get_canvas_state`：读取当前无限画布的节点与连线，供 Agent 定位已有资产、规划新节点；
+- `create_canvas_node`：在画布上新建图片或提示词节点，可指定落点与来源资产。
 
 ### 5. 国际化与类型安全纪律 (i18n & Type Safety Invariants)
 - **强类型守卫**：全量前端组件文案通过 `t('mcp.xxx')` 绑定，受 `TranslationKey` 强类型约束；

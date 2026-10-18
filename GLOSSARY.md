@@ -1,4 +1,4 @@
-# CONTEXT.md
+# GLOSSARY.md
 
 本文档为项目的核心领域术语表（Glossary）与统一语言（Ubiquitous Language）。供所有设计、讨论、开发与代码实现共同遵守。
 

@@ -1,102 +1,159 @@
-<div align="center">
+<p align="center">
+  <img src="public/icons/icon-256.png" width="64" height="64" alt="PicPocket icon">
+</p>
 
-<img src="./public/icons/icon-256.png" width="128" height="128" alt="PicPocket Logo" style="margin-bottom: 12px;" />
+<h1 align="center">PicPocket</h1>
 
-# PicPocket
+<p align="center">
+  <b>Local-first&nbsp;&nbsp;|&nbsp;&nbsp;One complete prompt&nbsp;&nbsp;|&nbsp;&nbsp;Bring your own key&nbsp;&nbsp;|&nbsp;&nbsp;MCP</b>
+</p>
 
-**网页灵感图片随身口袋、AI 视觉反推生图与 GitHub 开源提示词库工作台。**
+<table>
+  <tr>
+    <td width="50%" align="center"><img src="docs/images/pocket-en.webp" width="240" alt="The pocket: save images from any page into folders and tags"></td>
+    <td width="50%" align="center"><img src="docs/images/inspector-en.webp" width="240" alt="One saved image opened: its full master prompt, ready to copy"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>The pocket keeps every image you save.</sub></td>
+    <td align="center"><sub>Each one carries a prompt you can paste.</sub></td>
+  </tr>
+</table>
 
-常驻 Chrome 侧边栏，像 Pocket 一样随手收纳视觉资产，一键反推成完整提示词并从开源词库重构生图。
+<p align="center">
+  <b>A Chrome side panel that turns the images you find on the web into prompts you can paste.<br>Your pocket lives in your browser. With your own key, requests never touch our servers.</b>
+</p>
 
-[![Chrome Web Store](https://img.shields.io/chrome-web-store/v/bncoffcoihlpfbicajogmpcdckcfpnfa?style=flat-square&logo=googlechrome&logoColor=white&label=Chrome%20Web%20Store)](https://chromewebstore.google.com/detail/picpocket-image-to-prompt/bncoffcoihlpfbicajogmpcdckcfpnfa)
-[![Manifest V3](https://img.shields.io/badge/Chrome-Manifest%20V3-blue?style=flat-square)](https://developer.chrome.com/docs/extensions/mv3/intro/)
-[![Built with WXT](https://img.shields.io/badge/Built%20with-WXT-black?style=flat-square)](https://wxt.dev/)
-[![React 19](https://img.shields.io/badge/React-19-61dafb?style=flat-square)](https://react.dev/)
-[![Tailwind CSS v4](https://img.shields.io/badge/Tailwind-v4-f59e0b?style=flat-square)](https://tailwindcss.com/)
-[![License GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square)](./LICENSE)
+<p align="center">
+  <a href="https://chromewebstore.google.com/detail/picpocket-image-to-prompt/bncoffcoihlpfbicajogmpcdckcfpnfa"><img src="https://img.shields.io/chrome-web-store/v/bncoffcoihlpfbicajogmpcdckcfpnfa?style=flat-square&logo=googlechrome&logoColor=white&labelColor=16181d&color=2ea44f" alt="Chrome Web Store version"></a>
+  <a href="https://github.com/QingYunA/picpocket/stargazers"><img src="https://img.shields.io/github/stars/QingYunA/picpocket?style=flat-square&logo=github&labelColor=16181d&color=2ea44f" alt="Stars"></a>
+  <img src="https://img.shields.io/badge/Chrome-Manifest%20V3-2ea44f?style=flat-square&labelColor=16181d" alt="Manifest V3">
+</p>
 
-</div>
+<p align="center">
+  <a href="https://www.picpocket.top"><b>Website</b></a> · <a href="#install">Install</a> · <a href="#what-you-capture-what-you-get">Examples</a> · <a href="#features">Features</a> · <a href="#agents-mcp">Agents</a> · <a href="#development">Develop</a> · <a href="README.zh-CN.md">简体中文</a>
+</p>
 
----
+Once installed, this is the whole loop:
 
-## 为什么做这个？
-
-平时在网页上看到一张惊艳的 AI 生图或设计素材，想要复刻它的提示词，通常要走一长串繁琐流程：
-> 截图保存到桌面 ➔ 打开网页版大模型对话框 ➔ 上传图片 ➔ 敲字让 AI 描述 ➔ 得到一段啰嗦的文字 ➔ 自己再手动挑词改词。
-
-**PicPocket 把整套动作直接做进了 Chrome 侧边栏的随身口袋：**
-在网页上看到灵感，鼠标点一下或者框选局部，侧栏即可把图片反推成一段完整的提示词。一键复制，直接贴进 Midjourney、Flux 或 Stable Diffusion。更内置 GitHub 开源精选提示词库，随时反推、随时生图。
-
----
-
-## 核心特性
-
-- **交互式框选截屏:** 像 CleanShot 一样按住鼠标随意框选，黑白高反差选框，支持双击或回车一键采集。Retina 屏幕自动按设备物理像素比无损裁剪。
-- **网页图片悬浮采集:** 鼠标悬停在网页任意大图上，右上角自动出现纯白采集胶囊，点击一键存入口袋（本地）。
-- **双列常驻瀑布流:** 遵循 Notion / Apple 极简纯净亮色设计规范。后台自动生成 400px WebP 缩略图，千张素材滚屏恒定 60fps。
-- **完整提示词反推:** 多模态视觉模型直连，把图片反推成一段涵盖主体、风格、光影、构图的自然语言 **Master Prompt**，一键复制或带原图送去生图。
-- **一键复制:** 完整提示词一点即拷贝进剪贴板，也可以按需修改后再复制。
-- **表情包库:** 内置英文 meme 模板（memegen）来源，也可添加自己的 JSON 索引。同步后本地搜索，一键存入口袋或放进无限画布；只同步图片地址，图片按需加载，版权归原作者所有。
-- **本地优先与隐私 (BYOK):** 自带 API Key（支持 DeepSeek 等 OpenAI 兼容接口），Key 与素材全部保存在浏览器本地 IndexedDB，不经过任何中转服务器。
-
----
-
-## 安装与使用
-
-### 从 Chrome 应用商店安装（推荐）
-
-打开 [PicPocket 商店页面](https://chromewebstore.google.com/detail/picpocket-image-to-prompt/bncoffcoihlpfbicajogmpcdckcfpnfa)，点击 **「添加至 Chrome」**，之后由 Chrome 自动更新。
-
-### 从源码构建
-
-#### 1. 编译构建
-```bash
-# 安装依赖
-bun install
-
-# 编译扩展
-bun run build
 ```
-编译产物会生成到 `dist/chrome-mv3` 目录。
+> Hover an image and click Reverse in the pill. Or right-click → Collect to PicPocket & Reverse.
+> Open the side panel. The image is saved and its prompt is being written.
+> Copy. Paste into Midjourney, Flux, Grok, or your own generator.
+```
 
-#### 2. 加载到 Chrome
-1. 打开 Chrome 浏览器，访问 `chrome://extensions/`；
-2. 开启右上角的 **「开发者模式」** 开关；
-3. 点击左上角 **「加载已解压的扩展程序」**；
-4. 选择本项目中的 `dist/chrome-mv3` 文件夹。
+A 13-second walkthrough of the same loop is on the [website](https://www.picpocket.top/#tour).
 
-### 配置与体验
-1. 点击浏览器工具栏的 **PicPocket** 图标固定并打开侧边栏；
-2. 点击侧边栏右上角设置图标 ⚙️，填入你的 DeepSeek API Key（仅保存在本地存储）；
-3. 浏览任意网页，通过右上角悬浮胶囊或顶部 `[截图采集]` 开始收录灵感。
+A vision model reads the image and writes one paragraph in plain English. It covers subject, style, lighting and composition together, the way you would describe the picture to another person. No tags, no sliders, no six boxes to fill in.
 
----
+## Why not just screenshot and ask a chatbot?
 
-## 技术架构
+You can. A chatbot will describe the image. But the description lands in a chat thread, in a shape you have to rewrite, and the image stays in your Downloads folder with a name like `image (7).png`.
 
-- **扩展框架:** [WXT](https://wxt.dev/) (Vite + Chrome Manifest V3)
-- **UI 视图:** React 19 + TypeScript + Tailwind CSS v4 + Lucide React
-- **本地数据库:** [Dexie.js](https://dexie.org/) (IndexedDB 本地持久化，支持响应式实时查询)
-- **图像引擎:** `OffscreenCanvas` 像素级 Retina 裁剪 + Canvas 400px WebP 双轨画质
+PicPocket keeps the two together. The image is the record, the prompt is attached to it, and both live in the same panel you are already looking at. You also get folders, tags and search, so the tenth image is as easy to find as the first.
 
----
+What it does not do: it is not a gallery for watching art, and it is not a prompt marketplace. It is one pocket for the images you want to keep, with the words to remake them.
 
-## 官方托管服务
+## Install
 
-扩展本体完全开源：在设置中填入自己的 API Key（BYOK）即可使用全部功能，不依赖任何 PicPocket 服务器。
+PicPocket runs in Chrome. It needs no account to save images, and no key to start collecting.
 
-「官方托管通道」（免配置 Key 的托管额度、兑换码，以及后续的账号与订阅）由闭源的私有后端提供。扩展与它之间的接口约定见 [`docs/api-contract.md`](./docs/api-contract.md)。
+### From the Chrome Web Store (recommended)
 
----
+Open the [PicPocket listing](https://chromewebstore.google.com/detail/picpocket-image-to-prompt/bncoffcoihlpfbicajogmpcdckcfpnfa) and click **Add to Chrome**. Chrome keeps it up to date.
 
-## 开源协议
+To reverse an image into a prompt you need one AI endpoint. Two ways:
 
-版权所有 © 2026 PicPocket Team。本项目以 [GNU GPL-3.0](./LICENSE)（`GPL-3.0-only`）协议开源。
+- **Your own key.** Add any OpenAI-compatible endpoint and key under Settings → Models. Requests go from your browser to that provider. DeepSeek, OpenAI and self-hosted gateways work.
+- **The hosted channel.** Until you add a key, this is what PicPocket uses. Sign in for 30 credits a month; your email must verify first. Those requests go through PicPocket's server, as the [privacy policy](PRIVACY.md) explains.
 
-> 本次变更之前已发布的版本以 MIT 发布，那些版本仍可按 MIT 使用；此后的版本按 GPL-3.0。
+### From source
 
-内置的无限画布来自 [basketikun/infinite-canvas](https://github.com/basketikun/infinite-canvas)（MIT），其原始版权声明与许可证保留在 [`vendor/infinite-canvas/LICENSE`](./vendor/infinite-canvas/LICENSE)，第三方组件清单见 [`THIRD_PARTY_NOTICES.md`](./THIRD_PARTY_NOTICES.md)。
+You need [Bun](https://bun.sh) 1.3 or newer. Nothing else.
 
-参与贡献前请阅读 [`CONTRIBUTING.md`](./CONTRIBUTING.md)。托管服务（账号、积分、支付）运行在独立的私有后端上，不在本协议范围内，两者只通过 [`docs/api-contract.md`](./docs/api-contract.md) 约定的 HTTP 接口通信。
+```bash
+git clone https://github.com/QingYunA/picpocket.git
+cd picpocket
+bun install          # also installs the bundled canvas app
+bun run build        # typecheck + canvas + extension → dist/chrome-mv3
+```
 
-**商标说明**：「PicPocket」名称与 Logo 不在 GPL-3.0 授权范围内。欢迎基于代码二次开发，但请勿使用 PicPocket 的名称或 Logo 发布衍生版本（包括上架 Chrome 应用商店）。
+Then open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and pick `dist/chrome-mv3`.
+
+## What you capture, what you get
+
+| The image you save | The prompt you get back |
+| :--- | :--- |
+| A food photo from a recipe blog | "A bowl of ramen with a soft-boiled egg on a light wooden table, soft window light, shallow depth of field, overhead angle." |
+| A design reference from a portfolio | Subject, style, lighting and framing in one paragraph, with lens and depth of field when they matter |
+| A saved wallpaper from a travel page | The scene, the light and the palette, ready to re-render in another aspect ratio |
+| A screenshot of a chart | Mostly the scene. Text in the image can come through as quoted words |
+| A still from a video or a GIF | The frame only. PicPocket reads images, not timelines |
+
+The last two rows are the limits: it describes the picture, and it works on still images only.
+
+## Features
+
+- **Two ways to save.** A pill appears when you hover a large image; the right-click menu offers *Collect to PicPocket* and *Collect to PicPocket & Reverse*. Choose which menu items you want in settings.
+- **One complete prompt.** The vision model writes a paragraph that already includes subject, style, lighting and composition, so there is nothing to assemble by hand. Copy it in one click, or send it to the workbench with the original as reference.
+- **A pocket you can search.** Folders, tags and a filter bar. Thumbnails are capped at 400 px on the long edge and stored as WebP, so the gallery opens fast.
+- **A prompt library.** Four sources are built in. One is a small curated set that is on by default; the other three are open-source collections ([YouMind](https://github.com/YouMind-OpenLab/awesome-gpt-image-2), [Nano Banana Pro](https://github.com/YouMind-OpenLab/awesome-nano-banana-pro-prompts), [Freestylefly](https://github.com/freestylefly/awesome-gpt-image-2)) that you switch on, which then fetch from a CDN.
+- **A workbench.** Pick a model, set the aspect ratio, add style hints, keep a reference image, and generate without leaving the page you are on. Generation history is kept locally.
+- **An infinite canvas.** Send any image or prompt to a full-page canvas, duplicate a node into several versions, and compare them side by side. The canvas is a modified copy of [infinite-canvas](https://github.com/basketikun/infinite-canvas); that upstream is MIT, our changes ship under GPL-3.0-only.
+- **A meme library.** Sync a public index from memegen, search it locally, and drop the result into the pocket or the canvas. The index stores addresses, so the picture loads from wherever it is hosted; save one to the pocket and it is downloaded and kept locally.
+- **Two languages.** The interface is in English and Simplified Chinese.
+
+<p align="center"><img src="docs/images/workbench-en.webp" width="320" alt="The workbench: model picker, reference image, prompt editor, aspect ratio and style hints"></p>
+
+<p align="center"><sub>The workbench: pick a model, keep the reference, then generate without leaving the page.</sub></p>
+
+## Agents (MCP)
+
+PicPocket ships a local MCP server, so a coding agent can read and write the same pocket you do. It exposes eight tools: `search_prompts_and_assets`, `save_asset`, `save_prompt`, `update_tags`, `manage_folders`, `generate_and_save_asset`, `get_canvas_state` and `create_canvas_node`.
+
+```bash
+bun run mcp:install cursor      # or claude / roo / antigravity / windsurf / zed / cline
+```
+
+The bridge listens on 127.0.0.1 and talks to the extension over a local WebSocket. Calls that generate an image go to your model provider, like any other generation. Details: [docs/adr/0008-local-mcp-agent-collaboration.md](docs/adr/0008-local-mcp-agent-collaboration.md).
+
+## Where your data lives
+
+| What | Where |
+| :--- | :--- |
+| Images, prompts, folders, tags | IndexedDB in your browser ([Dexie](https://dexie.org)) |
+| API keys and settings | `chrome.storage.local` |
+| Requests with your own key | Your browser to your provider, directly |
+| Requests on the hosted channel | Your browser to PicPocket's server |
+
+Uninstalling the extension removes what it stored. You can export and restore a backup from settings. The backup never contains API keys.
+
+The full policy is in [PRIVACY.md](PRIVACY.md). The hosted channel (accounts, credits, payments) runs on a separate private backend. It is not part of this repository, and the two sides only talk over HTTP. The parts documented so far are in [docs/api-contract.md](docs/api-contract.md).
+
+## Development
+
+```bash
+bun install
+bun run dev          # WXT dev server with HMR
+bun run typecheck    # extension + canvas
+bun run test         # i18n scan, unit tests, canvas tests
+bun run build        # typecheck, canvas build, extension build, remote-code check
+bun run zip          # the store package
+```
+
+`bun run build` fails if the bundle references remote code. Architecture decisions are in [docs/adr/](docs/adr/), the domain vocabulary in [GLOSSARY.md](GLOSSARY.md), and the collaboration rules in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Background
+
+You see a striking image on a web page and you want its prompt. The usual path is a lot of steps: save the screenshot, open a chat, upload the file, ask the model to describe it, read a rambling paragraph, then pick the useful words out by hand.
+
+The picture stays and the reason goes. A week later you still have the image and you cannot say what made it good.
+
+PicPocket puts that whole path inside the side panel, and keeps the prompt next to the image it came from. The rest of the app exists to make the habit cheap.
+
+## License
+
+[GPL-3.0-only](LICENSE). Versions published before the switch remain available under MIT.
+
+The canvas started as [basketikun/infinite-canvas](https://github.com/basketikun/infinite-canvas), which is MIT; the modified copy in this repository is GPL-3.0-only like the rest. The upstream notice is kept in [vendor/infinite-canvas/LICENSE](vendor/infinite-canvas/LICENSE). Other components are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+The name "PicPocket" and the logo are not covered by the GPL. Fork the code freely, but do not publish a derived build under this name or logo.

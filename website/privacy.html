@@ -18,7 +18,7 @@
   <meta name="twitter:title" content="Privacy Policy — PicPocket">
   <meta name="twitter:description" content="How the PicPocket Chrome extension handles your data: what stays on your device, when it connects to the internet, and what it sends.">
   <meta name="twitter:image" content="https://www.picpocket.top/assets/og-image.jpg">
-  <meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#f5f5f3" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#080b13" media="(prefers-color-scheme: dark)">
   <link rel="icon" type="image/png" sizes="192x192" href="/assets/icon-192.png">
   <link rel="icon" type="image/png" sizes="64x64" href="/assets/icon-64.png">
@@ -39,383 +39,7 @@
   </script>
   <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/site.css">
-  <style>
-    /* ---------- Doc hero ---------- */
-    .doc-hero {
-      position: relative;
-      padding: 72px 0 48px;
-      isolation: isolate;
-    }
-    .doc-hero::before {
-      content: "";
-      position: absolute;
-      inset: -68px 0 auto 0;
-      height: 520px;
-      background: radial-gradient(560px 280px at 20% 0%, var(--glow), transparent 70%);
-      z-index: -1;
-      pointer-events: none;
-    }
-    .crumbs {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      color: var(--ink-3);
-      margin-bottom: 28px;
-    }
-    .crumbs a { text-decoration: none; }
-    .crumbs a:hover { color: var(--ink); }
-    .doc-hero h1 {
-      font-size: clamp(40px, 6vw, 72px);
-      margin-top: 16px;
-    }
-    html[lang="zh"] .doc-hero h1 { font-size: clamp(34px, 5vw, 58px); }
-    .doc-hero .lede { max-width: 720px; margin-top: 20px; }
-    .doc-hero .lede strong { color: var(--ink); font-weight: 600; }
-
-    .meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 28px;
-      list-style: none;
-    }
-    .meta li {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 12px;
-      border-radius: 999px;
-      border: 1px solid var(--line);
-      background: var(--bg-raised);
-      font-size: 13px;
-      color: var(--ink-2);
-    }
-    .meta li strong { color: var(--ink); font-weight: 600; }
-    .meta .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
-
-    .guarantees {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 14px;
-      margin-top: 44px;
-    }
-    .g-card {
-      padding: 22px;
-      border-radius: var(--r-lg);
-      border: 1px solid var(--line);
-      background: var(--bg-raised);
-      box-shadow: var(--shadow-1);
-    }
-    .g-icon {
-      width: 36px; height: 36px;
-      border-radius: 10px;
-      display: grid; place-items: center;
-      background: var(--gold-soft);
-      color: var(--gold-ink);
-      margin-bottom: 16px;
-    }
-    .g-card h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 6px; }
-    .g-card p { font-size: 14px; color: var(--ink-2); line-height: 1.6; }
-
-    /* ---------- Doc layout ---------- */
-    .doc {
-      display: grid;
-      grid-template-columns: 232px minmax(0, 1fr);
-      gap: 64px;
-      align-items: start;
-      padding-top: 24px;
-      padding-bottom: 40px;
-    }
-    .toc {
-      position: sticky;
-      top: 96px;
-    }
-    .toc-title {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--ink-3);
-      margin-bottom: 14px;
-    }
-    .toc ol {
-      list-style: none;
-      display: grid;
-      gap: 2px;
-      border-left: 1px solid var(--line);
-    }
-    .toc a {
-      display: grid;
-      grid-template-columns: 22px 1fr;
-      gap: 6px;
-      padding: 7px 12px;
-      margin-left: -1px;
-      border-left: 2px solid transparent;
-      font-size: 13.5px;
-      line-height: 1.4;
-      color: var(--ink-3);
-      text-decoration: none;
-      transition: color 0.15s ease, border-color 0.15s ease;
-    }
-    .toc a > span:first-child { font-family: var(--font-mono); font-size: 11.5px; padding-top: 1px; }
-    .toc a:hover { color: var(--ink); }
-    .toc a.active { color: var(--ink); border-left-color: var(--gold); font-weight: 500; }
-
-    .toc-actions {
-      margin-top: 24px;
-      display: grid;
-      gap: 8px;
-    }
-    .toc-actions .btn { justify-content: flex-start; width: 100%; }
-
-    /* ---------- Article ---------- */
-    .article section {
-      padding: 0 0 48px;
-      margin-bottom: 48px;
-      border-bottom: 1px solid var(--line);
-    }
-    .article section:last-child { border-bottom: 0; margin-bottom: 0; }
-    .sec-num {
-      font-family: var(--font-mono);
-      font-size: 12px;
-      color: var(--gold-ink);
-      letter-spacing: 0.06em;
-    }
-    .article h2 {
-      font-size: 28px;
-      font-weight: 600;
-      letter-spacing: -0.025em;
-      line-height: 1.25;
-      margin: 8px 0 18px;
-    }
-    .article p, .article li {
-      font-size: 16px;
-      line-height: 1.75;
-      color: var(--ink-2);
-    }
-    .article p + p { margin-top: 12px; }
-    .table-wrap + p { margin-top: 16px; }
-    .article strong { color: var(--ink); font-weight: 600; }
-
-    .article ul, .article ol.steps {
-      list-style: none;
-      display: grid;
-      gap: 12px;
-      margin-top: 16px;
-    }
-    .article ul li {
-      position: relative;
-      padding: 16px 18px 16px 48px;
-      border-radius: var(--r-md);
-      border: 1px solid var(--line);
-      background: var(--bg-raised);
-    }
-    .article ul li::before {
-      content: "";
-      position: absolute;
-      left: 18px; top: 21px;
-      width: 16px; height: 16px;
-      border-radius: 50%;
-      background: var(--ok-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2316a34a' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 10px no-repeat;
-    }
-    .article ul.never li::before {
-      background: rgba(239, 68, 68, 0.1) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ef4444' stroke-width='3.5' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E") center / 9px no-repeat;
-    }
-    .article ol.steps { counter-reset: s; }
-    .article ol.steps li {
-      counter-increment: s;
-      display: grid;
-      grid-template-columns: 32px 1fr;
-      gap: 14px;
-      align-items: start;
-    }
-    .article ol.steps li::before {
-      content: counter(s);
-      width: 28px; height: 28px;
-      border-radius: 50%;
-      display: grid; place-items: center;
-      font-family: var(--font-mono);
-      font-size: 12px;
-      color: var(--gold-ink);
-      background: var(--gold-soft);
-      margin-top: 1px;
-    }
-
-    .article h3 {
-      font-size: 17px;
-      font-weight: 600;
-      letter-spacing: -0.01em;
-      margin: 28px 0 4px;
-      color: var(--ink);
-    }
-    .article a { color: var(--ink); }
-    .article ul.net li::before {
-      background: var(--gold-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d97706' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M13 6l6 6-6 6'/%3E%3C/svg%3E") center / 10px no-repeat;
-    }
-    .callout {
-      margin-top: 20px;
-      padding: 18px 20px;
-      border-radius: var(--r-md);
-      background: var(--gold-soft);
-      border: 1px solid color-mix(in srgb, var(--gold) 30%, transparent);
-      font-size: 15px;
-      line-height: 1.65;
-      color: var(--ink-2);
-    }
-    .callout-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-weight: 600;
-      color: var(--ink);
-      margin-bottom: 4px;
-    }
-    .callout-title svg { color: var(--gold-ink); }
-
-    /* tables */
-    .table-wrap {
-      margin-top: 20px;
-      border: 1px solid var(--line);
-      border-radius: var(--r-md);
-      overflow-x: auto;
-      background: var(--bg-raised);
-    }
-    table {
-      width: 100%;
-      min-width: 620px;
-      border-collapse: collapse;
-      font-size: 14px;
-      text-align: left;
-    }
-    th {
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--ink-3);
-      background: var(--bg-sunken);
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--line);
-      white-space: nowrap;
-    }
-    html[lang="zh"] th { text-transform: none; letter-spacing: 0; font-size: 13px; }
-    td {
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--line);
-      vertical-align: top;
-      color: var(--ink-2);
-      line-height: 1.55;
-    }
-    td strong { color: var(--ink); }
-    tr:last-child td { border-bottom: 0; }
-    td .code { color: var(--gold-ink); display: inline-block; margin: 0 2px 4px 0; }
-
-    .pill-ok {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 12px;
-      font-weight: 600;
-      padding: 3px 10px;
-      border-radius: 999px;
-      background: var(--ok-soft);
-      color: var(--ok-text);
-      white-space: nowrap;
-    }
-    .pill-ok::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-
-    /* FAQ */
-    .qa { border-top: 1px solid var(--line); margin-top: 8px; }
-    .qa details { border-bottom: 1px solid var(--line); }
-    .qa summary {
-      list-style: none;
-      cursor: pointer;
-      padding: 18px 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 20px;
-      font-size: 16px;
-      font-weight: 500;
-      color: var(--ink);
-    }
-    .qa summary::-webkit-details-marker { display: none; }
-    .qa .plus {
-      width: 26px; height: 26px;
-      flex-shrink: 0;
-      border-radius: 50%;
-      border: 1px solid var(--line-strong);
-      display: grid; place-items: center;
-      transition: transform 0.25s ease;
-    }
-    .qa details[open] .plus { transform: rotate(45deg); }
-    .qa .answer { padding: 0 40px 20px 0; font-size: 15px; line-height: 1.7; color: var(--ink-2); }
-
-    .contact-card {
-      margin-top: 24px;
-      padding: 24px;
-      border-radius: var(--r-lg);
-      background: #0b0f1a;
-      color: #f3f1ea;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 20px;
-      flex-wrap: wrap;
-    }
-    .contact-card b { display: block; font-size: 16px; font-weight: 600; }
-    .contact-card small { font-size: 14px; color: #9ca1b2; }
-    .contact-card .row { display: flex; gap: 8px; flex-wrap: wrap; }
-    .contact-card .btn:not(.btn-gold) { background: transparent; color: #f3f1ea; border-color: #2a3349; }
-    .contact-card .btn:not(.btn-gold):hover { border-color: #7c8296; }
-
-    /* ---------- Responsive ---------- */
-    @media (max-width: 960px) {
-      .doc { grid-template-columns: minmax(0, 1fr); gap: 0; }
-      .toc { display: none; }
-      .guarantees { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 640px) {
-      .table-wrap { border: 0; background: transparent; overflow: visible; }
-      table, tbody, tr, td { display: block; min-width: 0; width: 100%; }
-      thead { display: none; }
-      tr {
-        border: 1px solid var(--line);
-        border-radius: var(--r-md);
-        background: var(--bg-raised);
-        padding: 6px 16px;
-        margin-bottom: 10px;
-      }
-      td { padding: 10px 0; border-bottom: 1px dashed var(--line); }
-      tr:last-child td { border-bottom: 1px dashed var(--line); }
-      tr td:last-child { border-bottom: 0; }
-      td::before {
-        content: attr(data-label-en);
-        display: block;
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: var(--ink-3);
-        margin-bottom: 4px;
-      }
-      html[lang="zh"] td::before { content: attr(data-label-zh); text-transform: none; letter-spacing: 0; }
-    }
-    @media (max-width: 560px) {
-      .doc-hero { padding: 48px 0 32px; }
-      .article h2 { font-size: 23px; }
-      .article ul li { padding: 14px 14px 14px 44px; }
-      .qa .answer { padding-right: 0; }
-    }
-
-    @media print {
-      .toc, .doc-hero::before { display: none !important; }
-      .doc { display: block; }
-      .qa details .answer { display: block; }
-      .contact-card { display: none; }
-    }
-  </style>
+  <link rel="stylesheet" href="/assets/doc.css">
   <script defer src="https://umami.daydayup.lat/script.js" data-website-id="49031390-52c0-44c0-85de-68bfa7424469" data-domains="www.picpocket.top" data-exclude-search="true" data-performance="true"></script>
 </head>
 <body>
@@ -462,14 +86,12 @@
           <span aria-hidden="true">/</span>
           <span data-l="en">Privacy Policy</span><span data-l="zh">隐私权政策</span>
         </nav>
-
-        <span class="eyebrow"><span data-l="en">Official Legal Document</span><span data-l="zh">官方合规与隐私协议</span></span>
-        <h1 class="display">
+        <h1 class="display reveal">
           <span data-l="en">Privacy <em>Policy</em></span>
           <span data-l="zh">隐私<em>权政策</em></span>
         </h1>
 
-        <p class="lede">
+        <p class="lede reveal">
           <span data-l="en">PicPocket is built to be <strong>local-first</strong>. The images you save, the prompts you write and your API keys are stored in your own browser. This page explains exactly what stays on your device, when the extension connects to the internet, and what it sends.</span>
           <span data-l="zh">PicPocket 以<strong>本地优先</strong>为原则设计。你收藏的图片、编写的提示词和 API Key 都保存在你自己的浏览器里。本页将说明哪些数据留在你的设备上、扩展在什么时候会联网，以及会发送什么内容。</span>
         </p>
@@ -481,18 +103,15 @@
         </ul>
 
         <div class="guarantees">
-          <div class="g-card">
-            <div class="g-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
+          <div class="g-card reveal">
             <h3><span data-l="en">Your Pocket stays local</span><span data-l="zh">口袋只存在本地</span></h3>
             <p><span data-l="en">Saved images, prompts, tags and notes live in your browser's IndexedDB. We don't run a server that stores them.</span><span data-l="zh">收藏的图片、提示词、标签和笔记保存在浏览器的 IndexedDB 中。我们没有任何存储这些内容的服务器。</span></p>
           </div>
-          <div class="g-card">
-            <div class="g-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+          <div class="g-card reveal">
             <h3><span data-l="en">Your key goes straight to your provider</span><span data-l="zh">你的 Key 直连你选择的服务商</span></h3>
             <p><span data-l="en">With your own API key, requests go directly from your browser to the endpoint you configured. The optional redeem-code quota is the one exception, explained below.</span><span data-l="zh">使用自己的 API Key 时，请求直接从浏览器发往你配置的接口。唯一的例外是可选的兑换码托管额度，详见下文。</span></p>
           </div>
-          <div class="g-card">
-            <div class="g-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg></div>
+          <div class="g-card reveal">
             <h3><span data-l="en">No tracking, no selling</span><span data-l="zh">不追踪，不出售</span></h3>
             <p><span data-l="en">No analytics or advertising SDKs in the extension, an account is optional, and we never sell or share your data for advertising.</span><span data-l="zh">扩展不集成任何统计或广告 SDK，账号可选不强制，也绝不出售或为广告目的共享你的数据。</span></p>
           </div>
@@ -505,16 +124,16 @@
       <aside class="toc no-print">
         <div class="toc-title"><span data-l="en">On this page</span><span data-l="zh">政策目录</span></div>
         <ol>
-          <li><a href="#section-1" class="active"><span>01</span><span><span data-l="en">Overview</span><span data-l="zh">概述</span></span></a></li>
-          <li><a href="#section-2"><span>02</span><span><span data-l="en">What's stored on your device</span><span data-l="zh">本地保存的数据</span></span></a></li>
-          <li><a href="#section-3"><span>03</span><span><span data-l="en">When PicPocket goes online</span><span data-l="zh">扩展何时联网</span></span></a></li>
-          <li><a href="#section-4"><span>04</span><span><span data-l="en">Account sign-in (optional)</span><span data-l="zh">账号登录（可选）</span></span></a></li>
-          <li><a href="#section-5"><span>05</span><span><span data-l="en">Hosted quota, credits &amp; payments</span><span data-l="zh">托管额度、积分与付款</span></span></a></li>
-          <li><a href="#section-6"><span>06</span><span><span data-l="en">Chrome permissions</span><span data-l="zh">Chrome 权限说明</span></span></a></li>
-          <li><a href="#section-7"><span>07</span><span><span data-l="en">What we don't do</span><span data-l="zh">我们不做的事</span></span></a></li>
-          <li><a href="#section-8"><span>08</span><span><span data-l="en">Your choices &amp; deletion</span><span data-l="zh">你的选择与删除</span></span></a></li>
-          <li><a href="#section-9"><span>09</span><span><span data-l="en">FAQ</span><span data-l="zh">常见问题</span></span></a></li>
-          <li><a href="#section-10"><span>10</span><span><span data-l="en">Changes &amp; contact</span><span data-l="zh">政策变更与联系</span></span></a></li>
+          <li><a href="#section-1" class="active"><span data-l="en">Overview</span><span data-l="zh">概述</span></a></li>
+          <li><a href="#section-2"><span data-l="en">What's stored on your device</span><span data-l="zh">本地保存的数据</span></a></li>
+          <li><a href="#section-3"><span data-l="en">When PicPocket goes online</span><span data-l="zh">扩展何时联网</span></a></li>
+          <li><a href="#section-4"><span data-l="en">Account sign-in (optional)</span><span data-l="zh">账号登录（可选）</span></a></li>
+          <li><a href="#section-5"><span data-l="en">Hosted quota, credits &amp; payments</span><span data-l="zh">托管额度、积分与付款</span></a></li>
+          <li><a href="#section-6"><span data-l="en">Chrome permissions</span><span data-l="zh">Chrome 权限说明</span></a></li>
+          <li><a href="#section-7"><span data-l="en">What we don't do</span><span data-l="zh">我们不做的事</span></a></li>
+          <li><a href="#section-8"><span data-l="en">Your choices &amp; deletion</span><span data-l="zh">你的选择与删除</span></a></li>
+          <li><a href="#section-9"><span data-l="en">FAQ</span><span data-l="zh">常见问题</span></a></li>
+          <li><a href="#section-10"><span data-l="en">Changes &amp; contact</span><span data-l="zh">政策变更与联系</span></a></li>
         </ol>
         <div class="toc-actions">
           <button class="btn btn-sm" type="button" data-copy-url>
@@ -531,13 +150,12 @@
       <!-- Article -->
       <article class="article">
         <section id="section-1">
-          <div class="sec-num">SECTION 01</div>
-          <h2><span data-l="en">Overview</span><span data-l="zh">概述</span></h2>
+          <h2 class="reveal"><span data-l="en">Overview</span><span data-l="zh">概述</span></h2>
           <p>
             <span data-l="en">PicPocket ("we", "our" or "the extension") is a Chrome side-panel extension for designers and AI artists. It lets you save images from web pages, turn them into structured prompts with an AI model, keep a prompt library and generate images. This policy covers the extension and the optional hosted-quota service described in Section 05.</span>
             <span data-l="zh">PicPocket（以下简称“我们”或“本扩展”）是一款为设计师和 AI 创作者打造的 Chrome 侧边栏扩展，用于从网页收藏图片、借助 AI 模型把图片拆解成结构化提示词、管理提示词库以及生成图片。本政策适用于本扩展，以及第 05 节所述的可选托管额度服务。</span>
           </p>
-          <div class="callout">
+          <div class="callout reveal">
             <div class="callout-title">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
               <span data-l="en">Single purpose</span><span data-l="zh">单一用途</span>
@@ -548,13 +166,12 @@
         </section>
 
         <section id="section-2">
-          <div class="sec-num">SECTION 02</div>
-          <h2><span data-l="en">What's stored on your device</span><span data-l="zh">本地保存的数据</span></h2>
+          <h2 class="reveal"><span data-l="en">What's stored on your device</span><span data-l="zh">本地保存的数据</span></h2>
           <p>
             <span data-l="en">Everything PicPocket saves is kept in your browser, in IndexedDB or <code class="code">chrome.storage.local</code>. We have no copy of it.</span>
             <span data-l="zh">PicPocket 保存的所有内容都在你的浏览器里（IndexedDB 或 <code class="code">chrome.storage.local</code>），我们没有任何副本。</span>
           </p>
-          <div class="table-wrap">
+          <div class="table-wrap reveal">
             <table>
               <thead>
                 <tr>
@@ -607,8 +224,7 @@
         </section>
 
         <section id="section-3">
-          <div class="sec-num">SECTION 03</div>
-          <h2><span data-l="en">When PicPocket goes online</span><span data-l="zh">扩展何时联网</span></h2>
+          <h2 class="reveal"><span data-l="en">When PicPocket goes online</span><span data-l="zh">扩展何时联网</span></h2>
           <p>
             <span data-l="en">PicPocket doesn't send anything in the background. It only connects to the internet in these cases, each started by something you do:</span>
             <span data-l="zh">PicPocket 不会在后台发送任何数据。只有以下几种情况会联网，而且每一种都由你的操作触发：</span>
@@ -626,18 +242,17 @@
         </section>
 
         <section id="section-4">
-          <div class="sec-num">SECTION 04</div>
-          <h2><span data-l="en">Account sign-in (optional)</span><span data-l="zh">账号登录（可选）</span></h2>
+          <h2 class="reveal"><span data-l="en">Account sign-in (optional)</span><span data-l="zh">账号登录（可选）</span></h2>
           <p>
             <span data-l="en">You can use PicPocket without an account. Signing in is optional and lets you use the same account across browsers and devices, and link your plan and credits to it. Signing in does not upload your Pocket: saved images, prompts and settings stay on your device.</span>
             <span data-l="zh">不登录也可以正常使用 PicPocket。登录是可选的，用于在不同浏览器和设备上使用同一个账号，并把会员和积分绑定到账号。登录不会上传你的口袋：收藏的图片、提示词和设置仍然只保存在你的设备上。</span>
           </p>
-          <h3><span data-l="en">How you can sign in</span><span data-l="zh">登录方式</span></h3>
+          <h3 class="reveal"><span data-l="en">How you can sign in</span><span data-l="zh">登录方式</span></h3>
           <ul>
             <li><strong>Google</strong>: <span data-l="en">PicPocket opens <code class="code">www.picpocket.top</code>, where you sign in with Google Identity Services. We request only the basic <code class="code">openid</code>, <code class="code">email</code> and <code class="code">profile</code> scopes, so Google shares your name, email address and profile picture. We never see your Google password and don't request access to Gmail, Drive, Contacts or any other Google data.</span><span data-l="zh">PicPocket 会打开 <code class="code">www.picpocket.top</code>，由你通过 Google Identity Services 登录。我们只申请基础的 <code class="code">openid</code>、<code class="code">email</code>、<code class="code">profile</code> 权限，Google 只会提供你的姓名、邮箱地址和头像。我们看不到你的 Google 密码，也不会申请访问 Gmail、云端硬盘、通讯录或其他任何 Google 数据。</span></li>
             <li><strong><span data-l="en">Email code</span><span data-l="zh">邮箱验证码</span></strong>: <span data-l="en">we email you a one-time 6-digit code. No password is created or stored.</span><span data-l="zh">我们向你的邮箱发送一次性 6 位验证码，不会创建或保存密码。</span></li>
           </ul>
-          <h3><span data-l="en">What we keep and why</span><span data-l="zh">我们保留什么、用来做什么</span></h3>
+          <h3 class="reveal"><span data-l="en">What we keep and why</span><span data-l="zh">我们保留什么、用来做什么</span></h3>
           <ul>
             <li><span data-l="en">An account record: your email address, display name, avatar URL, the sign-in method you used, that provider's user ID, and when the account was created and last signed in.</span><span data-l="zh">账号记录：邮箱地址、显示名称、头像地址、登录方式、该登录方式下的用户 ID，以及账号创建和最近登录时间。</span></li>
             <li><span data-l="en">Your sign-in session is stored in Chrome's extension storage on your device, so you stay signed in until you sign out.</span><span data-l="zh">登录会话保存在你设备上 Chrome 的扩展存储中，在你主动退出前保持登录。</span></li>
@@ -650,31 +265,30 @@
         </section>
 
         <section id="section-5">
-          <div class="sec-num">SECTION 05</div>
-          <h2><span data-l="en">Hosted quota, credits &amp; payments</span><span data-l="zh">托管额度、积分与付款</span></h2>
+          <h2 class="reveal"><span data-l="en">Hosted quota, credits &amp; payments</span><span data-l="zh">托管额度、积分与付款</span></h2>
           <p>
             <span data-l="en">Some creators and beta testers get a redeem code that lets them analyze and generate images without their own API key. This is optional. If you only use your own key, this section doesn't apply to you.</span>
             <span data-l="zh">部分创作者和内测用户会获得兑换码，无需自己的 API Key 也能反推和生图。这是可选功能；如果你只使用自己的 Key，本节与你无关。</span>
           </p>
-          <h3><span data-l="en">How it works</span><span data-l="zh">工作方式</span></h3>
+          <h3 class="reveal"><span data-l="en">How it works</span><span data-l="zh">工作方式</span></h3>
           <ol class="steps">
             <li><span><span data-l="en">When you redeem a code, PicPocket checks it against our database, hosted on Supabase.</span><span data-l="zh">兑换时，PicPocket 会在我们托管于 Supabase 的数据库中核验兑换码。</span></span></li>
             <li><span><span data-l="en">Each analysis or generation request is sent with your code to our server (a Supabase Edge Function). The server checks the code and deducts one use from your quota.</span><span data-l="zh">每次反推或生图请求都会带上兑换码发送到我们的服务器（Supabase Edge Function）。服务器核验兑换码，并扣除一次额度。</span></span></li>
             <li><span><span data-l="en">The server forwards the request, including the image and prompt text, to an upstream AI provider (currently SiliconFlow for image analysis and most generation, and xAI for Grok image models), and returns the result to you.</span><span data-l="zh">服务器将请求（包括图片和提示词文本）转发给上游 AI 服务商（目前反推和大部分生图使用硅基流动，Grok 生图模型使用 xAI），并把结果返回给你。</span></span></li>
           </ol>
-          <h3><span data-l="en">Credits and paid plans</span><span data-l="zh">积分与付费方案</span></h3>
+          <h3 class="reveal"><span data-l="en">Credits and paid plans</span><span data-l="zh">积分与付费方案</span></h3>
           <p>
             <span data-l="en">If you are signed in, you can also use hosted models with credits from the monthly free allowance, a subscription plan (Plus, Pro or Max) or a one-time credit pack. Requests work exactly as described above, except that the server checks your account and deducts credits instead of a redeem-code use. Your images, prompts and results are still relayed in memory and not stored.</span>
             <span data-l="zh">登录后，你还可以使用每月免费额度、订阅方案（Plus、Pro、Max）或一次性积分包中的积分来调用托管模型。请求流程与上文相同，只是服务器核验的是你的账号，并扣除积分而不是兑换码次数。你的图片、提示词和结果仍然只在内存中中转，不会保存。</span>
           </p>
-          <h3><span data-l="en">Payments</span><span data-l="zh">付款</span></h3>
+          <h3 class="reveal"><span data-l="en">Payments</span><span data-l="zh">付款</span></h3>
           <ul>
             <li><span data-l="en">Payments are processed by <strong>Waffo Pancake</strong> (which acts as the merchant of record for these orders) or by <strong>PayPal</strong>, whichever you choose at checkout. You enter your card or PayPal details only on their pages. PicPocket never sees or stores your card number.</span><span data-l="zh">付款由 <strong>Waffo Pancake</strong>（担任这些订单的商户主体，Merchant of Record）或 <strong>PayPal</strong> 处理，取决于你在结账时的选择。银行卡或 PayPal 信息只会填写在它们的页面上，PicPocket 不会看到也不会保存你的卡号。</span></li>
             <li><span data-l="en">The payment provider sends us the result of your order: your account ID, the email address on the order, the plan or pack you bought, the amount, the billing period, and the provider's order or subscription ID. We use it only to grant and manage your plan and credits, handle cancellations and refunds, and keep accounting records.</span><span data-l="zh">支付服务商会把订单结果发给我们：你的账号 ID、订单上的邮箱、所购方案或积分包、金额、计费周期，以及服务商侧的订单或订阅 ID。我们仅用这些信息发放和管理会员与积分、处理取消和退款，并保存对账记录。</span></li>
             <li><span data-l="en">We also keep a credit ledger tied to your account: when credits were granted or used, how many, and which hosted model was called. It does not contain your images, prompts or results.</span><span data-l="zh">我们还会保留与账号关联的积分流水：积分何时发放或使用、数量多少、调用了哪个托管模型。其中不包含你的图片、提示词或结果。</span></li>
             <li><span data-l="en">Payment records may be kept for as long as needed for accounting, tax and dispute handling, even after you delete your account. The payment providers handle your payment data under their own privacy policies: <a href="https://www.waffo.com/privacy-policy" target="_blank" rel="noopener">Waffo</a> and <a href="https://www.paypal.com/webapps/mpp/ua/privacy-full" target="_blank" rel="noopener">PayPal</a>.</span><span data-l="zh">为满足对账、税务和争议处理的需要，付款记录可能在你注销账号后继续保留必要的时间。支付服务商按各自的隐私政策处理你的付款数据：<a href="https://www.waffo.com/privacy-policy" target="_blank" rel="noopener">Waffo</a>、<a href="https://www.paypal.com/webapps/mpp/ua/privacy-full" target="_blank" rel="noopener">PayPal</a>。</span></li>
           </ul>
-          <h3><span data-l="en">What we keep</span><span data-l="zh">我们保留什么</span></h3>
+          <h3 class="reveal"><span data-l="en">What we keep</span><span data-l="zh">我们保留什么</span></h3>
           <ul>
             <li><span data-l="en">We keep the redeem code, its remaining quota, its expiry date and when it was last used.</span><span data-l="zh">我们保留兑换码、剩余额度、有效期和最近使用时间。</span></li>
             <li><span data-l="en">We don't store your images, prompts or the AI's responses. They pass through the server in memory and aren't written to our database.</span><span data-l="zh">我们不保存你的图片、提示词或 AI 返回的结果。它们只在服务器内存中中转，不会写入我们的数据库。</span></li>
@@ -684,13 +298,12 @@
         </section>
 
         <section id="section-6">
-          <div class="sec-num">SECTION 06</div>
-          <h2><span data-l="en">Chrome permissions</span><span data-l="zh">Chrome 权限说明</span></h2>
+          <h2 class="reveal"><span data-l="en">Chrome permissions</span><span data-l="zh">Chrome 权限说明</span></h2>
           <p>
             <span data-l="en">These are the permissions PicPocket asks for and why:</span>
             <span data-l="zh">PicPocket 申请的权限及用途如下：</span>
           </p>
-          <div class="table-wrap">
+          <div class="table-wrap reveal">
             <table>
               <thead>
                 <tr>
@@ -731,8 +344,7 @@
         </section>
 
         <section id="section-7">
-          <div class="sec-num">SECTION 07</div>
-          <h2><span data-l="en">What we don't do</span><span data-l="zh">我们不做的事</span></h2>
+          <h2 class="reveal"><span data-l="en">What we don't do</span><span data-l="zh">我们不做的事</span></h2>
           <ul class="never">
             <li><strong><span data-l="en">No account required</span><span data-l="zh">不强制注册账号</span></strong>: <span data-l="en">PicPocket works without signing in. If you choose to sign in, we only receive the details listed in Section 04. We never ask for your phone number and never see your Google password.</span><span data-l="zh">不登录也能使用 PicPocket。如果你选择登录，我们只会获得第 04 节列出的信息；我们不会索取手机号，也看不到你的 Google 密码。</span></li>
             <li><strong><span data-l="en">No browsing history</span><span data-l="zh">不收集浏览记录</span></strong>: <span data-l="en">we don't collect the pages you visit, your searches or your cookies. The only page details PicPocket keeps are the URL and title of pages you save images from, and those stay on your device.</span><span data-l="zh">我们不收集你访问的网页、搜索内容或 Cookie。PicPocket 唯一保留的页面信息，是你收藏图片时所在网页的地址和标题，而且只保存在你的设备上。</span></li>
@@ -742,8 +354,7 @@
         </section>
 
         <section id="section-8">
-          <div class="sec-num">SECTION 08</div>
-          <h2><span data-l="en">Your choices &amp; deletion</span><span data-l="zh">你的选择与删除</span></h2>
+          <h2 class="reveal"><span data-l="en">Your choices &amp; deletion</span><span data-l="zh">你的选择与删除</span></h2>
           <ul>
             <li><strong><span data-l="en">Delete anything</span><span data-l="zh">随时删除</span></strong>: <span data-l="en">remove any image, prompt, tag or folder in the side panel, one at a time or in bulk. It's deleted from your browser immediately.</span><span data-l="zh">可在侧边栏中逐个或批量删除图片、提示词、标签或文件夹，数据会立即从浏览器中删除。</span></li>
             <li><strong><span data-l="en">Export a backup</span><span data-l="zh">导出备份</span></strong>: <span data-l="en">download your Pocket as a ZIP file whenever you like.</span><span data-l="zh">随时可以把口袋导出为 ZIP 文件。</span></li>
@@ -755,9 +366,8 @@
         </section>
 
         <section id="section-9">
-          <div class="sec-num">SECTION 09</div>
-          <h2><span data-l="en">FAQ</span><span data-l="zh">常见问题</span></h2>
-          <div class="qa">
+          <h2 class="reveal"><span data-l="en">FAQ</span><span data-l="zh">常见问题</span></h2>
+          <div class="qa reveal">
             <details open>
               <summary><span><span data-l="en">Can the developers see the images I save?</span><span data-l="zh">开发者能看到我收藏的图片吗？</span></span><span class="plus" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span></summary>
               <div class="answer">
@@ -783,8 +393,7 @@
         </section>
 
         <section id="section-10">
-          <div class="sec-num">SECTION 10</div>
-          <h2><span data-l="en">Changes &amp; contact</span><span data-l="zh">政策变更与联系</span></h2>
+          <h2 class="reveal"><span data-l="en">Changes &amp; contact</span><span data-l="zh">政策变更与联系</span></h2>
           <p>
             <span data-l="en">PicPocket's use of data follows the Chrome Web Store User Data Policy, including its Limited Use requirements. If we change how PicPocket handles data, we'll update this page and the date at the top before the change ships.</span>
             <span data-l="zh">PicPocket 对数据的使用遵守 Chrome 应用商店用户数据政策，包括其中的“限制使用（Limited Use）”要求。如果我们改变了数据处理方式，会在相关版本发布前更新本页面及顶部的日期。</span>
@@ -793,7 +402,7 @@
             <span data-l="en">Questions or deletion requests: <a href="mailto:support@picpocket.top">support@picpocket.top</a>.</span>
             <span data-l="zh">如有疑问或删除请求，请联系：<a href="mailto:support@picpocket.top">support@picpocket.top</a>。</span>
           </p>
-          <div class="contact-card">
+          <div class="contact-card reveal">
             <div>
               <b><span data-l="en">Contact Support</span><span data-l="zh">联系开发者</span></b>
               <small>support@picpocket.top</small>

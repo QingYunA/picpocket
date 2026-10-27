@@ -18,7 +18,7 @@
   <meta name="twitter:title" content="Pricing — PicPocket">
   <meta name="twitter:description" content="PicPocket pricing: free with your own API key, or use hosted models with credits. Subscription plans, credit packs and per-request credit costs.">
   <meta name="twitter:image" content="https://www.picpocket.top/assets/og-image.jpg">
-  <meta name="theme-color" content="#fbfaf7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#f5f5f3" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#080b13" media="(prefers-color-scheme: dark)">
   <link rel="icon" type="image/png" sizes="192x192" href="/assets/icon-192.png">
   <link rel="icon" type="image/png" sizes="64x64" href="/assets/icon-64.png">
@@ -39,383 +39,7 @@
   </script>
   <link rel="preload" href="/assets/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/site.css">
-  <style>
-    /* ---------- Doc hero ---------- */
-    .doc-hero {
-      position: relative;
-      padding: 72px 0 48px;
-      isolation: isolate;
-    }
-    .doc-hero::before {
-      content: "";
-      position: absolute;
-      inset: -68px 0 auto 0;
-      height: 520px;
-      background: radial-gradient(560px 280px at 20% 0%, var(--glow), transparent 70%);
-      z-index: -1;
-      pointer-events: none;
-    }
-    .crumbs {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      color: var(--ink-3);
-      margin-bottom: 28px;
-    }
-    .crumbs a { text-decoration: none; }
-    .crumbs a:hover { color: var(--ink); }
-    .doc-hero h1 {
-      font-size: clamp(40px, 6vw, 72px);
-      margin-top: 16px;
-    }
-    html[lang="zh"] .doc-hero h1 { font-size: clamp(34px, 5vw, 58px); }
-    .doc-hero .lede { max-width: 720px; margin-top: 20px; }
-    .doc-hero .lede strong { color: var(--ink); font-weight: 600; }
-
-    .meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 28px;
-      list-style: none;
-    }
-    .meta li {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 12px;
-      border-radius: 999px;
-      border: 1px solid var(--line);
-      background: var(--bg-raised);
-      font-size: 13px;
-      color: var(--ink-2);
-    }
-    .meta li strong { color: var(--ink); font-weight: 600; }
-    .meta .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px var(--ok-soft); }
-
-    .guarantees {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 14px;
-      margin-top: 44px;
-    }
-    .g-card {
-      padding: 22px;
-      border-radius: var(--r-lg);
-      border: 1px solid var(--line);
-      background: var(--bg-raised);
-      box-shadow: var(--shadow-1);
-    }
-    .g-icon {
-      width: 36px; height: 36px;
-      border-radius: 10px;
-      display: grid; place-items: center;
-      background: var(--gold-soft);
-      color: var(--gold-ink);
-      margin-bottom: 16px;
-    }
-    .g-card h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 6px; }
-    .g-card p { font-size: 14px; color: var(--ink-2); line-height: 1.6; }
-
-    /* ---------- Doc layout ---------- */
-    .doc {
-      display: grid;
-      grid-template-columns: 232px minmax(0, 1fr);
-      gap: 64px;
-      align-items: start;
-      padding-top: 24px;
-      padding-bottom: 40px;
-    }
-    .toc {
-      position: sticky;
-      top: 96px;
-    }
-    .toc-title {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--ink-3);
-      margin-bottom: 14px;
-    }
-    .toc ol {
-      list-style: none;
-      display: grid;
-      gap: 2px;
-      border-left: 1px solid var(--line);
-    }
-    .toc a {
-      display: grid;
-      grid-template-columns: 22px 1fr;
-      gap: 6px;
-      padding: 7px 12px;
-      margin-left: -1px;
-      border-left: 2px solid transparent;
-      font-size: 13.5px;
-      line-height: 1.4;
-      color: var(--ink-3);
-      text-decoration: none;
-      transition: color 0.15s ease, border-color 0.15s ease;
-    }
-    .toc a > span:first-child { font-family: var(--font-mono); font-size: 11.5px; padding-top: 1px; }
-    .toc a:hover { color: var(--ink); }
-    .toc a.active { color: var(--ink); border-left-color: var(--gold); font-weight: 500; }
-
-    .toc-actions {
-      margin-top: 24px;
-      display: grid;
-      gap: 8px;
-    }
-    .toc-actions .btn { justify-content: flex-start; width: 100%; }
-
-    /* ---------- Article ---------- */
-    .article section {
-      padding: 0 0 48px;
-      margin-bottom: 48px;
-      border-bottom: 1px solid var(--line);
-    }
-    .article section:last-child { border-bottom: 0; margin-bottom: 0; }
-    .sec-num {
-      font-family: var(--font-mono);
-      font-size: 12px;
-      color: var(--gold-ink);
-      letter-spacing: 0.06em;
-    }
-    .article h2 {
-      font-size: 28px;
-      font-weight: 600;
-      letter-spacing: -0.025em;
-      line-height: 1.25;
-      margin: 8px 0 18px;
-    }
-    .article p, .article li {
-      font-size: 16px;
-      line-height: 1.75;
-      color: var(--ink-2);
-    }
-    .article p + p { margin-top: 12px; }
-    .table-wrap + p { margin-top: 16px; }
-    .article strong { color: var(--ink); font-weight: 600; }
-
-    .article ul, .article ol.steps {
-      list-style: none;
-      display: grid;
-      gap: 12px;
-      margin-top: 16px;
-    }
-    .article ul li {
-      position: relative;
-      padding: 16px 18px 16px 48px;
-      border-radius: var(--r-md);
-      border: 1px solid var(--line);
-      background: var(--bg-raised);
-    }
-    .article ul li::before {
-      content: "";
-      position: absolute;
-      left: 18px; top: 21px;
-      width: 16px; height: 16px;
-      border-radius: 50%;
-      background: var(--ok-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2316a34a' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / 10px no-repeat;
-    }
-    .article ul.never li::before {
-      background: rgba(239, 68, 68, 0.1) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ef4444' stroke-width='3.5' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18M6 6l12 12'/%3E%3C/svg%3E") center / 9px no-repeat;
-    }
-    .article ol.steps { counter-reset: s; }
-    .article ol.steps li {
-      counter-increment: s;
-      display: grid;
-      grid-template-columns: 32px 1fr;
-      gap: 14px;
-      align-items: start;
-    }
-    .article ol.steps li::before {
-      content: counter(s);
-      width: 28px; height: 28px;
-      border-radius: 50%;
-      display: grid; place-items: center;
-      font-family: var(--font-mono);
-      font-size: 12px;
-      color: var(--gold-ink);
-      background: var(--gold-soft);
-      margin-top: 1px;
-    }
-
-    .article h3 {
-      font-size: 17px;
-      font-weight: 600;
-      letter-spacing: -0.01em;
-      margin: 28px 0 4px;
-      color: var(--ink);
-    }
-    .article a { color: var(--ink); }
-    .article ul.net li::before {
-      background: var(--gold-soft) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d97706' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M13 6l6 6-6 6'/%3E%3C/svg%3E") center / 10px no-repeat;
-    }
-    .callout {
-      margin-top: 20px;
-      padding: 18px 20px;
-      border-radius: var(--r-md);
-      background: var(--gold-soft);
-      border: 1px solid color-mix(in srgb, var(--gold) 30%, transparent);
-      font-size: 15px;
-      line-height: 1.65;
-      color: var(--ink-2);
-    }
-    .callout-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-weight: 600;
-      color: var(--ink);
-      margin-bottom: 4px;
-    }
-    .callout-title svg { color: var(--gold-ink); }
-
-    /* tables */
-    .table-wrap {
-      margin-top: 20px;
-      border: 1px solid var(--line);
-      border-radius: var(--r-md);
-      overflow-x: auto;
-      background: var(--bg-raised);
-    }
-    table {
-      width: 100%;
-      min-width: 620px;
-      border-collapse: collapse;
-      font-size: 14px;
-      text-align: left;
-    }
-    th {
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--ink-3);
-      background: var(--bg-sunken);
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--line);
-      white-space: nowrap;
-    }
-    html[lang="zh"] th { text-transform: none; letter-spacing: 0; font-size: 13px; }
-    td {
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--line);
-      vertical-align: top;
-      color: var(--ink-2);
-      line-height: 1.55;
-    }
-    td strong { color: var(--ink); }
-    tr:last-child td { border-bottom: 0; }
-    td .code { color: var(--gold-ink); display: inline-block; margin: 0 2px 4px 0; }
-
-    .pill-ok {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 12px;
-      font-weight: 600;
-      padding: 3px 10px;
-      border-radius: 999px;
-      background: var(--ok-soft);
-      color: var(--ok-text);
-      white-space: nowrap;
-    }
-    .pill-ok::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-
-    /* FAQ */
-    .qa { border-top: 1px solid var(--line); margin-top: 8px; }
-    .qa details { border-bottom: 1px solid var(--line); }
-    .qa summary {
-      list-style: none;
-      cursor: pointer;
-      padding: 18px 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 20px;
-      font-size: 16px;
-      font-weight: 500;
-      color: var(--ink);
-    }
-    .qa summary::-webkit-details-marker { display: none; }
-    .qa .plus {
-      width: 26px; height: 26px;
-      flex-shrink: 0;
-      border-radius: 50%;
-      border: 1px solid var(--line-strong);
-      display: grid; place-items: center;
-      transition: transform 0.25s ease;
-    }
-    .qa details[open] .plus { transform: rotate(45deg); }
-    .qa .answer { padding: 0 40px 20px 0; font-size: 15px; line-height: 1.7; color: var(--ink-2); }
-
-    .contact-card {
-      margin-top: 24px;
-      padding: 24px;
-      border-radius: var(--r-lg);
-      background: #0b0f1a;
-      color: #f3f1ea;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 20px;
-      flex-wrap: wrap;
-    }
-    .contact-card b { display: block; font-size: 16px; font-weight: 600; }
-    .contact-card small { font-size: 14px; color: #9ca1b2; }
-    .contact-card .row { display: flex; gap: 8px; flex-wrap: wrap; }
-    .contact-card .btn:not(.btn-gold) { background: transparent; color: #f3f1ea; border-color: #2a3349; }
-    .contact-card .btn:not(.btn-gold):hover { border-color: #7c8296; }
-
-    /* ---------- Responsive ---------- */
-    @media (max-width: 960px) {
-      .doc { grid-template-columns: minmax(0, 1fr); gap: 0; }
-      .toc { display: none; }
-      .guarantees { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 640px) {
-      .table-wrap { border: 0; background: transparent; overflow: visible; }
-      table, tbody, tr, td { display: block; min-width: 0; width: 100%; }
-      thead { display: none; }
-      tr {
-        border: 1px solid var(--line);
-        border-radius: var(--r-md);
-        background: var(--bg-raised);
-        padding: 6px 16px;
-        margin-bottom: 10px;
-      }
-      td { padding: 10px 0; border-bottom: 1px dashed var(--line); }
-      tr:last-child td { border-bottom: 1px dashed var(--line); }
-      tr td:last-child { border-bottom: 0; }
-      td::before {
-        content: attr(data-label-en);
-        display: block;
-        font-size: 11px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: var(--ink-3);
-        margin-bottom: 4px;
-      }
-      html[lang="zh"] td::before { content: attr(data-label-zh); text-transform: none; letter-spacing: 0; }
-    }
-    @media (max-width: 560px) {
-      .doc-hero { padding: 48px 0 32px; }
-      .article h2 { font-size: 23px; }
-      .article ul li { padding: 14px 14px 14px 44px; }
-      .qa .answer { padding-right: 0; }
-    }
-
-    @media print {
-      .toc, .doc-hero::before { display: none !important; }
-      .doc { display: block; }
-      .qa details .answer { display: block; }
-      .contact-card { display: none; }
-    }
-  </style>
+  <link rel="stylesheet" href="/assets/doc.css">
   <script defer src="https://umami.daydayup.lat/script.js" data-website-id="49031390-52c0-44c0-85de-68bfa7424469" data-domains="www.picpocket.top" data-exclude-search="true" data-performance="true"></script>
 </head>
 <body>
@@ -461,14 +85,12 @@
           <span aria-hidden="true">/</span>
           <span data-l="en">Pricing</span><span data-l="zh">定价</span>
         </nav>
-
-        <span class="eyebrow"><span data-l="en">Simple, credit-based pricing</span><span data-l="zh">按积分计费，简单透明</span></span>
-        <h1 class="display">
+        <h1 class="display reveal">
           <span data-l="en">Pricing &amp; <em>credits</em></span>
           <span data-l="zh">定价与<em>积分</em></span>
         </h1>
 
-        <p class="lede">
+        <p class="lede reveal">
           <span data-l="en">PicPocket is <strong>free with your own API key</strong>, forever, with no account. If you'd rather not manage keys, the hosted service runs curated models for you and charges credits per request. Every account gets 30 free credits each month.</span>
           <span data-l="zh">自带 API Key 使用 PicPocket <strong>永久免费</strong>，也无需账号。如果不想自己管理 Key，可以用官方托管服务：我们提供精选模型，按次扣积分。每个账号每月赠送 30 积分。</span>
         </p>
@@ -484,22 +106,21 @@
       <aside class="toc no-print">
         <div class="toc-title"><span data-l="en">On this page</span><span data-l="zh">本页目录</span></div>
         <ol>
-          <li><a href="#section-1" class="active"><span>01</span><span><span data-l="en">Plans</span><span data-l="zh">订阅套餐</span></span></a></li>
-          <li><a href="#section-2"><span>02</span><span><span data-l="en">Credit packs</span><span data-l="zh">积分包</span></span></a></li>
-          <li><a href="#section-3"><span>03</span><span><span data-l="en">What things cost</span><span data-l="zh">积分怎么扣</span></span></a></li>
-          <li><a href="#section-4"><span>04</span><span><span data-l="en">Billing details</span><span data-l="zh">计费说明</span></span></a></li>
+          <li><a href="#section-1" class="active"><span data-l="en">Plans</span><span data-l="zh">订阅套餐</span></a></li>
+          <li><a href="#section-2"><span data-l="en">Credit packs</span><span data-l="zh">积分包</span></a></li>
+          <li><a href="#section-3"><span data-l="en">What things cost</span><span data-l="zh">积分怎么扣</span></a></li>
+          <li><a href="#section-4"><span data-l="en">Billing details</span><span data-l="zh">计费说明</span></a></li>
         </ol>
       </aside>
 
       <article class="article">
         <section id="section-1">
-          <div class="sec-num">SECTION 01</div>
-          <h2><span data-l="en">Plans</span><span data-l="zh">订阅套餐</span></h2>
+          <h2 class="reveal"><span data-l="en">Plans</span><span data-l="zh">订阅套餐</span></h2>
           <p>
             <span data-l="en">Subscriptions grant credits every month. Unused subscription credits expire at the end of the period. Yearly billing saves about 17%.</span>
             <span data-l="zh">订阅套餐每月发放积分，未用完的订阅积分在周期结束时过期。按年付费约省 17%。</span>
           </p>
-          <div class="table-wrap">
+          <div class="table-wrap reveal">
             <table>
               <thead>
                 <tr>
@@ -540,13 +161,12 @@
         </section>
 
         <section id="section-2">
-          <div class="sec-num">SECTION 02</div>
-          <h2><span data-l="en">Credit packs</span><span data-l="zh">积分包</span></h2>
+          <h2 class="reveal"><span data-l="en">Credit packs</span><span data-l="zh">积分包</span></h2>
           <p>
             <span data-l="en">One-time purchases, valid for 12 months. Credits that expire soonest are used first. No subscription needed.</span>
             <span data-l="zh">一次性购买，12 个月内有效，优先使用即将到期的积分，无需订阅。</span>
           </p>
-          <div class="table-wrap">
+          <div class="table-wrap reveal">
             <table>
               <thead>
                 <tr>
@@ -575,13 +195,12 @@
         </section>
 
         <section id="section-3">
-          <div class="sec-num">SECTION 03</div>
-          <h2><span data-l="en">What things cost</span><span data-l="zh">积分怎么扣</span></h2>
+          <h2 class="reveal"><span data-l="en">What things cost</span><span data-l="zh">积分怎么扣</span></h2>
           <p>
             <span data-l="en">Hosted requests deduct credits when they run. If a request fails on our side, its credits are returned automatically. Using your own API key never uses credits.</span>
             <span data-l="zh">托管请求在执行时扣除积分；因我方原因失败的请求，积分会自动退回。使用自己的 API Key 不消耗积分。</span>
           </p>
-          <div class="table-wrap">
+          <div class="table-wrap reveal">
             <table>
               <thead>
                 <tr>
@@ -616,8 +235,7 @@
         </section>
 
         <section id="section-4">
-          <div class="sec-num">SECTION 04</div>
-          <h2><span data-l="en">Billing details</span><span data-l="zh">计费说明</span></h2>
+          <h2 class="reveal"><span data-l="en">Billing details</span><span data-l="zh">计费说明</span></h2>
           <ul>
             <li><span data-l="en">Pay by card, Apple Pay or Google Pay through Waffo Pancake, or with PayPal. Waffo acts as merchant of record for its payments and handles applicable taxes; the price at checkout is what you pay.</span><span data-l="zh">可通过 Waffo Pancake 使用银行卡、Apple Pay、Google Pay 付款，或使用 PayPal。经 Waffo 的付款由其作为商户主体处理并计收适用税费，结账页价格即实际支付价格。</span></li>
             <li><span data-l="en">Subscriptions renew automatically until you cancel in Settings → Account &amp; Plan. Your plan stays active until the end of the paid period.</span><span data-l="zh">订阅自动续费，直到你在“设置 → 账号与套餐”中取消；套餐保留到已付费周期结束。</span></li>

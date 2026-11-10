@@ -21,35 +21,35 @@
   "private": true,
   "license": "GPL-3.0-only",
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.3",
+    "@tailwindcss/vite": "^4.3.5",
     "@types/bun": "latest",
-    "@types/chrome": "^0.3.4",
+    "@types/chrome": "^0.3.7",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@types/ws": "^8.18.2",
-    "autoprefixer": "^10.6.1",
-    "fake-indexeddb": "^6.2.5",
-    "postcss": "^8.5.28",
-    "tailwindcss": "^4.3.3",
-    "vitest": "^5.0.3"
+    "autoprefixer": "^10.6.2",
+    "fake-indexeddb": "^6.2.7",
+    "postcss": "^8.5.32",
+    "tailwindcss": "^4.3.5",
+    "vitest": "^5.1.0"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
-    "@iconify/react": "^6.0.2",
-    "@modelcontextprotocol/sdk": "^1.32.0",
-    "@supabase/supabase-js": "^2.117.2",
+    "@iconify/react": "^6.0.4",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@supabase/supabase-js": "^2.119.0",
     "@wxt-dev/module-react": "^1.2.2",
     "clsx": "^2.1.1",
-    "dexie": "^4.4.6",
+    "dexie": "^4.4.7",
     "dexie-react-hooks": "^4.4.0",
-    "lucide-react": "^1.50.0",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
+    "lucide-react": "^1.70.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "tailwind-merge": "^3.7.0",
-    "ws": "^8.22.0",
-    "wxt": "^0.21.4",
-    "zod": "^4.6.5"
+    "ws": "^8.22.1",
+    "wxt": "^0.21.5",
+    "zod": "^4.6.7"
   }
 }
